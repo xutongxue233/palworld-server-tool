@@ -1,7 +1,6 @@
 package main
 
 import (
-	"embed"
 	"flag"
 	"fmt"
 	"io/fs"
@@ -26,18 +25,6 @@ var (
 	cfgFile string
 	conf    config.Config
 )
-
-//go:embed assets/*
-var assets embed.FS
-
-//go:embed index.html
-var indexHTML embed.FS
-
-//go:embed pal-conf.html
-var palConfHTML embed.FS
-
-//go:embed map/*
-var mapTiles embed.FS
 
 func setupFlags() {
 	flag.StringVar(&cfgFile, "config", "", "config file")
@@ -71,20 +58,20 @@ func main() {
 	})
 	api.RegisterRouter(router)
 
-	assetsFS, _ := fs.Sub(assets, "assets")
+	assetsFS, _ := fs.Sub(assets, assetsRoot)
 	router.StaticFS("/assets", http.FS(assetsFS))
 
-	mapTilesFS, _ := fs.Sub(mapTiles, "map")
+	mapTilesFS, _ := fs.Sub(mapTiles, mapRoot)
 	router.StaticFS("/map/tiles", http.FS(mapTilesFS))
 
 	router.GET("/", func(c *gin.Context) {
 		c.Writer.WriteHeader(http.StatusOK)
-		file, _ := indexHTML.ReadFile("index.html")
+		file, _ := indexHTML.ReadFile(indexHTMLPath)
 		c.Writer.Write(file)
 	})
 	router.GET("/pal-conf", func(c *gin.Context) {
 		c.Writer.WriteHeader(http.StatusOK)
-		file, _ := palConfHTML.ReadFile("pal-conf.html")
+		file, _ := palConfHTML.ReadFile(palConfHTMLPath)
 		c.Writer.Write(file)
 	})
 

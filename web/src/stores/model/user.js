@@ -19,7 +19,7 @@ const userStore = defineStore(
     const getLoginInfo = () => {
       return {
         isLogin: isLogin.value,
-        token: token,
+        token: token.value,
       };
     };
 
@@ -30,7 +30,7 @@ const userStore = defineStore(
   },
   {
     persist: true,
-  }
+  },
 );
 
 export default userStore;

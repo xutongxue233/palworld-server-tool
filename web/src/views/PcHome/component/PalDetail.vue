@@ -3,7 +3,7 @@ import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import skillMap from "@/assets/skill.json";
 
-const { t, locale } = useI18n();
+const { locale } = useI18n();
 
 const props = defineProps(["palDetail"]);
 const palDetail = computed(() => props.palDetail);

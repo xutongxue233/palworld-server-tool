@@ -543,6 +543,14 @@ const docTemplate = `{
                         "name": "player_uid",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "Optional ban message",
+                        "name": "action",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/api.PlayerActionRequest"
+                        }
                     }
                 ],
                 "responses": {
@@ -598,6 +606,14 @@ const docTemplate = `{
                         "name": "player_uid",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "Optional kick message",
+                        "name": "action",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/api.PlayerActionRequest"
+                        }
                     }
                 ],
                 "responses": {
@@ -1030,6 +1046,44 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/server/game-data": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get the current world actor snapshot from the Palworld server",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Server"
+                ],
+                "summary": "Get World Actor Snapshot",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/server/metrics": {
             "get": {
                 "description": "Get Server Metrics",
@@ -1052,6 +1106,81 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/server/save": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Ask the Palworld server to save the world immediately",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Server"
+                ],
+                "summary": "Save World",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/server/settings": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get the active Palworld dedicated server settings",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Server"
+                ],
+                "summary": "Get Server Settings",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/api.ErrorResponse"
                         }
@@ -1088,6 +1217,43 @@ const docTemplate = `{
                         }
                     }
                 ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/server/stop": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Force stop the Palworld server without a graceful shutdown delay",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Server"
+                ],
+                "summary": "Force Stop Server",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -1395,6 +1561,14 @@ const docTemplate = `{
                 }
             }
         },
+        "api.PlayerActionRequest": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
         "api.SendRconCommandRequest": {
             "type": "object",
             "properties": {
@@ -1409,10 +1583,16 @@ const docTemplate = `{
         "api.ServerInfo": {
             "type": "object",
             "properties": {
+                "description": {
+                    "type": "string"
+                },
                 "name": {
                     "type": "string"
                 },
                 "version": {
+                    "type": "string"
+                },
+                "world_guid": {
                     "type": "string"
                 }
             }
@@ -1420,6 +1600,9 @@ const docTemplate = `{
         "api.ServerMetrics": {
             "type": "object",
             "properties": {
+                "base_camp_num": {
+                    "type": "integer"
+                },
                 "current_player_num": {
                     "type": "integer"
                 },
@@ -1596,6 +1779,12 @@ const docTemplate = `{
         "database.OnlinePlayer": {
             "type": "object",
             "properties": {
+                "account_name": {
+                    "type": "string"
+                },
+                "building_count": {
+                    "type": "integer"
+                },
                 "ip": {
                     "type": "string"
                 },
@@ -1621,6 +1810,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "steam_id": {
+                    "type": "string"
+                },
+                "user_id": {
                     "type": "string"
                 }
             }
@@ -1693,6 +1885,12 @@ const docTemplate = `{
         "database.Player": {
             "type": "object",
             "properties": {
+                "account_name": {
+                    "type": "string"
+                },
+                "building_count": {
+                    "type": "integer"
+                },
                 "exp": {
                     "type": "integer"
                 },
@@ -1758,6 +1956,9 @@ const docTemplate = `{
                 },
                 "steam_id": {
                     "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
                 }
             }
         },
@@ -1771,6 +1972,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "steam_id": {
+                    "type": "string"
+                },
+                "user_id": {
                     "type": "string"
                 }
             }
@@ -1809,6 +2013,12 @@ const docTemplate = `{
         "database.TersePlayer": {
             "type": "object",
             "properties": {
+                "account_name": {
+                    "type": "string"
+                },
+                "building_count": {
+                    "type": "integer"
+                },
                 "exp": {
                     "type": "integer"
                 },
@@ -1864,6 +2074,9 @@ const docTemplate = `{
                     }
                 },
                 "steam_id": {
+                    "type": "string"
+                },
+                "user_id": {
                     "type": "string"
                 }
             }

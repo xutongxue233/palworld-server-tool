@@ -10,6 +10,8 @@ import (
 	"go.etcd.io/bbolt"
 )
 
+var errPlayerFound = errors.New("player found")
+
 func PutPlayers(db *bbolt.DB, players []database.Player) error {
 	return db.Update(func(tx *bbolt.Tx) error {
 		b := tx.Bucket([]byte("players"))
@@ -167,6 +169,9 @@ func GetPlayer(db *bbolt.DB, playerUid string) (database.Player, error) {
 }
 
 func AddWhitelist(db *bbolt.DB, player database.PlayerW) error {
+	if player.PlayerUID == "" && player.UserID == "" && player.SteamID == "" {
+		return errors.New("player_uid, user_id or steam_id is required")
+	}
 	return db.Update(func(tx *bbolt.Tx) error {
 		// 获取或创建白名单bucket
 		b, err := tx.CreateBucketIfNotExists([]byte("whitelist"))
@@ -195,7 +200,7 @@ func AddWhitelist(db *bbolt.DB, player database.PlayerW) error {
 		} else {
 			// 玩家不存在，添加新玩家
 			// 生成新玩家的唯一键
-			newPlayerKey := []byte(player.Name + "|" + player.SteamID + "|" + player.PlayerUID)
+			newPlayerKey := []byte(player.Name + "|" + player.UserID + "|" + player.SteamID + "|" + player.PlayerUID)
 			if err := b.Put(newPlayerKey, playerData); err != nil {
 				return err
 			}
@@ -237,12 +242,12 @@ func findPlayerKey(b *bbolt.Bucket, player database.PlayerW) ([]byte, error) {
 		}
 		if matchesCriteria(existingPlayer, player) {
 			keyFound = append([]byte(nil), k...) // Make a copy of the key
-			return errors.New("player found")    // Use an error to break out of the iteration early.
+			return errPlayerFound                // Use a sentinel to break out of the iteration early.
 		}
 		return nil
 	})
 
-	if err != nil && err.Error() == "player found" {
+	if errors.Is(err, errPlayerFound) {
 		return keyFound, nil
 	}
 
@@ -275,8 +280,8 @@ func matchesCriteria(existingPlayer, player database.PlayerW) bool {
 	if player.PlayerUID != "" && existingPlayer.PlayerUID == player.PlayerUID {
 		return true
 	}
-	// 如果Name非空且匹配，认为是同一个玩家
-	if player.Name != "" && existingPlayer.Name == player.Name {
+	// 跨平台账号优先使用官方 REST API 返回的 UserId
+	if player.UserID != "" && existingPlayer.UserID == player.UserID {
 		return true
 	}
 	// 如果SteamID非空且匹配，认为是同一个玩家
@@ -288,6 +293,11 @@ func matchesCriteria(existingPlayer, player database.PlayerW) bool {
 }
 
 func PutWhitelist(db *bbolt.DB, players []database.PlayerW) error {
+	for _, player := range players {
+		if player.PlayerUID == "" && player.UserID == "" && player.SteamID == "" {
+			return errors.New("player_uid, user_id or steam_id is required")
+		}
+	}
 	return db.Update(func(tx *bbolt.Tx) error {
 		// 获取或创建白名单bucket
 		b, err := tx.CreateBucketIfNotExists([]byte("whitelist"))
@@ -311,8 +321,11 @@ func PutWhitelist(db *bbolt.DB, players []database.PlayerW) error {
 			}
 			identifier := player.PlayerUID
 			if identifier == "" {
-				if identifier = player.SteamID; identifier == "" {
-					continue
+				identifier = player.UserID
+				if identifier == "" {
+					if identifier = player.SteamID; identifier == "" {
+						continue
+					}
 				}
 			}
 			if err := b.Put([]byte(identifier), playerData); err != nil {

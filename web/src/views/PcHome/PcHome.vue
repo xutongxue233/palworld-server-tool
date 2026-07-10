@@ -9,6 +9,7 @@ import {
   ArchiveOutlined,
   CloudDownloadOutlined,
   PublicRound,
+  SaveOutlined,
 } from "@vicons/material";
 import {
   GameController,
@@ -29,8 +30,6 @@ import dayjs from "dayjs";
 import palMap from "@/assets/pal.json";
 import itemMap from "@/assets/items.json";
 import skillMap from "@/assets/skill.json";
-import PlayerList from "./component/PlayerList.vue";
-import GuildList from "./component/GuildList.vue";
 import MapView from "./component/MapView.vue";
 import whitelistStore from "@/stores/model/whitelist";
 import playerToGuildStore from "@/stores/model/playerToGuild";
@@ -55,9 +54,6 @@ const currentDisplay = ref("players");
 const playerList = ref([]);
 const onlinePlayerList = ref([]);
 const guildList = ref([]);
-const playerInfo = ref({});
-const playerPalsList = ref([]);
-const guildInfo = ref({});
 const skillTypeList = ref([]);
 const languageOptions = ref([]);
 
@@ -65,19 +61,11 @@ const isLogin = ref(false);
 const authToken = ref("");
 
 const isDarkMode = ref(
-  window.matchMedia("(prefers-color-scheme: dark)").matches
+  window.matchMedia("(prefers-color-scheme: dark)").matches,
 );
 
 const updateDarkMode = (e) => {
   isDarkMode.value = e.matches;
-};
-
-const getDarkModeColor = () => {
-  return isDarkMode.value ? "#fff" : "#000";
-};
-
-const getUserAvatar = () => {
-  return new URL("../../assets/avatar.webp", import.meta.url).href;
 };
 
 const handleSelectLanguage = (key) => {
@@ -201,32 +189,6 @@ const rconItemOptions = ref([]);
 const rconSelectedPal = ref(null);
 const rconPalOptions = ref([]);
 const rconCommandsExtra = ref({});
-const copyText = async (text) => {
-  if (text == "" || text == null) {
-    message.error(t("message.copyempty"));
-    return;
-  }
-  if (navigator.clipboard) {
-    try {
-      await navigator.clipboard.writeText(text);
-      message.success(t("message.copysuccess"));
-    } catch (err) {
-      message.error(t("message.copyerr", { err }));
-    }
-  } else {
-    const textarea = document.createElement("textarea");
-    textarea.value = text;
-    document.body.appendChild(textarea);
-    textarea.select();
-    try {
-      document.execCommand("copy");
-      message.success(t("message.copysuccess"));
-    } catch (err) {
-      message.error(t("message.copyerr", { err }));
-    }
-    document.body.removeChild(textarea);
-  }
-};
 const handleRconDrawer = () => {
   if (checkAuthToken()) {
     showRconDrawer.value = true;
@@ -272,7 +234,7 @@ const handleAddRconCommand = () => {
   newRconPlaceholder.value = "";
   newRconRemark.value = "";
 };
-const handleImportRconFinish = (options) => {
+const handleImportRconFinish = () => {
   getRconCommands();
   setTimeout(() => {
     message.success(t("message.importRconSuccess"));
@@ -316,7 +278,9 @@ const removeRconCommand = async (uuid) => {
 };
 const fillRconCommand = (rconCommand) => {
   let cmd = rconCommand.placeholder;
-  const playerParts = rconSelectedPlayer.value ? rconSelectedPlayer.value.split("|") : [];
+  const playerParts = rconSelectedPlayer.value
+    ? rconSelectedPlayer.value.split("|")
+    : [];
   // {steamUserID}，大小写不敏感
   if (/{steamUserID}/i.test(cmd)) {
     if (!rconSelectedPlayer.value) {
@@ -364,7 +328,7 @@ const renderIcon = (icon, color = "#666") => {
       },
       {
         default: () => h(icon),
-      }
+      },
     );
   };
 };
@@ -385,6 +349,15 @@ const controlCenterOption = [
       });
     },
     key: "palconf",
+    icon: renderIcon(Settings),
+  },
+  {
+    label: () => {
+      return h("div", null, {
+        default: () => t("button.serverSettings"),
+      });
+    },
+    key: "settings",
     icon: renderIcon(Settings),
   },
   {
@@ -416,31 +389,61 @@ const controlCenterOption = [
   },
   {
     label: () => {
+      return h("div", null, {
+        default: () => t("button.saveWorld"),
+      });
+    },
+    key: "save",
+    icon: renderIcon(SaveOutlined, "#18a058"),
+  },
+  {
+    label: () => {
+      return h(
+        "div",
+        {
+          style: { color: "#d97706" },
+        },
+        {
+          default: () => t("button.shutdown"),
+        },
+      );
+    },
+    key: "shutdown",
+    icon: renderIcon(SettingsPowerRound, "#d97706"),
+  },
+  {
+    label: () => {
       return h(
         "div",
         {
           style: { color: "#cc2d48" },
         },
         {
-          default: () => t("button.shutdown"),
-        }
+          default: () => t("button.forceStop"),
+        },
       );
     },
-    key: "shutdown",
+    key: "stop",
     icon: renderIcon(SettingsPowerRound, "#cc2d48"),
   },
 ];
 const handleSelectControlCenter = (key) => {
   if (key === "palconf") {
     toPalConf();
+  } else if (key === "settings") {
+    handleServerSettings();
   } else if (key === "whitelist") {
     handleWhiteList();
   } else if (key === "rcon") {
     handleRconDrawer();
   } else if (key === "broadcast") {
     handleStartBrodcast();
+  } else if (key === "save") {
+    handleSaveWorld();
   } else if (key === "shutdown") {
     handleShutdown();
+  } else if (key === "stop") {
+    handleForceStop();
   } else {
     message.error("错误");
   }
@@ -485,18 +488,16 @@ const showCurrentPlayer = (id) => {
 };
 // 从白名单中移除该玩家
 const removeWhiteList = async (player) => {
-  if (!player.player_uid && !player.steam_id) {
+  if (!player.player_uid && !player.user_id && !player.steam_id) {
     message.error(
       t("message.removewhitefail", {
-        err: "player_uid or steam_id is required",
-      })
+        err: "player_uid, user_id or steam_id is required",
+      }),
     );
     return;
   }
   if (player.isNew) {
-    const index = whiteList.value.findIndex(
-      (e) => e.player_uid === player.player_uid
-    );
+    const index = whiteList.value.indexOf(player);
     whiteList.value.splice(index, 1);
   } else {
     const { data, statusCode } = await new ApiService().removeWhitelist(player);
@@ -514,6 +515,7 @@ const handleAddNewWhiteList = () => {
   whiteList.value.unshift({
     name: "",
     player_uid: "",
+    user_id: "",
     steam_id: "",
     isNew: true,
   });
@@ -526,7 +528,7 @@ const putWhiteList = async () => {
   }
   const whiteListData = JSON.stringify(whiteList.value);
   const { data, statusCode } = await new ApiService().putWhitelist(
-    whiteListData
+    whiteListData,
   );
   if (statusCode.value === 200) {
     message.success(t("message.addwhitesuccess"));
@@ -564,6 +566,92 @@ const handleBroadcast = async () => {
   } else {
     message.error(t("message.broadcastfail", { err: data.value?.error }));
   }
+};
+
+const showServerSettingsModal = ref(false);
+const serverSettingsLoading = ref(false);
+const serverSettingsRows = ref([]);
+const serverSettingsColumns = [
+  {
+    title: t("item.settingName"),
+    key: "name",
+    width: 280,
+    ellipsis: { tooltip: true },
+  },
+  {
+    title: t("item.settingValue"),
+    key: "value",
+    ellipsis: { tooltip: true },
+  },
+];
+const formatSettingValue = (value) => {
+  if (value === null || value === undefined) return "--";
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+};
+const handleServerSettings = async () => {
+  if (!checkAuthToken()) {
+    message.error(t("message.requireauth"));
+    showLoginModal.value = true;
+    return;
+  }
+
+  showServerSettingsModal.value = true;
+  serverSettingsLoading.value = true;
+  const { data, statusCode } = await new ApiService().getServerSettings();
+  if (statusCode.value === 200) {
+    serverSettingsRows.value = Object.entries(data.value || {})
+      .map(([name, value]) => ({ name, value: formatSettingValue(value) }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  } else {
+    serverSettingsRows.value = [];
+    message.error(t("message.settingsfail", { err: data.value?.error }));
+  }
+  serverSettingsLoading.value = false;
+};
+
+const handleSaveWorld = () => {
+  if (!checkAuthToken()) {
+    message.error(t("message.requireauth"));
+    showLoginModal.value = true;
+    return;
+  }
+  dialog.warning({
+    title: t("message.warn"),
+    content: t("message.saveworldtip"),
+    positiveText: t("button.confirm"),
+    negativeText: t("button.cancel"),
+    onPositiveClick: async () => {
+      const { data, statusCode } = await new ApiService().saveWorld();
+      if (statusCode.value === 200) {
+        message.success(t("message.saveworldsuccess"));
+      } else {
+        message.error(t("message.saveworldfail", { err: data.value?.error }));
+      }
+    },
+  });
+};
+
+const handleForceStop = () => {
+  if (!checkAuthToken()) {
+    message.error(t("message.requireauth"));
+    showLoginModal.value = true;
+    return;
+  }
+  dialog.error({
+    title: t("message.warn"),
+    content: t("message.forcestoptip"),
+    positiveText: t("button.confirm"),
+    negativeText: t("button.cancel"),
+    onPositiveClick: async () => {
+      const { data, statusCode } = await new ApiService().stopServer();
+      if (statusCode.value === 200) {
+        message.success(t("message.forcestopsuccess"));
+      } else {
+        message.error(t("message.forcestopfail", { err: data.value?.error }));
+      }
+    },
+  });
 };
 
 const doShutdown = async () => {
@@ -622,17 +710,14 @@ const toMap = async () => {
 };
 
 const playerToGuildStatus = computed(() =>
-  playerToGuildStore().getUpdateStatus()
+  playerToGuildStore().getUpdateStatus(),
 );
 
 watch(
   () => playerToGuildStatus.value,
   (newVal) => {
     currentDisplay.value = newVal;
-    if (newVal === "players") {
-    } else if (newVal === "guilds") {
-    }
-  }
+  },
 );
 
 /**
@@ -652,8 +737,16 @@ const checkAuthToken = () => {
   return false;
 };
 const isTokenExpired = (token) => {
-  const payload = JSON.parse(atob(token.split(".")[1]));
-  return payload.exp < Date.now() / 1000;
+  try {
+    const payloadPart = token.split(".")[1];
+    if (!payloadPart) return true;
+    const normalized = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+    const payload = JSON.parse(atob(padded));
+    return typeof payload.exp !== "number" || payload.exp < Date.now() / 1000;
+  } catch {
+    return true;
+  }
 };
 
 const backupModal = ref(false);
@@ -721,7 +814,7 @@ const backupColumns = [
             renderIcon: () => h(CloudDownloadOutlined),
             onClick: () => downloadBackup(row),
           },
-          { default: () => t("button.download") }
+          { default: () => t("button.download") },
         ),
         h(
           NButton,
@@ -732,7 +825,7 @@ const backupColumns = [
             style: "margin-left: 20px",
             onClick: () => removeBackup(row),
           },
-          { default: () => t("button.remove") }
+          { default: () => t("button.remove") },
         ),
       ];
     },
@@ -745,7 +838,7 @@ const removeBackup = async (item) => {
   if (checkAuthToken()) {
     isDownloading.value = true;
     const { data, statusCode } = await new ApiService().removeBackup(
-      item.backup_id
+      item.backup_id,
     );
     if (statusCode.value === 200) {
       message.success(t("message.removebackupsuccess"));
@@ -816,7 +909,7 @@ onMounted(async () => {
         label: `${value}-${key}`,
         value: key,
       };
-    }
+    },
   );
   skillTypeList.value = getSkillTypeList();
   loading.value = true;
@@ -881,6 +974,15 @@ onMounted(async () => {
             </p>
             <p>
               {{ $t("item.maxPlayerNum") }}: {{ serverMetrics?.max_player_num }}
+            </p>
+            <p>
+              {{ $t("item.baseCampNum") }}: {{ serverMetrics?.base_camp_num }}
+            </p>
+            <p v-if="serverInfo?.description">
+              {{ $t("item.serverDescription") }}: {{ serverInfo.description }}
+            </p>
+            <p v-if="serverInfo?.world_guid">
+              {{ $t("item.worldGuid") }}: {{ serverInfo.world_guid }}
             </p>
           </div>
         </n-tooltip>
@@ -1190,6 +1292,30 @@ onMounted(async () => {
     </template>
   </n-modal>
 
+  <!-- server settings modal -->
+  <n-modal
+    v-model:show="showServerSettingsModal"
+    class="custom-card"
+    preset="card"
+    style="width: 90%; max-width: 900px"
+    content-style="padding: 12px;"
+    header-style="padding: 12px;"
+    :title="$t('modal.serverSettings')"
+    size="huge"
+    :bordered="false"
+    :segmented="segmented"
+  >
+    <n-spin :show="serverSettingsLoading">
+      <n-data-table
+        :columns="serverSettingsColumns"
+        :data="serverSettingsRows"
+        :max-height="560"
+        :single-line="false"
+        virtual-scroll
+      />
+    </n-spin>
+  </n-modal>
+
   <!-- custom rcon drawer -->
   <n-modal
     v-model:show="showRconAddModal"
@@ -1367,10 +1493,10 @@ onMounted(async () => {
               </template>
             </n-input>
             <n-button
-                type="info"
-                ghost
-                round
-                @click="fillRconCommand(rconCommand)"
+              type="info"
+              ghost
+              round
+              @click="fillRconCommand(rconCommand)"
             >
               {{ $t("button.fill") }}
             </n-button>
@@ -1429,7 +1555,7 @@ onMounted(async () => {
       >
         <template #default="{ item }">
           <div
-            :key="item.player_uid"
+            :key="`${item.player_uid}|${item.user_id}|${item.steam_id}`"
             class="flex flex-col item mlr-3 mb-3"
             style="height: 42px"
           >
@@ -1438,25 +1564,33 @@ onMounted(async () => {
                 <n-input-group>
                   <n-input
                     v-model:value="item.name"
-                    :style="{ width: '33%' }"
+                    :style="{ width: '25%' }"
                     :placeholder="$t('input.nickname')"
                   />
                   <n-input
                     v-model:value="item.player_uid"
-                    :style="{ width: '33%' }"
+                    :style="{ width: '25%' }"
                     :placeholder="$t('input.player_uid')"
                   />
                   <n-input
+                    v-model:value="item.user_id"
+                    :style="{ width: '25%' }"
+                    :placeholder="$t('input.user_id')"
+                  />
+                  <n-input
                     v-model:value="item.steam_id"
-                    :style="{ width: '33%' }"
+                    :style="{ width: '25%' }"
                     :placeholder="$t('input.steam_id')"
                   />
                 </n-input-group>
               </n-gi>
               <n-gi span="5">
                 <div class="flex justify-end mr-3">
-                  <n-space v-if="item.player_uid || item.steam_id">
+                  <n-space
+                    v-if="item.player_uid || item.user_id || item.steam_id"
+                  >
                     <n-button
+                      v-if="item.player_uid"
                       strong
                       secondary
                       type="primary"

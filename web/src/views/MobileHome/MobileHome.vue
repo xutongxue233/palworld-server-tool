@@ -13,8 +13,6 @@ import { useI18n } from "vue-i18n";
 import ApiService from "@/service/api";
 import palMap from "@/assets/pal.json";
 import skillMap from "@/assets/skill.json";
-import PlayerList from "./component/PlayerList.vue";
-import GuildList from "./component/GuildList.vue";
 import PlayerDetail from "./component/PlayerDetail.vue";
 import GuildDetail from "./component/GuildDetail.vue";
 import userStore from "@/stores/model/user";
@@ -47,7 +45,7 @@ const isLogin = ref(false);
 const authToken = ref("");
 
 const isDarkMode = ref(
-  window.matchMedia("(prefers-color-scheme: dark)").matches
+  window.matchMedia("(prefers-color-scheme: dark)").matches,
 );
 
 const updateDarkMode = (e) => {
@@ -84,7 +82,7 @@ const getServerInfo = async () => {
   const { data } = await new ApiService().getServerInfo();
   serverInfo.value = data.value;
 };
-const getPlayerList = async (is_update_info = true) => {
+const getPlayerList = async () => {
   getOnlineList();
   const { data } = await new ApiService().getPlayerList({
     order_by: "last_online",
@@ -169,7 +167,7 @@ const onLoadPals = () => {
     currentPage.value += 1;
     currentPlayerPalsList.value = playerPalsList.value.slice(
       0,
-      pageSize.value * currentPage.value
+      pageSize.value * currentPage.value,
     );
   }
 };
@@ -320,8 +318,16 @@ const checkAuthToken = () => {
   return false;
 };
 const isTokenExpired = (token) => {
-  const payload = JSON.parse(atob(token.split(".")[1]));
-  return payload.exp < Date.now() / 1000;
+  try {
+    const payloadPart = token.split(".")[1];
+    if (!payloadPart) return true;
+    const normalized = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+    const payload = JSON.parse(atob(padded));
+    return typeof payload.exp !== "number" || payload.exp < Date.now() / 1000;
+  } catch {
+    return true;
+  }
 };
 
 onMounted(async () => {
@@ -348,7 +354,7 @@ onMounted(async () => {
       acc[key.toLowerCase()] = palMap[locale.value][key];
       return acc;
     },
-    {}
+    {},
   );
   const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
   mediaQuery.addEventListener("change", updateDarkMode);
@@ -361,7 +367,7 @@ onMounted(async () => {
   await getPlayerList();
   loading.value = false;
   setInterval(() => {
-    getPlayerList(false);
+    getPlayerList();
   }, 60000);
 });
 </script>
@@ -636,7 +642,7 @@ onMounted(async () => {
   </n-modal>
 </template>
 <style scoped lang="less">
-:deep .n-layout-scroll-container {
+:deep(.n-layout-scroll-container) {
   &::-webkit-scrollbar {
     display: none;
   }

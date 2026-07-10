@@ -15,6 +15,12 @@ class ApiService extends Service {
   async getServerMetrics() {
     return this.fetch(`/api/server/metrics`).get().json();
   }
+  async getServerSettings() {
+    return this.fetch(`/api/server/settings`).get().json();
+  }
+  async getWorldActorSnapshot() {
+    return this.fetch(`/api/server/game-data`).get().json();
+  }
   async sendBroadcast(param) {
     let data = param;
     return this.fetch(`/api/server/broadcast`).post(data).json();
@@ -22,6 +28,12 @@ class ApiService extends Service {
   async shutdownServer(param) {
     let data = param;
     return this.fetch(`/api/server/shutdown`).post(data).json();
+  }
+  async saveWorld() {
+    return this.fetch(`/api/server/save`).post().json();
+  }
+  async stopServer() {
+    return this.fetch(`/api/server/stop`).post().json();
   }
 
   async getPlayerList(param) {

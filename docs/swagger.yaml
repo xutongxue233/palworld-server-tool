@@ -21,6 +21,11 @@ definitions:
       message:
         type: string
     type: object
+  api.PlayerActionRequest:
+    properties:
+      message:
+        type: string
+    type: object
   api.SendRconCommandRequest:
     properties:
       content:
@@ -30,13 +35,19 @@ definitions:
     type: object
   api.ServerInfo:
     properties:
+      description:
+        type: string
       name:
         type: string
       version:
         type: string
+      world_guid:
+        type: string
     type: object
   api.ServerMetrics:
     properties:
+      base_camp_num:
+        type: integer
       current_player_num:
         type: integer
       days:
@@ -151,6 +162,10 @@ definitions:
     type: object
   database.OnlinePlayer:
     properties:
+      account_name:
+        type: string
+      building_count:
+        type: integer
       ip:
         type: string
       last_online:
@@ -168,6 +183,8 @@ definitions:
       player_uid:
         type: string
       steam_id:
+        type: string
+      user_id:
         type: string
     type: object
   database.Pal:
@@ -215,6 +232,10 @@ definitions:
     type: object
   database.Player:
     properties:
+      account_name:
+        type: string
+      building_count:
+        type: integer
       exp:
         type: integer
       full_stomach:
@@ -259,6 +280,8 @@ definitions:
         type: object
       steam_id:
         type: string
+      user_id:
+        type: string
     type: object
   database.PlayerW:
     properties:
@@ -267,6 +290,8 @@ definitions:
       player_uid:
         type: string
       steam_id:
+        type: string
+      user_id:
         type: string
     type: object
   database.RconCommand:
@@ -291,6 +316,10 @@ definitions:
     type: object
   database.TersePlayer:
     properties:
+      account_name:
+        type: string
+      building_count:
+        type: integer
       exp:
         type: integer
       full_stomach:
@@ -328,6 +357,8 @@ definitions:
           type: integer
         type: object
       steam_id:
+        type: string
+      user_id:
         type: string
     type: object
 info:
@@ -669,6 +700,11 @@ paths:
         name: player_uid
         required: true
         type: string
+      - description: Optional ban message
+        in: body
+        name: action
+        schema:
+          $ref: '#/definitions/api.PlayerActionRequest'
       produces:
       - application/json
       responses:
@@ -704,6 +740,11 @@ paths:
         name: player_uid
         required: true
         type: string
+      - description: Optional kick message
+        in: body
+        name: action
+        schema:
+          $ref: '#/definitions/api.PlayerActionRequest'
       produces:
       - application/json
       responses:
@@ -982,6 +1023,30 @@ paths:
       summary: Publish Broadcast
       tags:
       - Server
+  /api/server/game-data:
+    get:
+      description: Get the current world actor snapshot from the Palworld server
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get World Actor Snapshot
+      tags:
+      - Server
   /api/server/metrics:
     get:
       consumes:
@@ -999,6 +1064,53 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       summary: Get Server Metrics
+      tags:
+      - Server
+  /api/server/save:
+    post:
+      description: Ask the Palworld server to save the world immediately
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Save World
+      tags:
+      - Server
+  /api/server/settings:
+    get:
+      description: Get the active Palworld dedicated server settings
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get Server Settings
       tags:
       - Server
   /api/server/shutdown:
@@ -1031,6 +1143,29 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Shutdown Server
+      tags:
+      - Server
+  /api/server/stop:
+    post:
+      description: Force stop the Palworld server without a graceful shutdown delay
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Force Stop Server
       tags:
       - Server
   /api/server/tool:

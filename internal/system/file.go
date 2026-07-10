@@ -5,6 +5,7 @@ import (
 	"archive/zip"
 	"compress/gzip"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -73,7 +74,6 @@ func ZipDir(srcDir, zipFilePath string) error {
 	defer zipFile.Close()
 
 	archive := zip.NewWriter(zipFile)
-	defer archive.Close()
 
 	err = filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -104,18 +104,65 @@ func ZipDir(srcDir, zipFilePath string) error {
 		}
 
 		if !info.IsDir() {
-			file, err := os.Open(path)
-			if err != nil {
-				return err
-			}
-			defer file.Close()
-			if _, err := io.Copy(writer, file); err != nil {
-				file.Close()
+			if err := copyFileToWriter(writer, path); err != nil {
 				return err
 			}
 		}
 		return nil
 	})
+	if closeErr := archive.Close(); err == nil {
+		err = closeErr
+	}
+	return err
+}
+
+func copyFileToWriter(writer io.Writer, path string) error {
+	file, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	_, err = io.Copy(writer, file)
+	return err
+}
+
+func archiveTargetPath(destDir, entryName string) (string, error) {
+	destAbs, err := filepath.Abs(destDir)
+	if err != nil {
+		return "", err
+	}
+	targetAbs, err := filepath.Abs(filepath.Join(destAbs, filepath.FromSlash(entryName)))
+	if err != nil {
+		return "", err
+	}
+	rel, err := filepath.Rel(destAbs, targetAbs)
+	if err != nil {
+		return "", err
+	}
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) || filepath.IsAbs(rel) {
+		return "", fmt.Errorf("archive entry escapes destination: %q", entryName)
+	}
+	return targetAbs, nil
+}
+
+func extractZipFile(file *zip.File, path string) error {
+	rc, err := file.Open()
+	if err != nil {
+		return err
+	}
+	defer rc.Close()
+
+	mode := file.Mode().Perm()
+	if mode == 0 {
+		mode = 0644
+	}
+	outFile, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, mode)
+	if err != nil {
+		return err
+	}
+	defer outFile.Close()
+
+	_, err = io.Copy(outFile, rc)
 	return err
 }
 
@@ -127,30 +174,27 @@ func UnzipDir(zipFile, destDir string) error {
 	defer reader.Close()
 
 	for _, file := range reader.File {
-		path := filepath.Join(destDir, file.Name)
+		path, err := archiveTargetPath(destDir, file.Name)
+		if err != nil {
+			return err
+		}
 
 		if file.FileInfo().IsDir() {
-			if err := os.MkdirAll(path, file.Mode()); err != nil {
+			mode := file.Mode().Perm()
+			if mode == 0 {
+				mode = 0755
+			}
+			if err := os.MkdirAll(path, mode); err != nil {
 				return err
 			}
 		} else {
+			if !file.Mode().IsRegular() {
+				return fmt.Errorf("unsupported zip entry type: %q", file.Name)
+			}
 			if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 				return err
 			}
-
-			outFile, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
-			if err != nil {
-				return err
-			}
-			defer outFile.Close()
-
-			rc, err := file.Open()
-			if err != nil {
-				return err
-			}
-			defer rc.Close()
-
-			if _, err := io.Copy(outFile, rc); err != nil {
+			if err := extractZipFile(file, path); err != nil {
 				return err
 			}
 		}
@@ -306,7 +350,10 @@ func UnTarGzDir(tarStream io.Reader, destDir string) error {
 			return err
 		}
 
-		target := filepath.Join(destDir, header.Name)
+		target, err := archiveTargetPath(destDir, header.Name)
+		if err != nil {
+			return err
+		}
 
 		switch header.Typeflag {
 		case tar.TypeDir:
@@ -318,7 +365,11 @@ func UnTarGzDir(tarStream io.Reader, destDir string) error {
 			if err := os.MkdirAll(targetDir, os.ModePerm); err != nil {
 				return err
 			}
-			f, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY, os.ModePerm)
+			mode := os.FileMode(header.Mode).Perm()
+			if mode == 0 {
+				mode = 0644
+			}
+			f, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode)
 			if err != nil {
 				return err
 			}

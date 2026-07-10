@@ -55,10 +55,12 @@ func PlayerSync(db *bbolt.DB) {
 	onlinePlayers, err := tool.ShowPlayers()
 	if err != nil {
 		logger.Errorf("%v\n", err)
+		return
 	}
 	err = service.PutPlayersOnline(db, onlinePlayers)
 	if err != nil {
 		logger.Errorf("%v\n", err)
+		return
 	}
 	logger.Info("Player sync done\n")
 
@@ -76,6 +78,7 @@ func PlayerSync(db *bbolt.DB) {
 func isPlayerWhitelisted(player database.OnlinePlayer, whitelist []database.PlayerW) bool {
 	for _, whitelistedPlayer := range whitelist {
 		if (player.PlayerUid != "" && player.PlayerUid == whitelistedPlayer.PlayerUID) ||
+			(player.UserId != "" && player.UserId == whitelistedPlayer.UserID) ||
 			(player.SteamId != "" && player.SteamId == whitelistedPlayer.SteamID) {
 			return true
 		}
@@ -133,12 +136,15 @@ func CheckAndKickPlayers(db *bbolt.DB, players []database.OnlinePlayer) {
 	}
 	for _, player := range players {
 		if !isPlayerWhitelisted(player, whitelist) {
-			identifier := player.SteamId
+			identifier := player.UserId
+			if identifier == "" && player.SteamId != "" {
+				identifier = fmt.Sprintf("steam_%s", player.SteamId)
+			}
 			if identifier == "" {
-				logger.Warnf("Kicked %s fail, SteamId is empty \n", player.Nickname)
+				logger.Warnf("Kicked %s fail, user ID is empty \n", player.Nickname)
 				continue
 			}
-			err := tool.KickPlayer(fmt.Sprintf("steam_%s", identifier))
+			err := tool.KickPlayer(identifier)
 			if err != nil {
 				logger.Warnf("Kicked %s fail, %s \n", player.Nickname, err)
 				continue
@@ -159,7 +165,7 @@ func SavSync() {
 }
 
 func Schedule(db *bbolt.DB) {
-	s := getScheduler()
+	scheduler := getScheduler()
 
 	playerSyncInterval := time.Duration(viper.GetInt("task.sync_interval"))
 	savSyncInterval := time.Duration(viper.GetInt("save.sync_interval"))
@@ -167,7 +173,7 @@ func Schedule(db *bbolt.DB) {
 
 	if playerSyncInterval > 0 {
 		go PlayerSync(db)
-		_, err := s.NewJob(
+		_, err := scheduler.NewJob(
 			gocron.DurationJob(playerSyncInterval*time.Second),
 			gocron.NewTask(PlayerSync, db),
 		)
@@ -178,7 +184,7 @@ func Schedule(db *bbolt.DB) {
 
 	if savSyncInterval > 0 {
 		go SavSync()
-		_, err := s.NewJob(
+		_, err := scheduler.NewJob(
 			gocron.DurationJob(savSyncInterval*time.Second),
 			gocron.NewTask(SavSync),
 		)
@@ -189,7 +195,7 @@ func Schedule(db *bbolt.DB) {
 
 	if backupInterval > 0 {
 		go BackupTask(db)
-		_, err := s.NewJob(
+		_, err := scheduler.NewJob(
 			gocron.DurationJob(backupInterval*time.Second),
 			gocron.NewTask(BackupTask, db),
 		)
@@ -198,7 +204,7 @@ func Schedule(db *bbolt.DB) {
 		}
 	}
 
-	_, err := s.NewJob(
+	_, err := scheduler.NewJob(
 		gocron.DurationJob(300*time.Second),
 		gocron.NewTask(system.LimitCacheDir, filepath.Join(os.TempDir(), "palworldsav-"), 5),
 	)
@@ -206,28 +212,26 @@ func Schedule(db *bbolt.DB) {
 		logger.Errorf("%v\n", err)
 	}
 
-	s.Start()
+	scheduler.Start()
 }
 
 func Shutdown() {
-	s := getScheduler()
+	if s == nil {
+		return
+	}
 	err := s.Shutdown()
 	if err != nil {
 		logger.Errorf("%v\n", err)
 	}
 }
 
-func initScheduler() gocron.Scheduler {
-	s, err := gocron.NewScheduler()
-	if err != nil {
-		logger.Errorf("%v\n", err)
-	}
-	return s
-}
-
 func getScheduler() gocron.Scheduler {
 	if s == nil {
-		return initScheduler()
+		scheduler, err := gocron.NewScheduler()
+		if err != nil {
+			logger.Panicf("failed to initialize scheduler: %v", err)
+		}
+		s = scheduler
 	}
 	return s
 }

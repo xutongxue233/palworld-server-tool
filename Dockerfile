@@ -1,18 +1,18 @@
 # --------- frontend -----------
-FROM node:20.10-alpine as frontendBuilder
+FROM node:22-alpine as frontendBuilder
 
 WORKDIR /app
 
 ARG proxy
 
 # RUN [ -z "$proxy" ] || sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories
-RUN npm install -g pnpm@8.14.0
+RUN npm install -g pnpm@9.15.9
 # RUN [ -z "$proxy" ] || pnpm config set registry https://registry.npm.taobao.org
 
 COPY ./web/pnpm-lock.yaml /app/web/pnpm-lock.yaml
 COPY ./web/package.json /app/web/package.json
 
-RUN cd /app/web/ && pnpm i
+RUN cd /app/web/ && pnpm i --frozen-lockfile
 
 COPY ./web /app/web
 RUN cd /app/web/ && pnpm build
@@ -20,7 +20,7 @@ RUN cd /app/web/ && pnpm build
 COPY ./pal-conf/pnpm-lock.yaml /app/pal-conf/pnpm-lock.yaml
 COPY ./pal-conf/package.json /app/pal-conf/package.json
 
-RUN cd /app/pal-conf/ && pnpm i
+RUN cd /app/pal-conf/ && pnpm i --frozen-lockfile
 
 COPY ./pal-conf /app/pal-conf
 RUN cd /app/pal-conf/ && pnpm build
@@ -68,7 +68,7 @@ RUN curl -L -o map.zip https://github.com/zaigie/palworld-server-tool/releases/d
 RUN unzip map.zip -d /app
 
 # --------- backend -----------
-FROM golang:1.21-alpine as backendBuilder
+FROM golang:1.25-alpine as backendBuilder
 
 ARG proxy
 ARG version
@@ -83,9 +83,9 @@ COPY --from=mapDownloader /app/map /app/map
 
 RUN if [ ! -z "$proxy" ]; then \
     export GOPROXY=https://goproxy.io,direct && \
-    go build -ldflags="-s -w -X 'main.version=${version}'" -o /app/dist/pst main.go; \
+    go build -tags assets -ldflags="-s -w -X 'main.version=${version}'" -o /app/dist/pst .; \
     else \
-    go build -ldflags="-s -w -X 'main.version=${version}'" -o /app/dist/pst main.go; \
+    go build -tags assets -ldflags="-s -w -X 'main.version=${version}'" -o /app/dist/pst .; \
     fi
 
 # --------- runtime -----------

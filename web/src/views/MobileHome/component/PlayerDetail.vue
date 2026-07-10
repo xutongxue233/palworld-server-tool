@@ -18,10 +18,6 @@ const message = useMessage();
 const dialog = useDialog();
 
 const localeLowerPalMap = ref({});
-const isDarkMode = ref(
-  window.matchMedia("(prefers-color-scheme: dark)").matches
-);
-
 const isLogin = computed(() => userStore().getLoginInfo().isLogin);
 
 const props = defineProps(["playerInfo", "currentPlayerPalsList", "finished"]);
@@ -33,8 +29,7 @@ const emits = defineEmits(["onSearch"]);
 
 const handelPlayerAction = async (type) => {
   if (!isLogin.value) {
-    message.error($t("message.requireauth"));
-    showLoginModal.value = true;
+    message.error(t("message.requireauth"));
     return;
   } else {
     const param = {
@@ -168,7 +163,7 @@ onMounted(async () => {
       acc[key.toLowerCase()] = palMap[locale.value][key];
       return acc;
     },
-    {}
+    {},
   );
 });
 </script>
@@ -349,7 +344,7 @@ onMounted(async () => {
         </div>
         <n-list>
           <n-list-item
-            v-for="(pal, index) in currentPlayerPalsList"
+            v-for="pal in currentPlayerPalsList"
             :key="pal"
             class="py-2"
             @click="showPalDetail(pal)"

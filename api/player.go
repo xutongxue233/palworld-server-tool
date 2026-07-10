@@ -1,7 +1,9 @@
 package api
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"sort"
 	"strings"
@@ -18,6 +20,18 @@ const (
 	OrderByLastOnline PlayerOrderBy = "last_online"
 	OrderByLevel      PlayerOrderBy = "level"
 )
+
+type PlayerActionRequest struct {
+	Message string `json:"message"`
+}
+
+func bindOptionalPlayerAction(c *gin.Context) (PlayerActionRequest, error) {
+	var req PlayerActionRequest
+	if err := c.ShouldBindJSON(&req); err != nil && !errors.Is(err, io.EOF) {
+		return PlayerActionRequest{}, err
+	}
+	return req, nil
+}
 
 // getPlayerActionUserId 获取用于 kick/ban/unban 操作的 userId
 // 优先使用完整的 UserId（支持跨平台），兜底使用 steam_ + SteamId
@@ -187,6 +201,7 @@ func getPlayer(c *gin.Context) {
 //	@Produce		json
 //	@Security		ApiKeyAuth
 //	@Param			player_uid	path		string	true	"Player UID"
+//	@Param			action		body		PlayerActionRequest	false	"Optional kick message"
 //
 //	@Success		200			{object}	SuccessResponse
 //	@Failure		400			{object}	ErrorResponse
@@ -194,6 +209,11 @@ func getPlayer(c *gin.Context) {
 //	@Failure		404			{object}	ErrorResponse
 //	@Router			/api/player/{player_uid}/kick [post]
 func kickPlayer(c *gin.Context) {
+	req, err := bindOptionalPlayerAction(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	playerUid := c.Param("player_uid")
 	player, err := service.GetPlayer(database.GetDB(), playerUid)
 	if err != nil {
@@ -204,7 +224,7 @@ func kickPlayer(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	err = tool.KickPlayer(getPlayerActionUserId(player))
+	err = tool.KickPlayer(getPlayerActionUserId(player), req.Message)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -221,6 +241,7 @@ func kickPlayer(c *gin.Context) {
 //	@Produce		json
 //	@Security		ApiKeyAuth
 //	@Param			player_uid	path		string	true	"Player UID"
+//	@Param			action		body		PlayerActionRequest	false	"Optional ban message"
 //
 //	@Success		200			{object}	SuccessResponse
 //	@Failure		400			{object}	ErrorResponse
@@ -228,6 +249,11 @@ func kickPlayer(c *gin.Context) {
 //	@Failure		404			{object}	ErrorResponse
 //	@Router			/api/player/{player_uid}/ban [post]
 func banPlayer(c *gin.Context) {
+	req, err := bindOptionalPlayerAction(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	playerUid := c.Param("player_uid")
 	player, err := service.GetPlayer(database.GetDB(), playerUid)
 	if err != nil {
@@ -238,7 +264,7 @@ func banPlayer(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	err = tool.BanPlayer(getPlayerActionUserId(player))
+	err = tool.BanPlayer(getPlayerActionUserId(player), req.Message)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -272,7 +298,7 @@ func unbanPlayer(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	err = tool.UnBanPlayer(getPlayerActionUserId(player))
+	err = tool.UnbanPlayer(getPlayerActionUserId(player))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

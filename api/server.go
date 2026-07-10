@@ -3,6 +3,7 @@ package api
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/zaigie/palworld-server-tool/internal/logger"
@@ -10,8 +11,10 @@ import (
 )
 
 type ServerInfo struct {
-	Version string `json:"version"`
-	Name    string `json:"name"`
+	Version     string `json:"version"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	WorldGUID   string `json:"world_guid"`
 }
 
 type ServerMetrics struct {
@@ -20,6 +23,7 @@ type ServerMetrics struct {
 	ServerFrameTime  float64 `json:"server_frame_time"`
 	MaxPlayerNum     int     `json:"max_player_num"`
 	Uptime           int     `json:"uptime"`
+	BaseCampNum      int     `json:"base_camp_num"`
 	Days             int     `json:"days"`
 }
 
@@ -80,8 +84,12 @@ func getServer(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	// TODO: add system psutil info
-	c.JSON(http.StatusOK, &ServerInfo{info["version"], info["name"]})
+	c.JSON(http.StatusOK, &ServerInfo{
+		Version:     info.Version,
+		Name:        info.ServerName,
+		Description: info.Description,
+		WorldGUID:   info.WorldGUID,
+	})
 }
 
 // getServerMetrics godoc
@@ -101,13 +109,54 @@ func getServerMetrics(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, &ServerMetrics{
-		ServerFps:        metrics["server_fps"].(int),
-		CurrentPlayerNum: metrics["current_player_num"].(int),
-		ServerFrameTime:  metrics["server_frame_time"].(float64),
-		MaxPlayerNum:     metrics["max_player_num"].(int),
-		Uptime:           metrics["uptime"].(int),
-		Days:             metrics["days"].(int),
+		ServerFps:        metrics.ServerFps,
+		CurrentPlayerNum: metrics.CurrentPlayerNum,
+		ServerFrameTime:  metrics.ServerFrameTime,
+		MaxPlayerNum:     metrics.MaxPlayerNum,
+		Uptime:           metrics.Uptime,
+		BaseCampNum:      metrics.BaseCampNum,
+		Days:             metrics.Days,
 	})
+}
+
+// getServerSettings godoc
+//
+//	@Summary		Get Server Settings
+//	@Description	Get the active Palworld dedicated server settings
+//	@Tags			Server
+//	@Produce		json
+//	@Security		ApiKeyAuth
+//	@Success		200	{object}	map[string]interface{}
+//	@Failure		400	{object}	ErrorResponse
+//	@Failure		401	{object}	ErrorResponse
+//	@Router			/api/server/settings [get]
+func getServerSettings(c *gin.Context) {
+	settings, err := tool.Settings()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, settings)
+}
+
+// getWorldActorSnapshot godoc
+//
+//	@Summary		Get World Actor Snapshot
+//	@Description	Get the current world actor snapshot from the Palworld server
+//	@Tags			Server
+//	@Produce		json
+//	@Security		ApiKeyAuth
+//	@Success		200	{object}	map[string]interface{}
+//	@Failure		400	{object}	ErrorResponse
+//	@Failure		401	{object}	ErrorResponse
+//	@Router			/api/server/game-data [get]
+func getWorldActorSnapshot(c *gin.Context) {
+	snapshot, err := tool.WorldActorSnapshot()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.Data(http.StatusOK, "application/json; charset=utf-8", snapshot)
 }
 
 // publishBroadcast godoc
@@ -161,8 +210,8 @@ func shutdownServer(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := validateMessage(req.Message); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if req.Seconds < 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "seconds cannot be negative"})
 		return
 	}
 	if req.Seconds == 0 {
@@ -175,8 +224,46 @@ func shutdownServer(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
+// saveWorld godoc
+//
+//	@Summary		Save World
+//	@Description	Ask the Palworld server to save the world immediately
+//	@Tags			Server
+//	@Produce		json
+//	@Security		ApiKeyAuth
+//	@Success		200	{object}	SuccessResponse
+//	@Failure		400	{object}	ErrorResponse
+//	@Failure		401	{object}	ErrorResponse
+//	@Router			/api/server/save [post]
+func saveWorld(c *gin.Context) {
+	if err := tool.SaveWorld(); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+// stopServer godoc
+//
+//	@Summary		Force Stop Server
+//	@Description	Force stop the Palworld server without a graceful shutdown delay
+//	@Tags			Server
+//	@Produce		json
+//	@Security		ApiKeyAuth
+//	@Success		200	{object}	SuccessResponse
+//	@Failure		400	{object}	ErrorResponse
+//	@Failure		401	{object}	ErrorResponse
+//	@Router			/api/server/stop [post]
+func stopServer(c *gin.Context) {
+	if err := tool.StopServer(); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
 func validateMessage(message string) error {
-	if message == "" {
+	if strings.TrimSpace(message) == "" {
 		return errors.New("message cannot be empty")
 	}
 	return nil

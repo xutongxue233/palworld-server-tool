@@ -10,12 +10,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/google/uuid"
+	"github.com/moby/moby/api/pkg/stdcopy"
+	"github.com/moby/moby/client"
 	"github.com/zaigie/palworld-server-tool/internal/system"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/client"
 	"github.com/zaigie/palworld-server-tool/internal/logger"
 )
 
@@ -75,16 +74,16 @@ func CopyFromContainer(containerID, remotePath, way string) (string, error) {
 
 func execCommandStream(containerID string, command []string, cli *client.Client) (io.Reader, error) {
 	ctx := context.Background()
-	execConfig := types.ExecConfig{
+	execConfig := client.ExecCreateOptions{
 		Cmd:          command,
 		AttachStdout: true,
 		AttachStderr: true,
 	}
-	ir, err := cli.ContainerExecCreate(ctx, containerID, execConfig)
+	ir, err := cli.ExecCreate(ctx, containerID, execConfig)
 	if err != nil {
 		return nil, err
 	}
-	hr, err := cli.ContainerExecAttach(ctx, ir.ID, types.ExecStartCheck{})
+	hr, err := cli.ExecAttach(ctx, ir.ID, client.ExecAttachOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -105,16 +104,16 @@ func execCommandStream(containerID string, command []string, cli *client.Client)
 
 func execCommand(containerID string, command []string, cli *client.Client) (string, error) {
 	ctx := context.Background()
-	execConfig := types.ExecConfig{
+	execConfig := client.ExecCreateOptions{
 		Cmd:          command,
 		AttachStdout: true,
 		AttachStderr: true,
 	}
-	ir, err := cli.ContainerExecCreate(ctx, containerID, execConfig)
+	ir, err := cli.ExecCreate(ctx, containerID, execConfig)
 	if err != nil {
 		return "", err
 	}
-	hr, err := cli.ContainerExecAttach(ctx, ir.ID, types.ExecStartCheck{})
+	hr, err := cli.ExecAttach(ctx, ir.ID, client.ExecAttachOptions{})
 	if err != nil {
 		return "", err
 	}

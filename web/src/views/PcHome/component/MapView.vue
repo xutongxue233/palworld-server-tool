@@ -1,5 +1,4 @@
 <script setup>
-import { useI18n } from "vue-i18n";
 import "leaflet/dist/leaflet.css";
 import {
   LCircle,
@@ -18,8 +17,6 @@ import IconBossTower from "@/assets/map/boss_tower.webp";
 import IconFastTravel from "@/assets/map/fast_travel.webp";
 import playerToGuildStore from "@/stores/model/playerToGuild.js";
 import points from "@/assets/map/points.json";
-
-const { t } = useI18n();
 
 const LAND_SCAPE = [447900, 708920, -999940, -738920];
 
@@ -48,19 +45,6 @@ const toMapPosition = (position) => {
   const y =
     (256 * (position[1] - LAND_SCAPE[3])) / (LAND_SCAPE[1] - LAND_SCAPE[3]);
   return [x, y];
-};
-
-const fromMapPosition = (mapPosition) => {
-  // 还原 x 坐标
-  const worldX =
-    ((mapPosition[0] + 256) * (LAND_SCAPE[0] - LAND_SCAPE[2])) / 256 +
-    LAND_SCAPE[2];
-  // 还原 y 坐标
-  const worldY =
-    (mapPosition[1] * (LAND_SCAPE[1] - LAND_SCAPE[3])) / 256 + LAND_SCAPE[3];
-
-  // 保留两位小数
-  return [worldX.toFixed(2), worldY.toFixed(2)];
 };
 
 const toMapDistance = (distance) => {
@@ -110,7 +94,7 @@ onMounted(async () => {
   playerList.value = res.data.value;
   // 接口中玩家location_x和location_y同时为0时，表示玩家不在线，不显示
   playerList.value = playerList.value.filter(
-    (i) => i.location_x !== 0 && i.location_y !== 0
+    (i) => i.location_x !== 0 && i.location_y !== 0,
   );
   res = await api.getGuildList();
   guildList.value = res.data.value;
@@ -148,55 +132,66 @@ onUnmounted(async () => {
           ],
         }"
       ></l-tile-layer>
-      <l-marker
-        v-if="showFastTravel"
-        v-for="i in points.fast_travel"
-        :lat-lng="toMapPosition([i[0], i[1]])"
-      >
-        <l-icon :icon-url="IconFastTravel" :icon-size="[48, 48]" />
-      </l-marker>
-      <l-marker
-        v-if="showBossTower"
-        v-for="i in points.boss_tower"
-        :lat-lng="toMapPosition([i[0], i[1]])"
-      >
-        <l-icon :icon-url="IconBossTower" :icon-size="[48, 48]" />
-      </l-marker>
-      <l-marker
-        v-if="showPlayer"
-        v-for="i in playerList"
-        :lat-lng="toMapPosition([i.location_x, i.location_y])"
-      >
-        <l-icon :icon-url="IconPlayer" :icon-size="[45, 45]" />
-        <l-tooltip
-          :options="{ direction: 'top', permanent: true, offset: [0, -15] }"
-          >{{ i.nickname }}</l-tooltip
+      <template v-if="showFastTravel">
+        <l-marker
+          v-for="(point, index) in points.fast_travel"
+          :key="`fast-travel-${index}-${point[0]}-${point[1]}`"
+          :lat-lng="toMapPosition([point[0], point[1]])"
         >
-      </l-marker>
-      <template v-if="showBaseCamp" v-for="i in guildList">
-        <template v-for="j in i.base_camp">
-          <l-marker :lat-lng="toMapPosition([j.location_x, j.location_y])">
-            <l-icon :icon-url="IconBase" :icon-size="[55, 55]" />
-            <l-popup :options="{ interactive: true }">
-              <div style="padding-bottom: 3px; font-size: 16px">
-                {{ $t("map.baseCampTitle", { name: i.name }) }}
-              </div>
-              <div style="line-height: 25px">
-                {{ $t("map.guildMember") }}
-                <span
-                  v-for="k in i.players"
-                  class="player_name"
-                  @click="ToPlayers(k.player_uid)"
-                >
-                  {{ k.nickname }}
-                </span>
-              </div>
-            </l-popup>
-          </l-marker>
-          <l-circle
-            :lat-lng="toMapPosition([j.location_x, j.location_y])"
-            :radius="toMapDistance(j.area)"
-          />
+          <l-icon :icon-url="IconFastTravel" :icon-size="[48, 48]" />
+        </l-marker>
+      </template>
+      <template v-if="showBossTower">
+        <l-marker
+          v-for="(point, index) in points.boss_tower"
+          :key="`boss-tower-${index}-${point[0]}-${point[1]}`"
+          :lat-lng="toMapPosition([point[0], point[1]])"
+        >
+          <l-icon :icon-url="IconBossTower" :icon-size="[48, 48]" />
+        </l-marker>
+      </template>
+      <template v-if="showPlayer">
+        <l-marker
+          v-for="(player, index) in playerList"
+          :key="player.user_id || player.player_uid || `player-${index}`"
+          :lat-lng="toMapPosition([player.location_x, player.location_y])"
+        >
+          <l-icon :icon-url="IconPlayer" :icon-size="[45, 45]" />
+          <l-tooltip
+            :options="{ direction: 'top', permanent: true, offset: [0, -15] }"
+            >{{ player.nickname }}</l-tooltip
+          >
+        </l-marker>
+      </template>
+      <template v-if="showBaseCamp">
+        <template v-for="guild in guildList" :key="guild.admin_player_uid">
+          <template v-for="camp in guild.base_camp" :key="camp.id">
+            <l-marker
+              :lat-lng="toMapPosition([camp.location_x, camp.location_y])"
+            >
+              <l-icon :icon-url="IconBase" :icon-size="[55, 55]" />
+              <l-popup :options="{ interactive: true }">
+                <div style="padding-bottom: 3px; font-size: 16px">
+                  {{ $t("map.baseCampTitle", { name: guild.name }) }}
+                </div>
+                <div style="line-height: 25px">
+                  {{ $t("map.guildMember") }}
+                  <span
+                    v-for="player in guild.players"
+                    :key="player.player_uid"
+                    class="player_name"
+                    @click="ToPlayers(player.player_uid)"
+                  >
+                    {{ player.nickname }}
+                  </span>
+                </div>
+              </l-popup>
+            </l-marker>
+            <l-circle
+              :lat-lng="toMapPosition([camp.location_x, camp.location_y])"
+              :radius="toMapDistance(camp.area)"
+            />
+          </template>
         </template>
       </template>
     </l-map>

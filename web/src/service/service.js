@@ -1,5 +1,4 @@
 import { useFetch } from "@vueuse/core";
-import router from "@/router";
 
 class Service {
   /**
@@ -14,19 +13,17 @@ class Service {
       beforeFetch({ options }) {
         const token = localStorage.getItem("palworld_token");
         options.headers = {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
           ...options.headers,
-          "Remote-Ip-Address": localStorage.getItem("ip") || "127.0.0.1",
         };
+        if (token) options.headers.Authorization = `Bearer ${token}`;
         return {
           options,
         };
       },
       onFetchError(context) {
-        if (context.response.status === 401) {
+        if (context.response?.status === 401) {
           localStorage.removeItem("palworld_token");
-          return context;
         }
         return context;
       },
@@ -39,16 +36,14 @@ class Service {
    * @param {Object} credential - The credential object.
    * @return {string} - The generated query string.
    */
-  generateQuery(credential) {
-    const entries = Object.entries(credential);
-    return entries
-      .reduce((accumulation, [key, value]) => {
-        if (value) {
-          accumulation.push(`${key}=${value}`);
-        }
-        return accumulation;
-      }, [])
-      .join("&");
+  generateQuery(credential = {}) {
+    const query = new URLSearchParams();
+    Object.entries(credential).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== "") {
+        query.append(key, String(value));
+      }
+    });
+    return query.toString();
   }
 }
 

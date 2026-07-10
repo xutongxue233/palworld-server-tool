@@ -1,10 +1,9 @@
 package api
 
 import (
+	"crypto/subtle"
 	"net/http"
-	"time"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 	"github.com/zaigie/palworld-server-tool/internal/auth"
@@ -32,14 +31,11 @@ func loginHandler(c *gin.Context) {
 		return
 	}
 	correctPassword := viper.GetString("web.password")
-	if loginInfo.Password != correctPassword {
+	if subtle.ConstantTimeCompare([]byte(loginInfo.Password), []byte(correctPassword)) != 1 {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "incorrect password"})
 		return
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"exp": time.Now().Add(time.Hour * 24).Unix(),
-	})
-	tokenString, err := token.SignedString(auth.SecretKey)
+	tokenString, err := auth.GenerateToken()
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "could not generate token"})
 		return

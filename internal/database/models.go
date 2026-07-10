@@ -83,6 +83,7 @@ type Guild struct {
 
 type PlayerW struct {
 	Name      string `json:"name"`
+	UserID    string `json:"user_id"`
 	SteamID   string `json:"steam_id"`
 	PlayerUID string `json:"player_uid"`
 }

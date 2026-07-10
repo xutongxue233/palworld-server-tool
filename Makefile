@@ -38,7 +38,7 @@ build:
 	mv module/dist/sav_cli${EXT} ./dist/
 
 	cp example/config.yaml dist/config.yaml
-	go build -o ./dist/pst${EXT} main.go
+	go build -tags assets -o ./dist/pst${EXT} .
 
 .PHONY: frontend
 # 仅构建前端
@@ -66,9 +66,9 @@ build-pub:
 	mv pal-conf/dist/index.html ./pal-conf.html
 
 	mkdir -p dist/windows_x86_64 && mkdir -p dist/linux_x86_64 && mkdir -p dist/linux_aarch64
-	GOOS=windows GOARCH=386 go build -ldflags="-s -w -X 'main.version=${GIT_TAG}'" -o ./dist/windows_x86_64/pst.exe main.go
-	GOOS=linux GOARCH=amd64 go build -ldflags="-s -w -X 'main.version=${GIT_TAG}'" -o ./dist/linux_x86_64/pst main.go
-	GOOS=linux GOARCH=arm64 go build -ldflags="-s -w -X 'main.version=${GIT_TAG}'" -o ./dist/linux_aarch64/pst main.go
+	GOOS=windows GOARCH=386 go build -tags assets -ldflags="-s -w -X 'main.version=${GIT_TAG}'" -o ./dist/windows_x86_64/pst.exe .
+	GOOS=linux GOARCH=amd64 go build -tags assets -ldflags="-s -w -X 'main.version=${GIT_TAG}'" -o ./dist/linux_x86_64/pst .
+	GOOS=linux GOARCH=arm64 go build -tags assets -ldflags="-s -w -X 'main.version=${GIT_TAG}'" -o ./dist/linux_aarch64/pst .
 
 	GOOS=windows GOARCH=386 go build -ldflags="-s -w" -o ./dist/pst-agent_${GIT_TAG}_windows_x86_64.exe ./cmd/pst-agent/main.go
 	GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o ./dist/pst-agent_${GIT_TAG}_linux_x86_64 ./cmd/pst-agent/main.go

@@ -16,7 +16,6 @@ import userStore from "@/stores/model/user";
 import palItems from "@/assets/items.json";
 
 const { t, locale } = useI18n();
-const PALWORLD_TOKEN = "palworld_token";
 const props = defineProps(["playerInfo", "playerPalsList"]);
 const playerInfo = computed(() => props.playerInfo);
 const playerPalsList = computed(() => props.playerPalsList);
@@ -27,7 +26,7 @@ const message = useMessage();
 const dialog = useDialog();
 
 const isDarkMode = ref(
-  window.matchMedia("(prefers-color-scheme: dark)").matches
+  window.matchMedia("(prefers-color-scheme: dark)").matches,
 );
 
 const localeLowerPalMap = ref({});
@@ -66,7 +65,7 @@ const createPlayerPalsColumns = () => {
             },
             {
               default: () => (row.gender == "Male" ? "♂" : "♀"),
-            }
+            },
           ),
           h(
             "div",
@@ -79,7 +78,7 @@ const createPlayerPalsColumns = () => {
             },
             {
               default: () => getPalName(row.type),
-            }
+            },
           ),
         ];
       },
@@ -113,7 +112,7 @@ const createPlayerPalsColumns = () => {
                 skillMap[locale.value][skill]
                   ? skillMap[locale.value][skill].name
                   : skill,
-            }
+            },
           );
         });
         return skills;
@@ -142,7 +141,7 @@ const createPlayerPalsColumns = () => {
             size: "small",
             onClick: () => showPalDetail(row),
           },
-          { default: () => t("button.detail") }
+          { default: () => t("button.detail") },
         );
       },
     },
@@ -157,7 +156,7 @@ watch(
     paginationReactive.pageSize = 10;
     searchValue.value = "";
     mergeItems();
-  }
+  },
 );
 
 // 游戏用户的帕鲁列表分页，搜索
@@ -244,11 +243,12 @@ const showAddWhiteListModal = ref(false);
 const addWhiteData = ref({
   name: "",
   player_uid: "",
+  user_id: "",
   steam_id: "",
 });
 const addWhiteList = async () => {
   const { data, statusCode } = await new ApiService().addWhitelist(
-    addWhiteData
+    addWhiteData,
   );
   if (statusCode.value === 200) {
     message.success(t("message.addwhitesuccess"));
@@ -262,6 +262,7 @@ const handleAddWhiteList = () => {
   if (isLogin.value) {
     addWhiteData.value.name = playerInfo.value.nickname;
     addWhiteData.value.player_uid = playerInfo.value.player_uid;
+    addWhiteData.value.user_id = playerInfo.value.user_id;
     addWhiteData.value.steam_id = playerInfo.value.steam_id;
     showAddWhiteListModal.value = true;
   } else {
@@ -285,8 +286,7 @@ const removeWhitelist = async (player) => {
 // 封禁、踢出
 const handelPlayerAction = async (type) => {
   if (!isLogin.value) {
-    message.error($t("message.requireauth"));
-    showLoginModal.value = true;
+    message.error(t("message.requireauth"));
     return;
   }
   const param = {
@@ -364,6 +364,7 @@ const isWhite = (player) => {
     return (
       (whitelistItem.player_uid &&
         whitelistItem.player_uid === player.player_uid) ||
+      (whitelistItem.user_id && whitelistItem.user_id === player.user_id) ||
       (whitelistItem.steam_id && whitelistItem.steam_id === player.steam_id)
     );
   });
@@ -377,7 +378,7 @@ onMounted(async () => {
       acc[key.toLowerCase()] = palMap[locale.value][key];
       return acc;
     },
-    {}
+    {},
   );
 });
 
@@ -438,7 +439,7 @@ const mergeItems = () => {
   for (const [containerId, items] of Object.entries(playerInfo.value.items)) {
     mergedItems.value[containerId] = items.map((item) => {
       const frontendItem = palItems[locale.value].find(
-        (frontItem) => frontItem.id === item.ItemId
+        (frontItem) => frontItem.id === item.ItemId,
       );
       if (!frontendItem) {
         return {
@@ -849,17 +850,22 @@ const createPlayerItemsColumns = () => {
         <n-input-group>
           <n-input
             v-model:value="addWhiteData.name"
-            :style="{ width: '33%' }"
+            :style="{ width: '25%' }"
             :placeholder="$t('input.nickname')"
           />
           <n-input
             v-model:value="addWhiteData.player_uid"
-            :style="{ width: '33%' }"
+            :style="{ width: '25%' }"
             :placeholder="$t('input.player_uid')"
           />
           <n-input
+            v-model:value="addWhiteData.user_id"
+            :style="{ width: '25%' }"
+            :placeholder="$t('input.user_id')"
+          />
+          <n-input
             v-model:value="addWhiteData.steam_id"
-            :style="{ width: '33%' }"
+            :style="{ width: '25%' }"
             :placeholder="$t('input.steam_id')"
           />
         </n-input-group>
@@ -883,7 +889,9 @@ const createPlayerItemsColumns = () => {
           @click="addWhiteList"
           :disabled="
             !addWhiteData.name ||
-            (!addWhiteData.player_uid && !addWhiteData.steam_id)
+            (!addWhiteData.player_uid &&
+              !addWhiteData.user_id &&
+              !addWhiteData.steam_id)
           "
         >
           {{ $t("button.confirm") }}

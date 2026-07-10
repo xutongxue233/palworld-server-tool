@@ -82,8 +82,12 @@ func RegisterRouter(r *gin.Engine) {
 	authGroup := apiGroup.Group("")
 	authGroup.Use(auth.JWTAuthMiddleware())
 	{
+		authGroup.GET("/server/settings", getServerSettings)
+		authGroup.GET("/server/game-data", getWorldActorSnapshot)
 		authGroup.POST("/server/broadcast", publishBroadcast)
+		authGroup.POST("/server/save", saveWorld)
 		authGroup.POST("/server/shutdown", shutdownServer)
+		authGroup.POST("/server/stop", stopServer)
 		authGroup.PUT("/player", putPlayers)
 		authGroup.POST("/player/:player_uid/kick", kickPlayer)
 		authGroup.POST("/player/:player_uid/ban", banPlayer)

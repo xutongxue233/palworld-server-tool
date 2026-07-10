@@ -33,10 +33,14 @@
 
 - [x] 获取服务器信息
 - [x] 获取服务器指标数据
+- [x] 获取服务器当前设置
 - [x] 在线玩家列表
-- [x] 踢出/封禁玩家
+- [x] 踢出/封禁/解封玩家（支持跨平台 User ID 与操作提示消息）
 - [x] 游戏内广播
+- [x] 立即保存世界
 - [x] 平滑关闭服务器并广播消息
+- [x] 强制停止服务器
+- [x] 获取世界 Actor 快照数据
 
 工具额外提供的功能：
 
@@ -77,6 +81,8 @@ https://github.com/zaigie/palworld-server-tool/assets/17232619/afdf485c-4b34-491
 ## 开启 REST API 与 RCON
 
 本项目必需开启服务器的 REST API 功能才能正常使用，而自定义 RCON 功能则依赖于 RCON 功能。[RCON命令参考](./docs/rconCommand_zh.txt)
+
+服务端 REST API 的字段与行为以 [Pocketpair 官方服务端文档](https://docs.palworldgame.com/category/rest-api) 为准。
 
 如果你的私服教程有写更好，没有的话，请先关闭服务端，然后在 [Pal-Conf](https://pal-conf.bluefissure.com/) 修改 `PalWorldSettings.ini` 文件或者 `WorldOption.sav` 文件并放到相应位置，启用服务端。
 
