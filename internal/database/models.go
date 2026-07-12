@@ -3,6 +3,7 @@ package database
 import "time"
 
 type Pal struct {
+	InstanceID     string   `json:"instance_id,omitempty"`
 	Level          int32    `json:"level"`
 	Exp            int64    `json:"exp"`
 	Hp             int64    `json:"hp"`
@@ -44,19 +45,34 @@ type GuildPlayer struct {
 	Nickname  string `json:"nickname"`
 }
 
+type PlayerMapProgress struct {
+	FastTravelUnlocked int    `json:"fast_travel_unlocked"`
+	FastTravelTotal    int    `json:"fast_travel_total"`
+	AreasFound         int    `json:"areas_found"`
+	AreasTotal         int    `json:"areas_total"`
+	WorldMapsUnlocked  int    `json:"world_maps_unlocked"`
+	WorldMapsTotal     int    `json:"world_maps_total"`
+	ProgressDigest     string `json:"progress_digest"`
+	GameVersion        string `json:"game_version"`
+}
+
 type TersePlayer struct {
-	PlayerUid      string           `json:"player_uid"`
-	Nickname       string           `json:"nickname"`
-	Level          int32            `json:"level"`
-	Exp            int64            `json:"exp"`
-	Hp             int64            `json:"hp"`
-	MaxHp          int64            `json:"max_hp"`
-	ShieldHp       int64            `json:"shield_hp"`
-	ShieldMaxHp    int64            `json:"shield_max_hp"`
-	MaxStatusPoint int32            `json:"max_status_point"`
-	StatusPoint    map[string]int32 `json:"status_point"`
-	FullStomach    float64          `json:"full_stomach"`
-	SaveLastOnline string           `json:"save_last_online"`
+	PlayerUid               string             `json:"player_uid"`
+	Nickname                string             `json:"nickname"`
+	Level                   int32              `json:"level"`
+	Exp                     int64              `json:"exp"`
+	Hp                      int64              `json:"hp"`
+	MaxHp                   int64              `json:"max_hp"`
+	ShieldHp                int64              `json:"shield_hp"`
+	ShieldMaxHp             int64              `json:"shield_max_hp"`
+	MaxStatusPoint          int32              `json:"max_status_point"`
+	UnusedStatusPoints      *int32             `json:"unused_status_points,omitempty"`
+	TechnologyPoints        *int32             `json:"technology_points,omitempty"`
+	AncientTechnologyPoints *int32             `json:"ancient_technology_points,omitempty"`
+	MapProgress             *PlayerMapProgress `json:"map_progress,omitempty"`
+	StatusPoint             map[string]int32   `json:"status_point"`
+	FullStomach             float64            `json:"full_stomach"`
+	SaveLastOnline          string             `json:"save_last_online"`
 	OnlinePlayer
 }
 
@@ -101,6 +117,7 @@ type Item struct {
 	SlotIndex  int32  `json:"SlotIndex"`
 	ItemId     string `json:"ItemId"`
 	StackCount int32  `json:"StackCount"`
+	DynamicId  string `json:"DynamicId"`
 }
 
 type Backup struct {

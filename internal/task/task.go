@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/zaigie/palworld-server-tool/internal/database"
 	"github.com/zaigie/palworld-server-tool/internal/system"
 
@@ -20,25 +20,19 @@ import (
 	"go.etcd.io/bbolt"
 )
 
-var s gocron.Scheduler
+var (
+	s         gocron.Scheduler
+	savSyncMu sync.Mutex
+)
 
 func BackupTask(db *bbolt.DB) {
 	logger.Info("Scheduling backup...\n")
-	path, err := tool.Backup()
+	backup, err := tool.BackupAndRecord(db)
 	if err != nil {
 		logger.Errorf("%v\n", err)
 		return
 	}
-	err = service.AddBackup(db, database.Backup{
-		BackupId: uuid.New().String(),
-		Path:     path,
-		SaveTime: time.Now(),
-	})
-	if err != nil {
-		logger.Errorf("%v\n", err)
-		return
-	}
-	logger.Infof("Auto backup to %s\n", path)
+	logger.Infof("Auto backup to %s\n", backup.Path)
 
 	keepDays := viper.GetInt("save.backup_keep_days")
 	if keepDays == 0 {
@@ -156,13 +150,21 @@ func CheckAndKickPlayers(db *bbolt.DB, players []database.OnlinePlayer) {
 }
 
 func SavSync() {
+	_ = SavSyncNow()
+}
+
+func SavSyncNow() error {
+	savSyncMu.Lock()
+	defer savSyncMu.Unlock()
+
 	logger.Info("Scheduling Sav sync...\n")
 	err := tool.Decode(viper.GetString("save.path"))
 	if err != nil {
 		logger.Errorf("%v\n", err)
-		return
+		return err
 	}
 	logger.Info("Sav sync done\n")
+	return nil
 }
 
 func Schedule(db *bbolt.DB) {

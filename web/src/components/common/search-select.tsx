@@ -22,6 +22,7 @@ export function SearchSelect({
   options,
   placeholder,
   searchPlaceholder,
+  emptyText = "No results",
   onValueChange,
   className,
 }: {
@@ -29,6 +30,7 @@ export function SearchSelect({
   options: SearchOption[];
   placeholder: string;
   searchPlaceholder?: string;
+  emptyText?: string;
   onValueChange: (value: string) => void;
   className?: string;
 }) {
@@ -105,7 +107,7 @@ export function SearchSelect({
               ))
             ) : (
               <p className="px-3 py-8 text-center text-sm text-muted-foreground">
-                No results
+                {emptyText}
               </p>
             )}
           </div>

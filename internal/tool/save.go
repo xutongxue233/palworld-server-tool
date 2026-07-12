@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/spf13/viper"
 	"github.com/zaigie/palworld-server-tool/internal/auth"
 	"github.com/zaigie/palworld-server-tool/internal/database"
@@ -96,13 +97,40 @@ func Backup() (string, error) {
 		return "", fmt.Errorf("failed to get backup directory: %s", err)
 	}
 
-	currentTime := time.Now().Format("2006-01-02-15-04-05")
-	backupZipFile := filepath.Join(backupDir, fmt.Sprintf("%s.zip", currentTime))
+	backupZipFile := filepath.Join(backupDir, backupFileName(time.Now()))
 	err = system.ZipDir(filepath.Dir(levelFilePath), backupZipFile)
 	if err != nil {
 		return "", fmt.Errorf("failed to create backup zip: %s", err)
 	}
 	return filepath.Base(backupZipFile), nil
+}
+
+func backupFileName(now time.Time) string {
+	return fmt.Sprintf(
+		"%s-%03d-%s.zip",
+		now.Format("2006-01-02-15-04-05"),
+		now.Nanosecond()/int(time.Millisecond),
+		uuid.NewString()[:8],
+	)
+}
+
+func BackupAndRecord(db *bbolt.DB) (database.Backup, error) {
+	path, err := Backup()
+	if err != nil {
+		return database.Backup{}, err
+	}
+	backup := database.Backup{
+		BackupId: uuid.New().String(),
+		Path:     path,
+		SaveTime: time.Now(),
+	}
+	if err := service.AddBackup(db, backup); err != nil {
+		if backupDir, dirErr := GetBackupDir(); dirErr == nil {
+			_ = os.Remove(filepath.Join(backupDir, path))
+		}
+		return database.Backup{}, err
+	}
+	return backup, nil
 }
 
 func GetBackupDir() (string, error) {

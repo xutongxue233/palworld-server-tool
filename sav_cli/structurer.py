@@ -4,6 +4,8 @@ import sys
 import zlib
 import json
 import time
+from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 from palsav.gvas import GvasFile
@@ -13,9 +15,16 @@ from palsav.archive import FArchiveReader, FArchiveWriter
 
 from world_types import Player, Pal, Guild, BaseCamp
 from logger import log, redirect_stdout_stderr
+from player_save_editor import load_player_map_metadata, read_player_map_progress
 
 wsd = None
 gvas_file = None
+
+
+@lru_cache(maxsize=1)
+def _load_bundled_player_map_metadata():
+    bundle_dir = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+    return load_player_map_metadata(str(bundle_dir / "player_map_metadata.json"))
 
 
 def skip_decode(
@@ -179,6 +188,7 @@ def structure_player(dir_path, data_source=None, filetime: int = -1):
     uid_character = (
         (
             c["key"]["PlayerUId"]["value"],
+            c["key"].get("InstanceId", {}).get("value"),
             c["value"]["RawData"]["value"]["object"]["SaveParameter"]["value"],
         )
         for c in wsd["CharacterSaveParameterMap"]["value"]
@@ -187,14 +197,22 @@ def structure_player(dir_path, data_source=None, filetime: int = -1):
     players = []
     pals = []
     ticks = wsd["GameTimeSaveData"]["value"]["RealDateTimeTicks"]["value"]
-    for uid, c in uid_character:
+    for uid, instance_id, c in uid_character:
         if c.get("IsPlayer") and c["IsPlayer"]["value"]:
-            c["Items"] = getPlayerItems(uid, dir_path)
-            players.append(Player(uid, c).to_dict())
+            player_data = dict(c)
+            player_save_data = getPlayerItems(uid, dir_path)
+            player_data["Items"] = (
+                player_save_data["items"] if player_save_data is not None else None
+            )
+            if player_save_data is not None:
+                player_data["PlayerSaveData"] = player_save_data
+            else:
+                player_data.pop("PlayerSaveData", None)
+            players.append(Player(uid, player_data).to_dict())
         else:
             if not c.get("OwnerPlayerUId"):
                 continue
-            pals.append(Pal(c, ticks, filetime).to_dict())
+            pals.append(Pal(instance_id, c, ticks, filetime).to_dict())
 
     unique_players_dict = {}
     for player in players:
@@ -307,6 +325,43 @@ def parse_item(properties, skip_path):
     return properties
 
 
+def serialize_player_item(item):
+    raw = item["RawData"]["value"]
+    return {
+        "SlotIndex": raw["slot_index"],
+        "ItemId": raw["item"]["static_id"].lower(),
+        "StackCount": raw["count"],
+        "DynamicId": str(
+            raw["item"]["dynamic_id"]["local_id_in_created_world"]
+        ),
+    }
+
+
+def read_player_technology_points(save_data):
+    def read_int_property(field):
+        property_value = save_data.get(field)
+        if property_value is None:
+            return 0
+        if (
+            not isinstance(property_value, dict)
+            or property_value.get("type") != "IntProperty"
+        ):
+            raise ValueError(f"Player save field {field} must be an IntProperty")
+        if "value" not in property_value:
+            raise ValueError(f"Player save field {field} is missing its value")
+        value = property_value["value"]
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise ValueError(f"Player save field {field} must contain an integer")
+        return value
+
+    if not isinstance(save_data, dict):
+        raise ValueError("Player SaveData must be an object")
+    return {
+        "technology_points": read_int_property("TechnologyPoint"),
+        "ancient_technology_points": read_int_property("bossTechnologyPoint"),
+    }
+
+
 def getPlayerItems(player_uid, dir_path):
     item_containers = {}
     for item_container in wsd["ItemContainerSaveData"]["value"]:
@@ -333,6 +388,10 @@ def getPlayerItems(player_uid, dir_path):
                     "ERROR",
                 )
                 return
+    technology_points = read_player_technology_points(player_gvas)
+    map_progress = read_player_map_progress(
+        player_gvas, _load_bundled_player_map_metadata()
+    ).to_dict()
     containers_data = {
         "CommonContainerId": [],
         "DropSlotContainerId": [],
@@ -352,15 +411,15 @@ def getPlayerItems(player_uid, dir_path):
         if container_id in item_containers:
             item_container = item_containers[container_id]
             containers_data[idx_key] = [
-                {
-                    "SlotIndex": item["RawData"]["value"]["slot_index"],
-                    "ItemId": item["RawData"]["value"]["item"]["static_id"].lower(),
-                    "StackCount": item["RawData"]["value"]["count"],
-                }
+                serialize_player_item(item)
                 for item in item_container["value"]["Slots"]["value"]["values"]
                 if item["RawData"]["value"]["item"]["static_id"].lower() != "none"
             ]
-    return containers_data
+    return {
+        "items": containers_data,
+        **technology_points,
+        "map_progress": map_progress,
+    }
 
 
 def structure_base_camp():

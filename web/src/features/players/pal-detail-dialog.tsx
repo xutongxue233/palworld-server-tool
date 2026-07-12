@@ -1,6 +1,15 @@
-import { HeartPulse, Shield, Sparkles, Swords, Wrench } from "lucide-react";
+import {
+  HeartPulse,
+  Pencil,
+  Shield,
+  Sparkles,
+  Swords,
+  TrendingUp,
+  Wrench,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -35,13 +44,21 @@ function Stat({
 export function PalDetailDialog({
   pal,
   onOpenChange,
+  onRename,
+  onEditLevel,
+  onRestoreHealth,
 }: {
   pal: Pal | null;
   onOpenChange: (open: boolean) => void;
+  onRename?: () => void;
+  onEditLevel?: () => void;
+  onRestoreHealth?: () => void;
 }) {
   const { locale, t } = useI18n();
   if (!pal) return null;
   const name = pal.nickname || getPalName(pal.type, locale);
+  const currentHp = Math.round(pal.hp / 1000);
+  const maxHp = pal.max_hp > 0 ? Math.round(pal.max_hp / 1000) : "--";
 
   return (
     <Dialog open={Boolean(pal)} onOpenChange={onOpenChange}>
@@ -70,6 +87,46 @@ export function PalDetailDialog({
                   <Badge variant="outline">{pal.gender}</Badge>
                 ) : null}
               </div>
+              {onRename || onEditLevel || onRestoreHealth ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {onRename ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={onRename}
+                    >
+                      <Pencil />
+                      {t("action.renamePal")}
+                    </Button>
+                  ) : null}
+                  {onEditLevel ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={onEditLevel}
+                    >
+                      <TrendingUp />
+                      {t("action.editPalLevel")}
+                    </Button>
+                  ) : null}
+                  {onRestoreHealth &&
+                  pal.instance_id &&
+                  pal.max_hp > 0 &&
+                  pal.hp < pal.max_hp ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={onRestoreHealth}
+                    >
+                      <HeartPulse />
+                      {t("action.restorePalHealth")}
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           </div>
         </DialogHeader>
@@ -78,7 +135,7 @@ export function PalDetailDialog({
           <Stat
             icon={HeartPulse}
             label={t("pal.hp")}
-            value={`${Math.round(pal.hp / 1000)}/${Math.round(pal.max_hp / 1000)}`}
+            value={`${currentHp}/${maxHp}`}
           />
           <Stat icon={Swords} label={t("pal.melee")} value={pal.melee} />
           <Stat icon={Sparkles} label={t("pal.ranged")} value={pal.ranged} />

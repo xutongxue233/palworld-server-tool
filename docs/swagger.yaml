@@ -4,11 +4,177 @@ definitions:
       message:
         type: string
     type: object
+  api.EditPalLevelRequest:
+    properties:
+      confirm_server_stopped:
+        type: boolean
+      expected_exp:
+        minimum: 0
+        type: integer
+      expected_hp:
+        minimum: 0
+        type: integer
+      expected_level:
+        maximum: 80
+        minimum: 1
+        type: integer
+      expected_max_hp:
+        minimum: 0
+        type: integer
+      expected_nickname:
+        maxLength: 32
+        type: string
+      level:
+        maximum: 80
+        minimum: 1
+        type: integer
+    required:
+    - expected_exp
+    - expected_hp
+    - expected_level
+    - expected_max_hp
+    - expected_nickname
+    - level
+    type: object
+  api.EditPalLevelResponse:
+    properties:
+      backup:
+        $ref: '#/definitions/database.Backup'
+      level:
+        $ref: '#/definitions/tool.PalLevelMutation'
+      sync_error:
+        type: string
+    type: object
+  api.EditPlayerProfileRequest:
+    properties:
+      confirm_server_stopped:
+        type: boolean
+      expected_level:
+        maximum: 80
+        minimum: 1
+        type: integer
+      expected_nickname:
+        maxLength: 32
+        type: string
+      level:
+        maximum: 80
+        minimum: 1
+        type: integer
+      nickname:
+        maxLength: 32
+        type: string
+    required:
+    - expected_level
+    - expected_nickname
+    - level
+    - nickname
+    type: object
+  api.EditPlayerProfileResponse:
+    properties:
+      backup:
+        $ref: '#/definitions/database.Backup'
+      profile:
+        $ref: '#/definitions/tool.PlayerProfileMutation'
+      sync_error:
+        type: string
+    type: object
+  api.EditPlayerStatPointsRequest:
+    properties:
+      confirm_server_stopped:
+        type: boolean
+      expected_unused_status_points:
+        maximum: 65535
+        minimum: 0
+        type: integer
+      unused_status_points:
+        maximum: 65535
+        minimum: 0
+        type: integer
+    required:
+    - expected_unused_status_points
+    - unused_status_points
+    type: object
+  api.EditPlayerStatPointsResponse:
+    properties:
+      backup:
+        $ref: '#/definitions/database.Backup'
+      stat_points:
+        $ref: '#/definitions/tool.PlayerStatPointsMutation'
+      sync_error:
+        type: string
+    type: object
+  api.EditPlayerTechnologyPointsRequest:
+    properties:
+      ancient_technology_points:
+        maximum: 999999
+        minimum: 0
+        type: integer
+      confirm_server_stopped:
+        type: boolean
+      expected_ancient_technology_points:
+        maximum: 999999
+        minimum: 0
+        type: integer
+      expected_technology_points:
+        maximum: 999999
+        minimum: 0
+        type: integer
+      technology_points:
+        maximum: 999999
+        minimum: 0
+        type: integer
+    required:
+    - ancient_technology_points
+    - expected_ancient_technology_points
+    - expected_technology_points
+    - technology_points
+    type: object
+  api.EditPlayerTechnologyPointsResponse:
+    properties:
+      backup:
+        $ref: '#/definitions/database.Backup'
+      sync_error:
+        type: string
+      technology_points:
+        $ref: '#/definitions/tool.PlayerTechnologyPointsMutation'
+    type: object
   api.EmptyResponse:
     type: object
   api.ErrorResponse:
     properties:
+      code:
+        type: string
       error:
+        type: string
+    type: object
+  api.GiveItemRequest:
+    properties:
+      confirm_server_stopped:
+        type: boolean
+      container:
+        enum:
+        - auto
+        - main
+        - key
+        type: string
+      item_id:
+        maxLength: 128
+        type: string
+      quantity:
+        maximum: 999999
+        minimum: 1
+        type: integer
+    required:
+    - item_id
+    - quantity
+    type: object
+  api.GiveItemResponse:
+    properties:
+      backup:
+        $ref: '#/definitions/database.Backup'
+      delivery:
+        $ref: '#/definitions/tool.ItemDelivery'
+      sync_error:
         type: string
     type: object
   api.LoginInfo:
@@ -19,6 +185,74 @@ definitions:
   api.PlayerActionRequest:
     properties:
       message:
+        type: string
+    type: object
+  api.RenamePalRequest:
+    properties:
+      confirm_server_stopped:
+        type: boolean
+      expected_exp:
+        minimum: 0
+        type: integer
+      expected_level:
+        maximum: 80
+        minimum: 1
+        type: integer
+      expected_nickname:
+        maxLength: 32
+        type: string
+      nickname:
+        maxLength: 32
+        type: string
+    required:
+    - expected_exp
+    - expected_level
+    - expected_nickname
+    - nickname
+    type: object
+  api.RenamePalResponse:
+    properties:
+      backup:
+        $ref: '#/definitions/database.Backup'
+      nickname:
+        $ref: '#/definitions/tool.PalNicknameMutation'
+      sync_error:
+        type: string
+    type: object
+  api.RestorePalHealthRequest:
+    properties:
+      confirm_server_stopped:
+        type: boolean
+      expected_exp:
+        minimum: 0
+        type: integer
+      expected_hp:
+        minimum: 0
+        type: integer
+      expected_level:
+        maximum: 80
+        minimum: 1
+        type: integer
+      expected_max_hp:
+        minimum: 1
+        type: integer
+      expected_nickname:
+        maxLength: 32
+        type: string
+    required:
+    - expected_exp
+    - expected_hp
+    - expected_level
+    - expected_max_hp
+    - expected_nickname
+    type: object
+  api.RestorePalHealthResponse:
+    properties:
+      backup:
+        $ref: '#/definitions/database.Backup'
+      health:
+        $ref: '#/definitions/tool.PalHealthMutation'
+      sync_error:
         type: string
     type: object
   api.ServerInfo:
@@ -54,6 +288,39 @@ definitions:
       latest:
         type: string
       version:
+        type: string
+    type: object
+  api.SetItemQuantityRequest:
+    properties:
+      confirm_server_stopped:
+        type: boolean
+      expected_dynamic_id:
+        maxLength: 36
+        type: string
+      expected_quantity:
+        maximum: 999999
+        minimum: 1
+        type: integer
+      item_id:
+        maxLength: 128
+        type: string
+      quantity:
+        maximum: 999999
+        minimum: 0
+        type: integer
+    required:
+    - expected_dynamic_id
+    - expected_quantity
+    - item_id
+    - quantity
+    type: object
+  api.SetItemQuantityResponse:
+    properties:
+      backup:
+        $ref: '#/definitions/database.Backup'
+      mutation:
+        $ref: '#/definitions/tool.InventoryMutation'
+      sync_error:
         type: string
     type: object
   api.ShutdownRequest:
@@ -114,6 +381,8 @@ definitions:
     type: object
   database.Item:
     properties:
+      DynamicId:
+        type: string
       ItemId:
         type: string
       SlotIndex:
@@ -185,6 +454,8 @@ definitions:
         type: string
       hp:
         type: integer
+      instance_id:
+        type: string
       is_boss:
         type: boolean
       is_lucky:
@@ -222,6 +493,8 @@ definitions:
     properties:
       account_name:
         type: string
+      ancient_technology_points:
+        type: integer
       building_count:
         type: integer
       exp:
@@ -268,6 +541,10 @@ definitions:
         type: object
       steam_id:
         type: string
+      technology_points:
+        type: integer
+      unused_status_points:
+        type: integer
       user_id:
         type: string
     type: object
@@ -286,6 +563,8 @@ definitions:
     properties:
       account_name:
         type: string
+      ancient_technology_points:
+        type: integer
       building_count:
         type: integer
       exp:
@@ -326,8 +605,180 @@ definitions:
         type: object
       steam_id:
         type: string
+      technology_points:
+        type: integer
+      unused_status_points:
+        type: integer
       user_id:
         type: string
+    type: object
+  tool.InventoryMutation:
+    properties:
+      after:
+        type: integer
+      before:
+        type: integer
+      container:
+        type: string
+      dynamic_id:
+        type: string
+      dynamic_record_removed:
+        type: boolean
+      item_id:
+        type: string
+      player_uid:
+        type: string
+      removed:
+        type: boolean
+      slot_index:
+        type: integer
+    type: object
+  tool.ItemDelivery:
+    properties:
+      after:
+        type: integer
+      before:
+        type: integer
+      container:
+        type: string
+      delivered:
+        type: integer
+      dynamic_ids:
+        additionalProperties:
+          type: string
+        type: object
+      item_id:
+        type: string
+      modified_slots:
+        items:
+          type: integer
+        type: array
+      player_uid:
+        type: string
+      requested:
+        type: integer
+    type: object
+  tool.PalHealthMutation:
+    properties:
+      exp:
+        type: integer
+      health_field:
+        type: string
+      hp_after:
+        type: integer
+      hp_before:
+        type: integer
+      instance_id:
+        type: string
+      level:
+        type: integer
+      max_hp:
+        type: integer
+      nickname:
+        type: string
+      pal_type:
+        type: string
+      player_uid:
+        type: string
+    type: object
+  tool.PalLevelMutation:
+    properties:
+      exp_after:
+        type: integer
+      exp_before:
+        type: integer
+      health_field:
+        type: string
+      hp_after:
+        type: integer
+      hp_before:
+        type: integer
+      instance_id:
+        type: string
+      level_after:
+        type: integer
+      level_before:
+        type: integer
+      max_hp_after:
+        type: integer
+      max_hp_before:
+        type: integer
+      max_hp_created:
+        type: boolean
+      nickname:
+        type: string
+      pal_type:
+        type: string
+      player_uid:
+        type: string
+    type: object
+  tool.PalNicknameMutation:
+    properties:
+      exp:
+        type: integer
+      instance_id:
+        type: string
+      level:
+        type: integer
+      nickname_after:
+        type: string
+      nickname_before:
+        type: string
+      nickname_created:
+        type: boolean
+      pal_type:
+        type: string
+      player_uid:
+        type: string
+    type: object
+  tool.PlayerProfileMutation:
+    properties:
+      character_records:
+        type: integer
+      exp_after:
+        type: integer
+      exp_before:
+        type: integer
+      guild_records:
+        type: integer
+      level_after:
+        type: integer
+      level_before:
+        type: integer
+      nickname_after:
+        type: string
+      nickname_before:
+        type: string
+      player_uid:
+        type: string
+    type: object
+  tool.PlayerStatPointsMutation:
+    properties:
+      after:
+        type: integer
+      before:
+        type: integer
+      character_records:
+        type: integer
+      player_uid:
+        type: string
+    type: object
+  tool.PlayerTechnologyPointsMutation:
+    properties:
+      ancient_after:
+        type: integer
+      ancient_before:
+        type: integer
+      created_fields:
+        items:
+          type: string
+        type: array
+      player_uid:
+        type: string
+      technology_after:
+        type: integer
+      technology_before:
+        type: integer
     type: object
 info:
   contact: {}
@@ -697,6 +1148,123 @@ paths:
       summary: Ban Player
       tags:
       - Player
+  /api/player/{player_uid}/items:
+    post:
+      consumes:
+      - application/json
+      description: Create a backup, edit a stopped local server save, validate it,
+        and atomically replace Level.sav
+      parameters:
+      - description: Player UID
+        in: path
+        name: player_uid
+        required: true
+        type: string
+      - description: Item delivery
+        in: body
+        name: delivery
+        required: true
+        schema:
+          $ref: '#/definitions/api.GiveItemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.GiveItemResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Deliver an item through an offline save transaction
+      tags:
+      - Player
+  /api/player/{player_uid}/items/{container}/{slot_index}:
+    patch:
+      consumes:
+      - application/json
+      description: Create a backup, verify the expected item and quantity, edit a
+        stopped local server save, validate it, and atomically replace Level.sav
+      parameters:
+      - description: Player UID
+        in: path
+        name: player_uid
+        required: true
+        type: string
+      - description: Inventory container
+        enum:
+        - main
+        - key
+        - weapons
+        - armor
+        - food
+        - drop
+        in: path
+        name: container
+        required: true
+        type: string
+      - description: Inventory slot index
+        in: path
+        name: slot_index
+        required: true
+        type: integer
+      - description: Inventory mutation
+        in: body
+        name: mutation
+        required: true
+        schema:
+          $ref: '#/definitions/api.SetItemQuantityRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SetItemQuantityResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Update or remove one inventory slot through an offline save transaction
+      tags:
+      - Player
   /api/player/{player_uid}/kick:
     post:
       consumes:
@@ -735,6 +1303,346 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Kick Player
+      tags:
+      - Player
+  /api/player/{player_uid}/pals/{instance_id}/health:
+    patch:
+      consumes:
+      - application/json
+      description: Create a backup, locate one non-player record by instance ID, verify
+        owner and expected nickname/level/EXP/HP/MaxHP, restore only the existing
+        Hp or HP field to MaxHP, validate, and atomically replace Level.sav
+      parameters:
+      - description: Player UID
+        in: path
+        name: player_uid
+        required: true
+        type: string
+      - description: Pal instance ID
+        in: path
+        name: instance_id
+        required: true
+        type: string
+      - description: Pal health restoration
+        in: body
+        name: health
+        required: true
+        schema:
+          $ref: '#/definitions/api.RestorePalHealthRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.RestorePalHealthResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Restore one Pal to full health through an offline save transaction
+      tags:
+      - Player
+  /api/player/{player_uid}/pals/{instance_id}/level:
+    patch:
+      consumes:
+      - application/json
+      description: Create a backup, locate one non-player record by instance ID, verify
+        owner and expected nickname/level/EXP/HP/MaxHP, set cumulative Pal EXP and
+        1.0-derived HP, validate, and atomically replace Level.sav
+      parameters:
+      - description: Player UID
+        in: path
+        name: player_uid
+        required: true
+        type: string
+      - description: Pal instance ID
+        in: path
+        name: instance_id
+        required: true
+        type: string
+      - description: Pal level mutation
+        in: body
+        name: level
+        required: true
+        schema:
+          $ref: '#/definitions/api.EditPalLevelRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.EditPalLevelResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Edit one Pal level through an offline save transaction
+      tags:
+      - Player
+  /api/player/{player_uid}/pals/{instance_id}/nickname:
+    patch:
+      consumes:
+      - application/json
+      description: Create a backup, locate one non-player record by instance ID, verify
+        owner and expected nickname/level/EXP, update only NickName, validate, and
+        atomically replace Level.sav
+      parameters:
+      - description: Player UID
+        in: path
+        name: player_uid
+        required: true
+        type: string
+      - description: Pal instance ID
+        in: path
+        name: instance_id
+        required: true
+        type: string
+      - description: Pal nickname mutation
+        in: body
+        name: nickname
+        required: true
+        schema:
+          $ref: '#/definitions/api.RenamePalRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.RenamePalResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Rename one Pal through an offline save transaction
+      tags:
+      - Player
+  /api/player/{player_uid}/profile:
+    patch:
+      consumes:
+      - application/json
+      description: Create a backup, verify the expected profile, update the character
+        and guild records, set cumulative EXP from bundled game data when the level
+        changes, validate, and atomically replace Level.sav
+      parameters:
+      - description: Player UID
+        in: path
+        name: player_uid
+        required: true
+        type: string
+      - description: Player profile mutation
+        in: body
+        name: profile
+        required: true
+        schema:
+          $ref: '#/definitions/api.EditPlayerProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.EditPlayerProfileResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Edit a player nickname and level through an offline save transaction
+      tags:
+      - Player
+  /api/player/{player_uid}/stat-points:
+    patch:
+      consumes:
+      - application/json
+      description: Create a backup, verify the current UInt16 value, update only unspent
+        stat points in Level.sav, validate, and atomically replace it
+      parameters:
+      - description: Player UID
+        in: path
+        name: player_uid
+        required: true
+        type: string
+      - description: Unspent stat points mutation
+        in: body
+        name: stat_points
+        required: true
+        schema:
+          $ref: '#/definitions/api.EditPlayerStatPointsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.EditPlayerStatPointsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Edit a player's unspent stat points through an offline save transaction
+      tags:
+      - Player
+  /api/player/{player_uid}/technology-points:
+    patch:
+      consumes:
+      - application/json
+      description: Create a full backup, verify Level.sav and the target Players/*.sav,
+        update only normal and ancient technology point balances, validate, and atomically
+        replace the player save
+      parameters:
+      - description: Player UID
+        in: path
+        name: player_uid
+        required: true
+        type: string
+      - description: Technology points mutation
+        in: body
+        name: technology
+        required: true
+        schema:
+          $ref: '#/definitions/api.EditPlayerTechnologyPointsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.EditPlayerTechnologyPointsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Edit a player's technology point balances through an offline save transaction
       tags:
       - Player
   /api/player/{player_uid}/unban:

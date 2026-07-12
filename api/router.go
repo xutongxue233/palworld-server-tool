@@ -20,6 +20,7 @@ type MessageResponse struct {
 
 type ErrorResponse struct {
 	Error string `json:"error"`
+	Code  string `json:"code,omitempty"`
 }
 
 type EmptyResponse struct{}
@@ -92,6 +93,15 @@ func RegisterRouter(r *gin.Engine) {
 		authGroup.POST("/player/:player_uid/kick", kickPlayer)
 		authGroup.POST("/player/:player_uid/ban", banPlayer)
 		authGroup.POST("/player/:player_uid/unban", unbanPlayer)
+		authGroup.POST("/player/:player_uid/items", givePlayerItem)
+		authGroup.PATCH("/player/:player_uid/items/:container/:slot_index", setPlayerItemQuantity)
+		authGroup.PATCH("/player/:player_uid/profile", editPlayerProfile)
+		authGroup.PATCH("/player/:player_uid/stat-points", editPlayerStatPoints)
+		authGroup.PATCH("/player/:player_uid/technology-points", editPlayerTechnologyPoints)
+		authGroup.PATCH("/player/:player_uid/map-progress", unlockPlayerMap)
+		authGroup.PATCH("/player/:player_uid/pals/:instance_id/nickname", renamePal)
+		authGroup.PATCH("/player/:player_uid/pals/:instance_id/level", editPalLevel)
+		authGroup.PATCH("/player/:player_uid/pals/:instance_id/health", restorePalHealth)
 		authGroup.PUT("/guild", putGuilds)
 		authGroup.POST("/sync", syncData)
 		authGroup.GET("/whitelist", listWhite)

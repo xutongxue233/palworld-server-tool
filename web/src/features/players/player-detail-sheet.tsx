@@ -5,11 +5,17 @@ import {
   Check,
   Copy,
   Crown,
+  Cog,
   Hammer,
   HeartPulse,
+  Landmark,
   LoaderCircle,
+  Map as MapIcon,
+  PackagePlus,
+  Pencil,
   ShieldCheck,
   ShieldOff,
+  Sparkles,
   UserRoundX,
 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -48,6 +54,11 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useGuilds, usePlayer, queryKeys } from "@/hooks/use-server-data";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -64,21 +75,79 @@ import {
   getPalName,
 } from "@/lib/game-data";
 import { useI18n } from "@/lib/i18n";
-import type { Pal, PlayerItem, WhitelistPlayer } from "@/types/api";
+import type {
+  InventoryContainer,
+  Pal,
+  PalHealthMutation,
+  PalLevelMutation,
+  Player,
+  PlayerItem,
+  PlayerMapProgress,
+  WhitelistPlayer,
+} from "@/types/api";
 
 import avatarUrl from "@/assets/avatar.webp";
 import { PalDetailDialog } from "@/features/players/pal-detail-dialog";
+import { PalHealthDialog } from "@/features/players/pal-health-dialog";
+import { PalLevelDialog } from "@/features/players/pal-level-dialog";
+import { PalNicknameDialog } from "@/features/players/pal-nickname-dialog";
+import { ItemDeliveryDialog } from "@/features/players/item-delivery-dialog";
+import { ItemQuantityDialog } from "@/features/players/item-quantity-dialog";
+import { PlayerProfileDialog } from "@/features/players/player-profile-dialog";
+import { PlayerMapUnlockDialog } from "@/features/players/player-map-unlock-dialog";
+import { PlayerStatPointsDialog } from "@/features/players/player-stat-points-dialog";
+import { PlayerTechnologyPointsDialog } from "@/features/players/player-technology-points-dialog";
 
 type PlayerAction = "kick" | "ban" | "unban";
 
 const inventoryTabs = [
-  ["CommonContainerId", "players.common"],
-  ["EssentialContainerId", "players.essential"],
-  ["WeaponLoadOutContainerId", "players.weapons"],
-  ["PlayerEquipArmorContainerId", "players.armor"],
-  ["FoodEquipContainerId", "players.food"],
-  ["DropSlotContainerId", "players.drop"],
+  ["CommonContainerId", "players.common", "main"],
+  ["EssentialContainerId", "players.essential", "key"],
+  ["WeaponLoadOutContainerId", "players.weapons", "weapons"],
+  ["PlayerEquipArmorContainerId", "players.armor", "armor"],
+  ["FoodEquipContainerId", "players.food", "food"],
+  ["DropSlotContainerId", "players.drop", "drop"],
 ] as const;
+
+interface SelectedInventoryItem {
+  item: PlayerItem;
+  container: InventoryContainer;
+  containerLabel: string;
+}
+
+function isMapProgressComplete(progress?: PlayerMapProgress) {
+  return Boolean(
+    progress &&
+    progress.fast_travel_total > 0 &&
+    progress.areas_total > 0 &&
+    progress.world_maps_total > 0 &&
+    progress.fast_travel_unlocked >= progress.fast_travel_total &&
+    progress.areas_found >= progress.areas_total &&
+    progress.world_maps_unlocked >= progress.world_maps_total,
+  );
+}
+
+function MapProgressMetric({
+  label,
+  value,
+  total,
+}: {
+  label: string;
+  value?: number;
+  total?: number;
+}) {
+  return (
+    <div className="min-w-0 bg-card px-3 py-3 sm:px-4">
+      <p className="truncate text-xs text-muted-foreground">{label}</p>
+      <p className="font-data mt-1 text-base font-semibold">
+        {value ?? "--"}
+        <span className="ml-1 text-xs font-normal text-muted-foreground">
+          / {total ?? "--"}
+        </span>
+      </p>
+    </div>
+  );
+}
 
 function DetailField({
   label,
@@ -114,7 +183,13 @@ function DetailField({
   );
 }
 
-function InventoryTable({ items }: { items: PlayerItem[] }) {
+function InventoryTable({
+  items,
+  onEditItem,
+}: {
+  items: PlayerItem[];
+  onEditItem: (item: PlayerItem) => void;
+}) {
   const { locale, t } = useI18n();
   if (!items?.length) {
     return (
@@ -133,6 +208,9 @@ function InventoryTable({ items }: { items: PlayerItem[] }) {
               {t("item.quantity")}
             </TableHead>
             <TableHead className="w-20 text-right">{t("item.slot")}</TableHead>
+            <TableHead className="w-12">
+              <span className="sr-only">{t("action.editItem")}</span>
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -169,6 +247,22 @@ function InventoryTable({ items }: { items: PlayerItem[] }) {
                 <TableCell className="font-data text-right">
                   {item.SlotIndex}
                 </TableCell>
+                <TableCell className="text-right">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-xs"
+                        onClick={() => onEditItem(item)}
+                      >
+                        <Pencil />
+                        <span className="sr-only">{t("action.editItem")}</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{t("action.editItem")}</TooltipContent>
+                  </Tooltip>
+                </TableCell>
               </TableRow>
             );
           })}
@@ -194,8 +288,19 @@ export function PlayerDetailSheet({
   const guildsQuery = useGuilds();
   const [palSearch, setPalSearch] = useState("");
   const [selectedPal, setSelectedPal] = useState<Pal | null>(null);
+  const [palNicknameEdit, setPalNicknameEdit] = useState<Pal | null>(null);
+  const [palLevelEdit, setPalLevelEdit] = useState<Pal | null>(null);
+  const [palHealthEdit, setPalHealthEdit] = useState<Pal | null>(null);
   const [pendingAction, setPendingAction] = useState<PlayerAction | null>(null);
   const [actionMessage, setActionMessage] = useState("");
+  const [itemDeliveryOpen, setItemDeliveryOpen] = useState(false);
+  const [profileEditOpen, setProfileEditOpen] = useState(false);
+  const [statPointsEditOpen, setStatPointsEditOpen] = useState(false);
+  const [technologyPointsEditOpen, setTechnologyPointsEditOpen] =
+    useState(false);
+  const [mapUnlockOpen, setMapUnlockOpen] = useState(false);
+  const [selectedInventoryItem, setSelectedInventoryItem] =
+    useState<SelectedInventoryItem | null>(null);
 
   const whitelistQuery = useQuery({
     queryKey: queryKeys.whitelist,
@@ -204,6 +309,7 @@ export function PlayerDetailSheet({
   });
 
   const player = playerQuery.data;
+  const mapProgressComplete = isMapProgressComplete(player?.map_progress);
   const online = isRecentlyOnline(player?.last_online);
   const guild = useMemo(
     () =>
@@ -265,6 +371,55 @@ export function PlayerDetailSheet({
       return;
     }
     action();
+  };
+
+  const applyPalLevelMutation = (mutation: PalLevelMutation) => {
+    const updatePal = (candidate: Pal): Pal =>
+      candidate.instance_id === mutation.instance_id
+        ? {
+            ...candidate,
+            level: mutation.level_after,
+            exp: mutation.exp_after,
+            hp: mutation.hp_after,
+            max_hp: mutation.max_hp_after,
+          }
+        : candidate;
+
+    queryClient.setQueryData<Player>(
+      queryKeys.player(mutation.player_uid),
+      (current) =>
+        current
+          ? {
+              ...current,
+              pals: current.pals.map(updatePal),
+            }
+          : current,
+    );
+    setSelectedPal((current) => (current ? updatePal(current) : current));
+    setPalLevelEdit((current) => (current ? updatePal(current) : current));
+  };
+
+  const applyPalHealthMutation = (mutation: PalHealthMutation) => {
+    const updatePal = (candidate: Pal): Pal =>
+      candidate.instance_id === mutation.instance_id
+        ? {
+            ...candidate,
+            hp: mutation.hp_after,
+          }
+        : candidate;
+
+    queryClient.setQueryData<Player>(
+      queryKeys.player(mutation.player_uid),
+      (current) =>
+        current
+          ? {
+              ...current,
+              pals: current.pals.map(updatePal),
+            }
+          : current,
+    );
+    setSelectedPal((current) => (current ? updatePal(current) : current));
+    setPalHealthEdit((current) => (current ? updatePal(current) : current));
   };
 
   return (
@@ -336,6 +491,19 @@ export function PlayerDetailSheet({
                     value="profile"
                     className="m-0 space-y-5 p-5 sm:p-6"
                   >
+                    <div className="flex justify-end">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          requireAdmin(() => setProfileEditOpen(true))
+                        }
+                      >
+                        <Pencil />
+                        {t("action.editProfile")}
+                      </Button>
+                    </div>
+
                     <div className="grid overflow-hidden rounded-md border sm:grid-cols-4">
                       <div className="border-b p-4 sm:border-b-0 sm:border-r">
                         <HeartPulse className="size-4 text-destructive" />
@@ -372,6 +540,139 @@ export function PlayerDetailSheet({
                         <p className="text-xs text-muted-foreground">
                           {t("players.level")}
                         </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-4 rounded-md border p-4">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-md border bg-muted">
+                        <Sparkles className="size-4 text-[var(--signal)]" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs text-muted-foreground">
+                          {t("players.unusedStatusPoints")}
+                        </p>
+                        <p className="font-data mt-0.5 text-lg font-semibold">
+                          {player.unused_status_points ?? "--"}
+                        </p>
+                        {player.unused_status_points === undefined ? (
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {t("players.statPointsSyncRequired")}
+                          </p>
+                        ) : null}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={player.unused_status_points === undefined}
+                        onClick={() =>
+                          requireAdmin(() => setStatPointsEditOpen(true))
+                        }
+                      >
+                        <Pencil />
+                        {t("action.editStatPoints")}
+                      </Button>
+                    </div>
+
+                    <div className="grid gap-px overflow-hidden rounded-md border bg-border sm:grid-cols-[1fr_1fr_auto]">
+                      <div className="flex items-center gap-3 bg-card p-4">
+                        <Cog className="size-4 shrink-0 text-primary" />
+                        <div className="min-w-0">
+                          <p className="text-xs text-muted-foreground">
+                            {t("players.technologyPoints")}
+                          </p>
+                          <p className="font-data mt-0.5 text-lg font-semibold">
+                            {player.technology_points ?? "--"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 bg-card p-4">
+                        <Landmark className="size-4 shrink-0 text-[var(--signal)]" />
+                        <div className="min-w-0">
+                          <p className="text-xs text-muted-foreground">
+                            {t("players.ancientTechnologyPoints")}
+                          </p>
+                          <p className="font-data mt-0.5 text-lg font-semibold">
+                            {player.ancient_technology_points ?? "--"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center bg-card p-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={
+                            player.technology_points === undefined ||
+                            player.ancient_technology_points === undefined
+                          }
+                          onClick={() =>
+                            requireAdmin(() =>
+                              setTechnologyPointsEditOpen(true),
+                            )
+                          }
+                        >
+                          <Pencil />
+                          {t("action.editTechnologyPoints")}
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="overflow-hidden rounded-md border">
+                      <div className="flex flex-wrap items-center gap-3 p-4">
+                        <div className="flex size-10 shrink-0 items-center justify-center rounded-md border bg-muted">
+                          <MapIcon className="size-4 text-[var(--success)]" />
+                        </div>
+                        <div className="min-w-40 flex-1">
+                          <p className="text-sm font-medium">
+                            {t("players.mapProgress")}
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {player.map_progress
+                              ? t(
+                                  mapProgressComplete
+                                    ? "players.mapProgressComplete"
+                                    : "players.mapProgressVersion",
+                                  {
+                                    version: player.map_progress.game_version,
+                                  },
+                                )
+                              : t("players.mapProgressSyncRequired")}
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={
+                            !player.map_progress?.progress_digest ||
+                            mapProgressComplete
+                          }
+                          onClick={() =>
+                            requireAdmin(() => setMapUnlockOpen(true))
+                          }
+                        >
+                          <MapIcon />
+                          {t(
+                            mapProgressComplete
+                              ? "action.mapFullyUnlocked"
+                              : "action.unlockFullMap",
+                          )}
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-px border-t bg-border">
+                        <MapProgressMetric
+                          label={t("mapUnlock.fastTravel")}
+                          value={player.map_progress?.fast_travel_unlocked}
+                          total={player.map_progress?.fast_travel_total}
+                        />
+                        <MapProgressMetric
+                          label={t("mapUnlock.areas")}
+                          value={player.map_progress?.areas_found}
+                          total={player.map_progress?.areas_total}
+                        />
+                        <MapProgressMetric
+                          label={t("mapUnlock.worldMaps")}
+                          value={player.map_progress?.world_maps_unlocked}
+                          total={player.map_progress?.world_maps_total}
+                        />
                       </div>
                     </div>
 
@@ -433,7 +734,10 @@ export function PlayerDetailSheet({
                             pal.nickname || getPalName(pal.type, locale);
                           return (
                             <button
-                              key={`${pal.type}-${index}-${pal.nickname}`}
+                              key={
+                                pal.instance_id ??
+                                `${pal.type}-${index}-${pal.nickname}`
+                              }
                               type="button"
                               onClick={() => setSelectedPal(pal)}
                               className="flex min-w-0 items-center gap-3 rounded-md border bg-card p-3 text-left transition-colors hover:bg-muted/65 focus-visible:ring-2 focus-visible:ring-ring"
@@ -467,16 +771,39 @@ export function PlayerDetailSheet({
 
                   <TabsContent value="inventory" className="m-0 p-5 sm:p-6">
                     <Tabs defaultValue="CommonContainerId">
-                      <TabsList className="mb-4 max-w-full justify-start overflow-x-auto">
-                        {inventoryTabs.map(([key, label]) => (
-                          <TabsTrigger key={key} value={key}>
-                            {t(label)}
-                          </TabsTrigger>
-                        ))}
-                      </TabsList>
-                      {inventoryTabs.map(([key]) => (
+                      <div className="mb-4 flex min-w-0 items-center gap-2">
+                        <TabsList className="min-w-0 flex-1 justify-start overflow-x-auto">
+                          {inventoryTabs.map(([key, label]) => (
+                            <TabsTrigger key={key} value={key}>
+                              {t(label)}
+                            </TabsTrigger>
+                          ))}
+                        </TabsList>
+                        <Button
+                          size="sm"
+                          className="shrink-0"
+                          onClick={() =>
+                            requireAdmin(() => setItemDeliveryOpen(true))
+                          }
+                        >
+                          <PackagePlus />
+                          {t("action.deliverItem")}
+                        </Button>
+                      </div>
+                      {inventoryTabs.map(([key, label, container]) => (
                         <TabsContent key={key} value={key} className="m-0">
-                          <InventoryTable items={player.items?.[key] ?? []} />
+                          <InventoryTable
+                            items={player.items?.[key] ?? []}
+                            onEditItem={(item) =>
+                              requireAdmin(() =>
+                                setSelectedInventoryItem({
+                                  item,
+                                  container,
+                                  containerLabel: t(label),
+                                }),
+                              )
+                            }
+                          />
                         </TabsContent>
                       ))}
                     </Tabs>
@@ -594,7 +921,136 @@ export function PlayerDetailSheet({
       <PalDetailDialog
         pal={selectedPal}
         onOpenChange={(open) => !open && setSelectedPal(null)}
+        onRename={
+          selectedPal?.instance_id
+            ? () =>
+                requireAdmin(() => {
+                  setPalNicknameEdit(selectedPal);
+                  setSelectedPal(null);
+                })
+            : undefined
+        }
+        onEditLevel={
+          selectedPal?.instance_id
+            ? () =>
+                requireAdmin(() => {
+                  setPalLevelEdit(selectedPal);
+                  setSelectedPal(null);
+                })
+            : undefined
+        }
+        onRestoreHealth={
+          selectedPal?.instance_id &&
+          selectedPal.max_hp > 0 &&
+          selectedPal.hp < selectedPal.max_hp
+            ? () =>
+                requireAdmin(() => {
+                  setPalHealthEdit(selectedPal);
+                  setSelectedPal(null);
+                })
+            : undefined
+        }
       />
+
+      {player ? (
+        <>
+          <ItemDeliveryDialog
+            open={itemDeliveryOpen}
+            onOpenChange={setItemDeliveryOpen}
+            playerUid={player.player_uid}
+            playerName={player.nickname || player.account_name}
+          />
+          {profileEditOpen ? (
+            <PlayerProfileDialog
+              open
+              onOpenChange={setProfileEditOpen}
+              playerUid={player.player_uid}
+              currentNickname={player.nickname}
+              currentLevel={player.level}
+            />
+          ) : null}
+          {statPointsEditOpen && player.unused_status_points !== undefined ? (
+            <PlayerStatPointsDialog
+              open
+              onOpenChange={setStatPointsEditOpen}
+              playerUid={player.player_uid}
+              playerName={player.nickname || player.account_name}
+              currentPoints={player.unused_status_points}
+            />
+          ) : null}
+          {technologyPointsEditOpen &&
+          player.technology_points !== undefined &&
+          player.ancient_technology_points !== undefined ? (
+            <PlayerTechnologyPointsDialog
+              open
+              onOpenChange={setTechnologyPointsEditOpen}
+              playerUid={player.player_uid}
+              playerName={player.nickname || player.account_name}
+              currentTechnologyPoints={player.technology_points}
+              currentAncientTechnologyPoints={player.ancient_technology_points}
+            />
+          ) : null}
+          {mapUnlockOpen && player.map_progress ? (
+            <PlayerMapUnlockDialog
+              key={player.player_uid}
+              open
+              onOpenChange={setMapUnlockOpen}
+              playerUid={player.player_uid}
+              playerName={player.nickname || player.account_name}
+              progress={player.map_progress}
+            />
+          ) : null}
+          {palNicknameEdit?.instance_id ? (
+            <PalNicknameDialog
+              key={`${palNicknameEdit.instance_id}-${palNicknameEdit.nickname}-${palNicknameEdit.level}-${palNicknameEdit.exp}`}
+              open
+              onOpenChange={(open) => {
+                if (!open) setPalNicknameEdit(null);
+              }}
+              playerUid={player.player_uid}
+              pal={palNicknameEdit}
+            />
+          ) : null}
+          {palLevelEdit?.instance_id ? (
+            <PalLevelDialog
+              key={palLevelEdit.instance_id}
+              open
+              onOpenChange={(open) => {
+                if (!open) setPalLevelEdit(null);
+              }}
+              onUpdated={applyPalLevelMutation}
+              playerUid={player.player_uid}
+              pal={palLevelEdit}
+            />
+          ) : null}
+          {palHealthEdit?.instance_id ? (
+            <PalHealthDialog
+              key={palHealthEdit.instance_id}
+              open
+              onOpenChange={(open) => {
+                if (!open) setPalHealthEdit(null);
+              }}
+              onUpdated={applyPalHealthMutation}
+              playerUid={player.player_uid}
+              pal={palHealthEdit}
+            />
+          ) : null}
+          {selectedInventoryItem ? (
+            <ItemQuantityDialog
+              key={`${selectedInventoryItem.container}-${selectedInventoryItem.item.SlotIndex}-${selectedInventoryItem.item.StackCount}`}
+              open
+              onOpenChange={(open) => {
+                if (!open) setSelectedInventoryItem(null);
+              }}
+              playerUid={player.player_uid}
+              playerName={player.nickname || player.account_name}
+              item={selectedInventoryItem.item}
+              container={selectedInventoryItem.container}
+              containerLabel={selectedInventoryItem.containerLabel}
+            />
+          ) : null}
+        </>
+      ) : null}
     </>
   );
 }

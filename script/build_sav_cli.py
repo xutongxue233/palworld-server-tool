@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 import importlib.machinery
+import json
+import math
 import os
 import platform
 import shutil
@@ -11,6 +14,7 @@ import sys
 import urllib.request
 import zipfile
 from pathlib import Path
+from uuid import UUID
 
 
 PST_COMMIT = "2cb6fd963120b002f0732dad153786e624f64b38"
@@ -25,6 +29,15 @@ PST_RELEASE_URL = (
 )
 PST_RELEASE_SHA256 = "0e75e8018eaa8a56dfa22465e5bbf7a232c9cda52a314b6ebdc088029347668c"
 PALOOZ_MEMBER = "lib/palooz.cp313-win_amd64.pyd"
+PAL_EGG_TYPE_B = "EPalItemTypeB::MaterialPalEgg"
+BOSS_REWARD_PREFIX = "BossDefeatReward_"
+PAL_LEVEL_GAME_VERSION = "1.0.0"
+PAL_LEVEL_MAX_LEVEL = 80
+PAL_FRIENDSHIP_RANKS = tuple(range(11))
+PLAYER_MAP_GAME_VERSION = "1.0.0"
+PLAYER_MAP_FAST_TRAVEL_COUNT = 174
+PLAYER_MAP_AREA_COUNT = 123
+PLAYER_MAP_WORLD_FLAGS = ("MainMap", "Tree")
 
 
 def sha256(path: Path) -> str:
@@ -132,7 +145,363 @@ def build_palooz(source_root: Path, staging: Path) -> None:
     shutil.copy2(candidates[0], staging / candidates[0].name)
 
 
-def build(repo_root: Path, output: Path, cache: Path) -> None:
+def load_item_metadata(source_root: Path) -> dict[str, dict[str, object]]:
+    source = source_root / "resources" / "game_data" / "items.json"
+    payload = json.loads(source.read_text(encoding="utf-8"))
+    dynamic_items = payload.get("items_dynamic", {})
+    catalog: dict[str, dict[str, object]] = {}
+    for item in payload.get("items", []):
+        item_id = str(item.get("asset") or "").strip()
+        if not item_id:
+            continue
+        dynamic = dynamic_items.get(item_id, {}).get("dynamic", {})
+        catalog[item_id.lower()] = {
+            "id": item_id,
+            "max_stack": max(1, int(item.get("max_stack") or 1)),
+            "type_a": str(item.get("type_a") or ""),
+            "type_b": str(item.get("type_b") or ""),
+            "dynamic_type": str(dynamic.get("type") or ""),
+            "durability": float(dynamic.get("durability") or 0.0),
+        }
+
+    return dict(sorted(catalog.items()))
+
+
+def is_deliverable_item(item: dict[str, object]) -> bool:
+    return (
+        item.get("type_b") != PAL_EGG_TYPE_B
+        and not str(item.get("id") or "").startswith(BOSS_REWARD_PREFIX)
+    )
+
+
+def validate_delivery_rules(catalog: dict[str, dict[str, object]]) -> None:
+    repo_root = Path(__file__).resolve().parent.parent
+    repo_root_text = str(repo_root)
+    added_path = repo_root_text not in sys.path
+    if added_path:
+        sys.path.insert(0, repo_root_text)
+    try:
+        from sav_cli.inventory_editor import (
+            InventoryEditError,
+            ItemDefinition,
+            get_item_definition,
+        )
+    finally:
+        if added_path:
+            sys.path.remove(repo_root_text)
+
+    backend_catalog = {
+        key: ItemDefinition(
+            item_id=str(item["id"]),
+            max_stack=int(item["max_stack"]),
+            type_a=str(item["type_a"]),
+            type_b=str(item["type_b"]),
+            dynamic_type=str(item["dynamic_type"]),
+            durability=float(item["durability"]),
+        )
+        for key, item in catalog.items()
+    }
+    backend_deliverable: set[str] = set()
+    for key, definition in backend_catalog.items():
+        try:
+            get_item_definition(backend_catalog, definition.item_id)
+        except InventoryEditError:
+            continue
+        backend_deliverable.add(key)
+
+    generated_deliverable = {
+        key for key, item in catalog.items() if is_deliverable_item(item)
+    }
+    if backend_deliverable != generated_deliverable:
+        missing = sorted(backend_deliverable - generated_deliverable)[:5]
+        unsupported = sorted(generated_deliverable - backend_deliverable)[:5]
+        raise RuntimeError(
+            "Frontend item delivery rules do not match the backend: "
+            f"missing={missing}, unsupported={unsupported}"
+        )
+
+
+def metadata_payload(
+    catalog: dict[str, dict[str, object]],
+) -> dict[str, object]:
+    return {"source_commit": PST_COMMIT, "items": catalog}
+
+
+def web_item_catalog_payload(
+    catalog: dict[str, dict[str, object]],
+) -> dict[str, object]:
+    validate_delivery_rules(catalog)
+    return {
+        "source_commit": PST_COMMIT,
+        "item_ids": [
+            str(item["id"])
+            for item in catalog.values()
+            if is_deliverable_item(item)
+        ],
+    }
+
+
+def serialize_metadata(payload: dict[str, object]) -> str:
+    return json.dumps(
+        payload,
+        ensure_ascii=True,
+        separators=(",", ":"),
+    ) + "\n"
+
+
+def write_metadata(destination: Path, payload: dict[str, object]) -> Path:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(serialize_metadata(payload), encoding="utf-8")
+    return destination
+
+
+def build_item_metadata(source_root: Path, staging: Path) -> Path:
+    catalog = load_item_metadata(source_root)
+    return write_metadata(
+        staging / "item_metadata.json",
+        metadata_payload(catalog),
+    )
+
+
+def build_web_item_catalog(source_root: Path, destination: Path) -> Path:
+    catalog = load_item_metadata(source_root)
+    return write_metadata(
+        destination,
+        web_item_catalog_payload(catalog),
+    )
+
+
+def load_source_game_version(source_root: Path) -> str:
+    common_path = source_root / "src" / "common.py"
+    try:
+        module = ast.parse(common_path.read_text(encoding="utf-8"))
+    except (OSError, SyntaxError) as exc:
+        raise RuntimeError(f"Unable to read upstream game version: {common_path}") from exc
+    for statement in module.body:
+        if not isinstance(statement, ast.Assign):
+            continue
+        if not any(
+            isinstance(target, ast.Name) and target.id == "GAME_VERSION"
+            for target in statement.targets
+        ):
+            continue
+        if isinstance(statement.value, ast.Constant) and isinstance(
+            statement.value.value, str
+        ):
+            return statement.value.value
+    raise RuntimeError("Upstream source does not declare GAME_VERSION")
+
+
+def load_friendship_thresholds(source_root: Path) -> list[int]:
+    source = source_root / "resources" / "game_data" / "friendship.json"
+    payload = json.loads(source.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise RuntimeError("Upstream friendship metadata must be a JSON object")
+    thresholds: dict[int, int] = {}
+    for value in payload.values():
+        if not isinstance(value, dict):
+            continue
+        rank = value.get("FriendshipRank")
+        points = value.get("RequiredPoint")
+        if rank not in PAL_FRIENDSHIP_RANKS:
+            continue
+        if (
+            isinstance(points, bool)
+            or not isinstance(points, int)
+            or points < 0
+            or rank in thresholds
+        ):
+            raise RuntimeError("Upstream friendship metadata contains invalid ranks")
+        thresholds[rank] = points
+    if tuple(sorted(thresholds)) != PAL_FRIENDSHIP_RANKS:
+        raise RuntimeError("Upstream friendship metadata must contain ranks 0 through 10")
+    values = [thresholds[rank] for rank in PAL_FRIENDSHIP_RANKS]
+    if values[0] != 0 or values != sorted(set(values)):
+        raise RuntimeError("Upstream friendship thresholds must start at zero and increase")
+    return values
+
+
+def load_pal_level_catalog(source_root: Path) -> dict[str, dict[str, float]]:
+    source = source_root / "resources" / "game_data" / "characters.json"
+    payload = json.loads(source.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict) or not isinstance(payload.get("pals"), list):
+        raise RuntimeError("Upstream character metadata is missing its Pal catalog")
+    catalog: dict[str, dict[str, float]] = {}
+    for pal in payload["pals"]:
+        if not isinstance(pal, dict):
+            continue
+        asset = str(pal.get("asset") or "").strip()
+        if not asset:
+            continue
+        key = asset.lower()
+        if key in catalog:
+            raise RuntimeError(f"Upstream character metadata duplicates Pal {asset}")
+        stats = pal.get("scaling") or pal.get("stats") or {}
+        if not isinstance(stats, dict):
+            raise RuntimeError(f"Upstream Pal {asset} has invalid stat metadata")
+        hp_scaling = stats.get("hp")
+        if hp_scaling is None:
+            continue
+        friendship_hp = pal.get("friendship_hp") or 0
+        if (
+            isinstance(hp_scaling, bool)
+            or not isinstance(hp_scaling, (int, float))
+            or not math.isfinite(float(hp_scaling))
+            or float(hp_scaling) <= 0
+            or isinstance(friendship_hp, bool)
+            or not isinstance(friendship_hp, (int, float))
+            or not math.isfinite(float(friendship_hp))
+            or float(friendship_hp) < 0
+        ):
+            raise RuntimeError(f"Upstream Pal {asset} has invalid HP metadata")
+        catalog[key] = {
+            "hp_scaling": float(hp_scaling),
+            "friendship_hp": float(friendship_hp),
+        }
+    if not catalog:
+        raise RuntimeError("Upstream character metadata has no usable Pal HP entries")
+    return dict(sorted(catalog.items()))
+
+
+def pal_level_metadata_payload(source_root: Path) -> dict[str, object]:
+    game_version = load_source_game_version(source_root)
+    if game_version != PAL_LEVEL_GAME_VERSION:
+        raise RuntimeError(
+            "Pinned PalworldSaveTools source targets game version "
+            f"{game_version}, expected {PAL_LEVEL_GAME_VERSION}"
+        )
+    return {
+        "schema": 1,
+        "source_commit": PST_COMMIT,
+        "game_version": game_version,
+        "max_level": PAL_LEVEL_MAX_LEVEL,
+        "friendship_thresholds": load_friendship_thresholds(source_root),
+        "pals": load_pal_level_catalog(source_root),
+    }
+
+
+def build_pal_level_metadata(source_root: Path, staging: Path) -> Path:
+    return write_metadata(
+        staging / "pal_level_metadata.json",
+        pal_level_metadata_payload(source_root),
+    )
+
+
+def load_fast_travel_guids(source_root: Path) -> list[str]:
+    source = source_root / "resources" / "game_data" / "fast_travel_points.json"
+    payload = json.loads(source.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise RuntimeError("Upstream fast travel metadata must be a JSON object")
+    guids: list[str] = []
+    seen: set[str] = set()
+    for raw_guid in payload:
+        if not isinstance(raw_guid, str) or not raw_guid or raw_guid != raw_guid.strip():
+            raise RuntimeError("Upstream fast travel metadata contains an invalid GUID")
+        try:
+            guid = UUID(raw_guid).hex.upper()
+        except (AttributeError, TypeError, ValueError) as exc:
+            raise RuntimeError(
+                f"Upstream fast travel metadata contains invalid GUID {raw_guid}"
+            ) from exc
+        if guid == "0" * 32:
+            raise RuntimeError("Upstream fast travel metadata contains a zero GUID")
+        if guid in seen:
+            raise RuntimeError(
+                f"Upstream fast travel metadata duplicates GUID {guid}"
+            )
+        seen.add(guid)
+        guids.append(guid)
+    if len(guids) != PLAYER_MAP_FAST_TRAVEL_COUNT:
+        raise RuntimeError(
+            "Upstream fast travel metadata must contain exactly "
+            f"{PLAYER_MAP_FAST_TRAVEL_COUNT} GUIDs"
+        )
+    return sorted(guids)
+
+
+def load_world_map_areas(source_root: Path) -> list[str]:
+    source = source_root / "resources" / "game_data" / "world_map_areas.json"
+    payload = json.loads(source.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict) or not isinstance(payload.get("areas"), list):
+        raise RuntimeError("Upstream world map metadata is missing its area list")
+    areas: list[str] = []
+    seen: set[str] = set()
+    for area in payload["areas"]:
+        if not isinstance(area, str) or not area or area != area.strip():
+            raise RuntimeError("Upstream world map metadata contains an invalid area ID")
+        if area in seen:
+            raise RuntimeError(
+                f"Upstream world map metadata duplicates area ID {area}"
+            )
+        seen.add(area)
+        areas.append(area)
+    if len(areas) != PLAYER_MAP_AREA_COUNT:
+        raise RuntimeError(
+            "Upstream world map metadata must contain exactly "
+            f"{PLAYER_MAP_AREA_COUNT} area IDs"
+        )
+    return sorted(areas)
+
+
+def player_map_metadata_payload(source_root: Path) -> dict[str, object]:
+    game_version = load_source_game_version(source_root)
+    if game_version != PLAYER_MAP_GAME_VERSION:
+        raise RuntimeError(
+            "Pinned PalworldSaveTools source targets game version "
+            f"{game_version}, expected {PLAYER_MAP_GAME_VERSION}"
+        )
+    return {
+        "schema": 1,
+        "source_commit": PST_COMMIT,
+        "game_version": game_version,
+        "fast_travel_guids": load_fast_travel_guids(source_root),
+        "areas": load_world_map_areas(source_root),
+        "world_flags": list(PLAYER_MAP_WORLD_FLAGS),
+    }
+
+
+def build_player_map_metadata(source_root: Path, staging: Path) -> Path:
+    return write_metadata(
+        staging / "player_map_metadata.json",
+        player_map_metadata_payload(source_root),
+    )
+
+
+def check_web_item_catalog(source_root: Path, destination: Path) -> None:
+    expected = serialize_metadata(
+        web_item_catalog_payload(load_item_metadata(source_root))
+    )
+    if not destination.is_file():
+        raise RuntimeError(
+            f"Generated web item catalog is missing: {destination}. "
+            "Run with --generate-web-item-catalog."
+        )
+    if destination.read_text(encoding="utf-8") != expected:
+        raise RuntimeError(
+            f"Generated web item catalog is stale: {destination}. "
+            "Run with --generate-web-item-catalog."
+        )
+
+
+def prepare_source(cache: Path) -> Path:
+    source_archive = cache / f"PalworldSaveTools-{PST_COMMIT}.zip"
+    fetch(PST_SOURCE_URL, source_archive, PST_SOURCE_SHA256)
+    return extract_source(source_archive, cache / "source")
+
+
+def copy_player_exp_table(source_root: Path, staging: Path) -> Path:
+    source = source_root / "resources" / "game_data" / "pal_exp_table.json"
+    destination = staging / "pal_exp_table.json"
+    shutil.copy2(source, destination)
+    return destination
+
+
+def build(
+    repo_root: Path,
+    output: Path,
+    cache: Path,
+    web_item_catalog: Path,
+) -> None:
     machine = platform.machine().lower()
     if machine not in {"amd64", "x86_64", "arm64", "aarch64"}:
         raise RuntimeError(f"Unsupported architecture: {machine}")
@@ -142,10 +511,7 @@ def build(repo_root: Path, output: Path, cache: Path) -> None:
         raise RuntimeError("The verified palooz runtime requires CPython 3.13")
 
     require_build_modules()
-    source_archive = cache / f"PalworldSaveTools-{PST_COMMIT}.zip"
-    fetch(PST_SOURCE_URL, source_archive, PST_SOURCE_SHA256)
-
-    source_root = extract_source(source_archive, cache / "source")
+    source_root = prepare_source(cache)
     staging = cache / "staging"
     shutil.rmtree(staging, ignore_errors=True)
     staging.mkdir(parents=True)
@@ -158,8 +524,22 @@ def build(repo_root: Path, output: Path, cache: Path) -> None:
         shutil.copy2(palooz, staging / palooz.name)
     else:
         build_palooz(source_root, staging)
-    for name in ("logger.py", "sav_cli.py", "structurer.py", "world_types.py"):
+    for name in (
+        "inventory_editor.py",
+        "logger.py",
+        "pal_editor.py",
+        "player_editor.py",
+        "player_save_editor.py",
+        "sav_cli.py",
+        "structurer.py",
+        "world_types.py",
+    ):
         shutil.copy2(repo_root / "sav_cli" / name, staging / name)
+    metadata = build_item_metadata(source_root, staging)
+    pal_level_metadata = build_pal_level_metadata(source_root, staging)
+    player_map_metadata = build_player_map_metadata(source_root, staging)
+    build_web_item_catalog(source_root, web_item_catalog)
+    exp_table = copy_player_exp_table(source_root, staging)
 
     build_root = cache / "pyinstaller"
     dist = build_root / "dist"
@@ -181,6 +561,14 @@ def build(repo_root: Path, output: Path, cache: Path) -> None:
         "palsav",
         "--hidden-import",
         "palooz",
+        "--add-data",
+        f"{metadata}{os.pathsep}.",
+        "--add-data",
+        f"{exp_table}{os.pathsep}.",
+        "--add-data",
+        f"{pal_level_metadata}{os.pathsep}.",
+        "--add-data",
+        f"{player_map_metadata}{os.pathsep}.",
         "--distpath",
         str(dist),
         "--workpath",
@@ -212,12 +600,37 @@ def main() -> None:
     )
     parser.add_argument("--output", default="dist/sav_cli.exe")
     parser.add_argument("--cache-dir", default=".cache/sav-cli-build")
+    parser.add_argument(
+        "--web-item-catalog",
+        default="web/src/assets/deliverable-items.json",
+    )
+    catalog_action = parser.add_mutually_exclusive_group()
+    catalog_action.add_argument(
+        "--generate-web-item-catalog",
+        action="store_true",
+        help="Generate the frontend allowlist from pinned PalworldSaveTools metadata",
+    )
+    catalog_action.add_argument(
+        "--check-web-item-catalog",
+        action="store_true",
+        help="Fail when the generated frontend allowlist is missing or stale",
+    )
     args = parser.parse_args()
 
     repo_root = Path(__file__).resolve().parent.parent
     output = (repo_root / args.output).resolve()
     cache = (repo_root / args.cache_dir).resolve()
-    build(repo_root, output, cache)
+    web_item_catalog = (repo_root / args.web_item_catalog).resolve()
+    if args.generate_web_item_catalog or args.check_web_item_catalog:
+        source_root = prepare_source(cache)
+        if args.generate_web_item_catalog:
+            build_web_item_catalog(source_root, web_item_catalog)
+            print(f"Web item catalog generated: {web_item_catalog}")
+        else:
+            check_web_item_catalog(source_root, web_item_catalog)
+            print(f"Web item catalog is current: {web_item_catalog}")
+        return
+    build(repo_root, output, cache, web_item_catalog)
 
 
 if __name__ == "__main__":

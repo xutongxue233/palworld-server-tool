@@ -1,12 +1,22 @@
 import type {
   ApiSuccess,
   Backup,
+  EditPalHealthResult,
+  EditPalLevelResult,
+  EditPlayerProfileResult,
+  EditPlayerStatPointsResult,
+  EditPlayerTechnologyPointsResult,
   Guild,
+  GiveItemResult,
+  InventoryContainer,
   Player,
   PlayerSummary,
+  RenamePalResult,
+  SetItemQuantityResult,
   ServerInfo,
   ServerMetrics,
   ServerToolInfo,
+  UnlockPlayerMapProgressResult,
   WhitelistPlayer,
   WorldSnapshot,
 } from "@/types/api";
@@ -23,6 +33,14 @@ export class ApiError extends Error {
     this.status = status;
     this.payload = payload;
   }
+}
+
+export function getApiErrorCode(error: unknown) {
+  if (!(error instanceof ApiError)) return "";
+  const payload = error.payload;
+  return typeof payload === "object" && payload && "code" in payload
+    ? String((payload as { code: unknown }).code)
+    : "";
 }
 
 interface RequestOptions extends Omit<RequestInit, "body"> {
@@ -142,6 +160,180 @@ export const api = {
       {
         method: "POST",
         body: action === "unban" ? undefined : { message },
+      },
+    ),
+  givePlayerItem: (playerUid: string, itemId: string, quantity: number) =>
+    request<GiveItemResult>(
+      `/api/player/${encodeURIComponent(playerUid)}/items`,
+      {
+        method: "POST",
+        body: {
+          item_id: itemId,
+          quantity,
+          container: "auto",
+          confirm_server_stopped: true,
+        },
+      },
+    ),
+  setPlayerItemQuantity: (
+    playerUid: string,
+    container: InventoryContainer,
+    slotIndex: number,
+    itemId: string,
+    expectedQuantity: number,
+    expectedDynamicId: string,
+    quantity: number,
+  ) =>
+    request<SetItemQuantityResult>(
+      `/api/player/${encodeURIComponent(playerUid)}/items/${container}/${slotIndex}`,
+      {
+        method: "PATCH",
+        body: {
+          item_id: itemId,
+          expected_quantity: expectedQuantity,
+          expected_dynamic_id: expectedDynamicId,
+          quantity,
+          confirm_server_stopped: true,
+        },
+      },
+    ),
+  editPlayerProfile: (
+    playerUid: string,
+    nickname: string,
+    level: number,
+    expectedNickname: string,
+    expectedLevel: number,
+  ) =>
+    request<EditPlayerProfileResult>(
+      `/api/player/${encodeURIComponent(playerUid)}/profile`,
+      {
+        method: "PATCH",
+        body: {
+          nickname,
+          level,
+          expected_nickname: expectedNickname,
+          expected_level: expectedLevel,
+          confirm_server_stopped: true,
+        },
+      },
+    ),
+  editPlayerStatPoints: (
+    playerUid: string,
+    unusedStatusPoints: number,
+    expectedUnusedStatusPoints: number,
+  ) =>
+    request<EditPlayerStatPointsResult>(
+      `/api/player/${encodeURIComponent(playerUid)}/stat-points`,
+      {
+        method: "PATCH",
+        body: {
+          unused_status_points: unusedStatusPoints,
+          expected_unused_status_points: expectedUnusedStatusPoints,
+          confirm_server_stopped: true,
+        },
+      },
+    ),
+  editPlayerTechnologyPoints: (
+    playerUid: string,
+    technologyPoints: number,
+    ancientTechnologyPoints: number,
+    expectedTechnologyPoints: number,
+    expectedAncientTechnologyPoints: number,
+  ) =>
+    request<EditPlayerTechnologyPointsResult>(
+      `/api/player/${encodeURIComponent(playerUid)}/technology-points`,
+      {
+        method: "PATCH",
+        body: {
+          technology_points: technologyPoints,
+          ancient_technology_points: ancientTechnologyPoints,
+          expected_technology_points: expectedTechnologyPoints,
+          expected_ancient_technology_points: expectedAncientTechnologyPoints,
+          confirm_server_stopped: true,
+        },
+      },
+    ),
+  renamePal: (
+    playerUid: string,
+    instanceId: string,
+    nickname: string,
+    expectedNickname: string,
+    expectedLevel: number,
+    expectedExp: number,
+  ) =>
+    request<RenamePalResult>(
+      `/api/player/${encodeURIComponent(playerUid)}/pals/${encodeURIComponent(instanceId)}/nickname`,
+      {
+        method: "PATCH",
+        body: {
+          nickname,
+          expected_nickname: expectedNickname,
+          expected_level: expectedLevel,
+          expected_exp: expectedExp,
+          confirm_server_stopped: true,
+        },
+      },
+    ),
+  editPalLevel: (
+    playerUid: string,
+    instanceId: string,
+    level: number,
+    expectedNickname: string,
+    expectedLevel: number,
+    expectedExp: number,
+    expectedHp: number,
+    expectedMaxHp: number,
+  ) =>
+    request<EditPalLevelResult>(
+      `/api/player/${encodeURIComponent(playerUid)}/pals/${encodeURIComponent(instanceId)}/level`,
+      {
+        method: "PATCH",
+        body: {
+          expected_nickname: expectedNickname,
+          expected_level: expectedLevel,
+          expected_exp: expectedExp,
+          expected_hp: expectedHp,
+          expected_max_hp: expectedMaxHp,
+          level,
+          confirm_server_stopped: true,
+        },
+      },
+    ),
+  restorePalHealth: (
+    playerUid: string,
+    instanceId: string,
+    expectedNickname: string,
+    expectedLevel: number,
+    expectedExp: number,
+    expectedHp: number,
+    expectedMaxHp: number,
+  ) =>
+    request<EditPalHealthResult>(
+      `/api/player/${encodeURIComponent(playerUid)}/pals/${encodeURIComponent(instanceId)}/health`,
+      {
+        method: "PATCH",
+        body: {
+          expected_nickname: expectedNickname,
+          expected_level: expectedLevel,
+          expected_exp: expectedExp,
+          expected_hp: expectedHp,
+          expected_max_hp: expectedMaxHp,
+          confirm_server_stopped: true,
+        },
+      },
+    ),
+  unlockPlayerMapProgress: (
+    playerUid: string,
+    expectedProgressDigest: string,
+  ) =>
+    request<UnlockPlayerMapProgressResult>(
+      `/api/player/${encodeURIComponent(playerUid)}/map-progress`,
+      {
+        method: "PATCH",
+        body: {
+          expected_progress_digest: expectedProgressDigest,
+          confirm_server_stopped: true,
+        },
       },
     ),
   getGuilds: () => request<Guild[]>("/api/guild", { auth: false }),
