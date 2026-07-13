@@ -123,6 +123,26 @@ class PalWorldTypeTest(unittest.TestCase):
         self.assertEqual(77, serialized["defense"])
         self.assertEqual(4, serialized["rank"])
 
+    def test_palworld_1_0_hp_talent_is_exposed_as_melee(self) -> None:
+        data = self.pal_data("Hp")
+        data["Talent_HP"] = {"value": {"value": 73}}
+
+        serialized = Pal(
+            "c410c416-475c-0638-eb35-269338f2a320", data, 0, 0
+        ).to_dict()
+
+        self.assertEqual(73, serialized["melee"])
+
+    def test_pre_1_0_melee_talent_remains_supported(self) -> None:
+        data = self.pal_data("HP")
+        data["Talent_Melee"] = {"type": "IntProperty", "value": 41}
+
+        serialized = Pal(
+            "c410c416-475c-0638-eb35-269338f2a320", data, 0, 0
+        ).to_dict()
+
+        self.assertEqual(41, serialized["melee"])
+
 
 if __name__ == "__main__":
     unittest.main()

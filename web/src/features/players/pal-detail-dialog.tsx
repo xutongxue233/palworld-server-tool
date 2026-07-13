@@ -1,12 +1,13 @@
 import {
+  Dna,
   HeartPulse,
   Pencil,
   Shield,
   Sparkles,
-  Swords,
   TrendingUp,
   Wrench,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,7 +27,7 @@ function Stat({
   label,
   value,
 }: {
-  icon: typeof Swords;
+  icon: LucideIcon;
   label: string;
   value: number | string;
 }) {
@@ -137,7 +138,7 @@ export function PalDetailDialog({
             label={t("pal.hp")}
             value={`${currentHp}/${maxHp}`}
           />
-          <Stat icon={Swords} label={t("pal.melee")} value={pal.melee} />
+          <Stat icon={Dna} label={t("pal.melee")} value={pal.melee} />
           <Stat icon={Sparkles} label={t("pal.ranged")} value={pal.ranged} />
           <Stat icon={Shield} label={t("pal.defense")} value={pal.defense} />
           <Stat

@@ -54,6 +54,8 @@ Additional features provided by the tool:
 
 This tool stores synchronized REST API and Level.sav data in a single bbolt database and exposes it through the management interface.
 
+The operations page also includes a JWT-protected RCON terminal for commands that are not available through the REST API.
+
 Due to limited maintenance and development staff, we welcome front-end, back-end developers, and even data engineers to submit PRs!
 
 ## Function screenshot
@@ -85,6 +87,20 @@ First set **Administrator password**
 ![ADMIN](./docs/img/admin-en.png)
 
 Then enable the **REST API**
+
+## Optional: enable RCON
+
+Palworld 1.0.0 still provides the official RCON interface. To use PST's RCON terminal, set `RCONEnabled=True`, confirm `RCONPort`, and configure a non-empty `AdminPassword` in `PalWorldSettings.ini`. Then add the same password to PST's `config.yaml`:
+
+```yaml
+rcon:
+  address: "127.0.0.1:25575"
+  password: "your AdminPassword"
+  use_base64: false
+  timeout: 5
+```
+
+Expose the RCON port only to the PST host or another trusted network. Keep `use_base64` disabled when connecting directly to the official server.
 
 
 ## Installation and Deployment
@@ -120,7 +136,7 @@ Download the latest executable files at:
 
 ```bash
 # Download pst_{version}_{platform}_{arch}.tar.gz and extract to the pst directory
-mkdir -p pst && tar -xzf pst_v1.0.0_linux_x86_64.tar.gz -C pst
+mkdir -p pst && tar -xzf pst_v1.1.0_linux_x86_64.tar.gz -C pst
 ```
 
 ##### Configuration
@@ -237,7 +253,7 @@ Access at http://{Server IP}:8080 after opening firewall and security group in c
 
 ##### Download and Extract
 
-Extract `pst_v1.0.0_windows_x86_64.zip` to any directory (recommend naming the folder `pst`).
+Extract `pst_v1.1.0_windows_x86_64.zip` to any directory (recommend naming the folder `pst`).
 
 ##### Configuration
 
@@ -394,6 +410,11 @@ Set various environment variables, similar to those in [`config.yaml`](#configur
 | TASK\_\_PLAYER_LOGIN_MESSAGE  |           ""            |  Text  |                       Players log in to broadcast message content                       |
 | TASK\_\_PLAYER_LOGOUT_MESSAGE |           ""            |  Text  |                    The player logs out the broadcast message content                    |
 |                               |                         |        |                                                                                         |
+|        RCON\_\_ADDRESS        |   "127.0.0.1:25575"   |  Text  |                              Official RCON service address                              |
+|       RCON\_\_PASSWORD       |           ""            |  Text  |                        AdminPassword in the server configuration                        |
+|      RCON\_\_USE_BASE64      |          false          |  Bool  |                    Compatibility mode for Base64-aware RCON proxies                     |
+|        RCON\_\_TIMEOUT        |            5            | Number |                                  Per-command timeout                                    |
+|                               |                         |        |                                                                                         |
 |        REST\_\_ADDRESS        | "http://127.0.0.1:8212" |  Text  |  The address corresponding to the service REST API can be used in a container network   |
 |       REST\_\_PASSWORD        |           ""            |  Text  |                        AdminPassword in the server configuration                        |
 |        REST\_\_TIMEOUT        |            5            | Number |                                     Request Timeout                                     |
@@ -471,6 +492,11 @@ Then add `-v ./pst.db:/app/pst.db` in `docker run -v`.
 |    TASK\_\_PLAYER_LOGGING     |          false          |  Bool  |                      Players log in/log out of broadcast messages                       |
 | TASK\_\_PLAYER_LOGIN_MESSAGE  |           ""            |  Text  |                       Players log in to broadcast message content                       |
 | TASK\_\_PLAYER_LOGOUT_MESSAGE |           ""            |  Text  |                    The player logs out the broadcast message content                    |
+|                               |                         |        |                                                                                         |
+|        RCON\_\_ADDRESS        |   "127.0.0.1:25575"   |  Text  |                              Official RCON service address                              |
+|       RCON\_\_PASSWORD       |           ""            |  Text  |                        AdminPassword in the server configuration                        |
+|      RCON\_\_USE_BASE64      |          false          |  Bool  |                    Compatibility mode for Base64-aware RCON proxies                     |
+|        RCON\_\_TIMEOUT        |            5            | Number |                                  Per-command timeout                                    |
 |                               |                         |        |                                                                                         |
 |        REST\_\_ADDRESS        | "http://127.0.0.1:8212" |  Text  |  The address corresponding to the service REST API can be used in a container network   |
 |       REST\_\_PASSWORD        |           ""            |  Text  |                        AdminPassword in the server configuration                        |

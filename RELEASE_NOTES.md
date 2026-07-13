@@ -1,21 +1,21 @@
-# Palworld Server Tool v1.0.0
+# Palworld Server Tool v1.1.0
 
-这是一次主版本重构，重点是恢复当前 Palworld 服务端版本下的可用性，并建立可重复的多平台发布流程。
+此版本面向 Palworld 1.0.0，补齐官方 RCON 管理能力，更新当前游戏数据，并修复存档个体值兼容问题。
 
 ## 主要更新
 
-- 使用 React、TypeScript、Vite 和 shadcn/ui 完整重构前端，支持桌面端与移动端。
-- 服务端设置同步最新官方字段和 pal-conf 中文定义，共 117 个非 RCON 配置项。
-- 集成新版 `sav_cli`，可正确解析当前 Oodle 压缩存档，并支持校验、导出 JSON、重建和往返验证。
-- 完整接入官方 REST API 管理能力，修正跨平台玩家标识和敏感字段处理。
-- 移除 RCON、旧 Vue 前端、旧 pal-conf 子模块和过时的存档解析器下载流程。
-- 新增应用图标、浏览器 favicon 与 Windows EXE 图标。
+- 恢复受 Web 管理 JWT 认证保护的 RCON 命令接口与管理台终端。
+- 配置编辑器加入官方 `RCONEnabled`、`RCONPort`，并覆盖 1.0.0 官方文档全部 93 个可用参数。
+- 同步 Palworld 1.0.0 中文帕鲁、物品、被动技能名称与对应图标。
+- 修复 1.0.0 存档 `Talent_HP` 未映射导致生命个体值显示错误的问题，同时兼容旧版 `Talent_Melee`。
+- 将生命、攻击和防御字段按个体值语义显示，并修正牧场生产速度配置范围。
+- 扩充 Python 存档编辑测试，更新 Swagger、配置示例和中英文使用说明。
 
 ## 下载文件
 
-- `pst_v1.0.0_windows_x86_64.zip`
-- `pst_v1.0.0_linux_x86_64.tar.gz`
-- `pst_v1.0.0_linux_aarch64.tar.gz`
+- `pst_v1.1.0_windows_x86_64.zip`
+- `pst_v1.1.0_linux_x86_64.tar.gz`
+- `pst_v1.1.0_linux_aarch64.tar.gz`
 - 对应平台的 `pst-agent` 独立程序
 - `SHA256SUMS.txt`
 
@@ -23,10 +23,10 @@
 
 ## 升级前注意
 
-1. 停止旧版 PST 和 Palworld 服务端。
-2. 备份现有 `config.yaml`、数据库、`backups` 目录以及完整的 `Pal/Saved` 目录。
-3. 解压对应平台的发布包，不要用示例 `config.yaml` 覆盖自己的配置。
-4. 使用 REST 功能时，确认 Palworld 配置中 `RESTAPIEnabled=True`，并设置非空 `AdminPassword`。
+1. 停止旧版 PST 和 Palworld 服务端，并备份 `config.yaml`、数据库及整个世界存档目录。
+2. 不要用发布包中的示例 `config.yaml` 覆盖自己的配置。
+3. REST API 与 RCON 共用 Palworld 的 `AdminPassword`，请设置强密码并只向受信任网络开放管理端口。
+4. 使用 RCON 终端前，在 `PalWorldSettings.ini` 中启用 `RCONEnabled=True` 并确认 `RCONPort`。
 5. Linux 用户需要为 `pst`、`sav_cli` 和 `start.sh` 保留可执行权限。
 
 详细变更见 [`CHANGELOG.md`](https://github.com/xutongxue233/palworld-server-tool/blob/main/CHANGELOG.md)。

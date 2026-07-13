@@ -133,6 +133,11 @@ export const api = {
     request<ServerMetrics>("/api/server/metrics", { auth: false }),
   getSettings: () => request<Record<string, unknown>>("/api/server/settings"),
   getWorldSnapshot: () => request<WorldSnapshot>("/api/server/game-data"),
+  runRcon: (command: string) =>
+    request<{ message: string }>("/api/rcon", {
+      method: "POST",
+      body: { command },
+    }),
   broadcast: (message: string) =>
     request<ApiSuccess>("/api/server/broadcast", {
       method: "POST",

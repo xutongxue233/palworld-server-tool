@@ -21,6 +21,18 @@ jobs:
         run: python3 -m unittest test_map_down.py
       - name: Check save parser sources
         run: python3 -m py_compile sav_cli/*.py script/build_sav_cli.py
+      - name: Test save editing helpers
+        run: |
+          (
+            cd sav_cli
+            python3 -m unittest \
+              world_types_test.py \
+              pal_editor_test.py \
+              inventory_editor_test.py \
+              player_editor_test.py \
+              player_save_editor_test.py
+          )
+          python3 -m unittest script/build_sav_cli_test.py
       - name: Test backend packages
         run: go test ./...
       - name: Vet backend packages

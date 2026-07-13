@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -38,6 +39,9 @@ func TestOfficialServerManagementRoutes(t *testing.T) {
 	viper.Set("rest.password", "server-secret")
 	viper.Set("rest.timeout", 5)
 	t.Cleanup(viper.Reset)
+	originalRCONExecutor := executeRCONCommand
+	executeRCONCommand = func(command string) (string, error) { return "ok: " + command, nil }
+	t.Cleanup(func() { executeRCONCommand = originalRCONExecutor })
 
 	token, err := auth.GenerateToken()
 	if err != nil {
@@ -51,6 +55,14 @@ func TestOfficialServerManagementRoutes(t *testing.T) {
 	router.ServeHTTP(response, request)
 	if response.Code != http.StatusUnauthorized {
 		t.Fatalf("settings route should require authentication, got %d", response.Code)
+	}
+
+	request = httptest.NewRequest(http.MethodPost, "/api/rcon", strings.NewReader(`{"command":"Info"}`))
+	request.Header.Set("Content-Type", "application/json")
+	response = httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusUnauthorized {
+		t.Fatalf("RCON route should require authentication, got %d", response.Code)
 	}
 
 	for _, test := range []struct {
@@ -69,6 +81,15 @@ func TestOfficialServerManagementRoutes(t *testing.T) {
 		if response.Code != http.StatusOK {
 			t.Fatalf("%s %s returned %d: %s", test.method, test.path, response.Code, response.Body.String())
 		}
+	}
+
+	request = httptest.NewRequest(http.MethodPost, "/api/rcon", strings.NewReader(`{"command":"Info"}`))
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "Bearer "+token)
+	response = httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("RCON route returned %d: %s", response.Code, response.Body.String())
 	}
 
 	request = httptest.NewRequest(http.MethodGet, "/api/server/metrics", nil)

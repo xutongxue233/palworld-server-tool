@@ -7,6 +7,7 @@ require (
 	github.com/go-co-op/gocron/v2 v2.2.1
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
+	github.com/gorcon/rcon v1.3.4
 	github.com/moby/moby/api v1.55.0
 	github.com/moby/moby/client v0.5.0
 	github.com/spf13/viper v1.18.2
@@ -15,6 +16,7 @@ require (
 	github.com/swaggo/swag v1.16.2
 	go.etcd.io/bbolt v1.3.8
 	go.uber.org/zap v1.26.0
+	golang.org/x/sys v0.45.0
 	k8s.io/api v0.29.1
 	k8s.io/client-go v0.29.1
 )
@@ -91,7 +93,6 @@ require (
 	golang.org/x/exp v0.0.0-20231219180239-dc181d75b848 // indirect
 	golang.org/x/net v0.55.0 // indirect
 	golang.org/x/oauth2 v0.15.0 // indirect
-	golang.org/x/sys v0.45.0 // indirect
 	golang.org/x/term v0.43.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
 	golang.org/x/time v0.11.0 // indirect

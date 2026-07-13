@@ -22,6 +22,12 @@ type Config struct {
 		PlayerLoginMessage  string `mapstructure:"player_login_message"`
 		PlayerLogoutMessage string `mapstructure:"player_logout_message"`
 	} `mapstructure:"task"`
+	Rcon struct {
+		Address   string `mapstructure:"address"`
+		Password  string `mapstructure:"password"`
+		UseBase64 bool   `mapstructure:"use_base64"`
+		Timeout   int    `mapstructure:"timeout"`
+	} `mapstructure:"rcon"`
 	Rest struct {
 		Address  string `mapstructure:"address"`
 		Username string `mapstructure:"username"`
@@ -62,6 +68,10 @@ func Init(cfgFile string, conf *Config) {
 	viper.SetDefault("web.port", 8080)
 
 	viper.SetDefault("task.sync_interval", 60)
+
+	viper.SetDefault("rcon.address", "127.0.0.1:25575")
+	viper.SetDefault("rcon.timeout", 5)
+	viper.SetDefault("rcon.use_base64", false)
 
 	viper.SetDefault("rest.username", "admin")
 	viper.SetDefault("rest.timeout", 5)

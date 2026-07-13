@@ -55,6 +55,7 @@
 - [x] 可视化地图管理
 - [x] 白名单管理
 - [x] 存档自动备份与管理
+- [x] 受 Web 管理认证保护的 RCON 命令终端
 
 ### 存档校验与离线编辑
 
@@ -116,6 +117,20 @@ https://github.com/zaigie/palworld-server-tool/assets/17232619/afdf485c-4b34-491
 
 再启用 **REST API**
 
+## 可选：启用 RCON
+
+Palworld 1.0.0 仍提供官方 RCON。若需使用管理台中的 RCON 终端，请在 `PalWorldSettings.ini` 中设置 `RCONEnabled=True`、确认 `RCONPort`，并配置非空 `AdminPassword`。随后在 PST 的 `config.yaml` 中填写相同密码：
+
+```yaml
+rcon:
+  address: "127.0.0.1:25575"
+  password: "你的 AdminPassword"
+  use_base64: false
+  timeout: 5
+```
+
+RCON 端口只应向 PST 所在主机或受信任网络开放。`use_base64` 仅用于兼容明确支持 Base64 命令的代理，直连官方服务端时保持 `false`。
+
 
 ## 安装部署
 
@@ -161,7 +176,7 @@ https://github.com/zaigie/palworld-server-tool/assets/17232619/afdf485c-4b34-491
 
 ```bash
 # 下载 pst_{version}_{platform}_{arch}.tar.gz 文件并解压到 pst 目录
-mkdir -p pst && tar -xzf pst_v1.0.0_linux_x86_64.tar.gz -C pst
+mkdir -p pst && tar -xzf pst_v1.1.0_linux_x86_64.tar.gz -C pst
 ```
 
 ##### 配置
@@ -278,7 +293,7 @@ kill $(ps aux | grep 'pst' | awk '{print $2}') | head -n 1
 
 ##### 下载解压
 
-解压 `pst_v1.0.0_windows_x86_64.zip` 到任意目录（推荐命名文件夹目录名称为 `pst`）
+解压 `pst_v1.1.0_windows_x86_64.zip` 到任意目录（推荐命名文件夹目录名称为 `pst`）
 
 ##### 配置
 
@@ -434,6 +449,11 @@ touch pst.db
 | TASK\_\_PLAYER_LOGIN_MESSAGE  |           ""            | 文本 |                 玩家登录广播消息内容                 |
 | TASK\_\_PLAYER_LOGOUT_MESSAGE |           ""            | 文本 |                 玩家登出广播消息内容                 |
 |                               |                         |      |                                                      |
+|        RCON\_\_ADDRESS        |   "127.0.0.1:25575"   | 文本 |                  官方 RCON 服务地址                  |
+|       RCON\_\_PASSWORD       |           ""            | 文本 |           服务器配置文件中的 AdminPassword           |
+|      RCON\_\_USE_BASE64      |          false          | 布尔 |         仅用于兼容支持 Base64 命令的 RCON 代理         |
+|        RCON\_\_TIMEOUT        |            5            | 数字 |                  单个命令的超时时间                  |
+|                               |                         |      |                                                      |
 |        REST\_\_ADDRESS        | "http://127.0.0.1:8212" | 文本 |       服务 REST API 对应的地址，可以用容器网络       |
 |       REST\_\_PASSWORD        |           ""            | 文本 |           服务器配置文件中的 AdminPassword           |
 |        REST\_\_TIMEOUT        |            5            | 数字 |                  单个请求的超时时间                  |
@@ -513,6 +533,11 @@ touch pst.db
 |    TASK\_\_PLAYER_LOGGING     |          false          | 布尔 |                            玩家登录/登出广播消息                            |
 | TASK\_\_PLAYER_LOGIN_MESSAGE  |           ""            | 文本 |                            玩家登录广播消息内容                             |
 | TASK\_\_PLAYER_LOGOUT_MESSAGE |           ""            | 文本 |                            玩家登出广播消息内容                             |
+|                               |                         |      |                                                                             |
+|        RCON\_\_ADDRESS        |   "127.0.0.1:25575"   | 文本 |                            官方 RCON 服务地址                              |
+|       RCON\_\_PASSWORD       |           ""            | 文本 |                      服务器配置文件中的 AdminPassword                       |
+|      RCON\_\_USE_BASE64      |          false          | 布尔 |                   仅用于兼容支持 Base64 命令的 RCON 代理                    |
+|        RCON\_\_TIMEOUT        |            5            | 数字 |                            单个命令的超时时间                               |
 |                               |                         |      |                                                                             |
 |        REST\_\_ADDRESS        | "http://127.0.0.1:8212" | 文本 |                  服务 REST API 对应的地址，可以用容器网络                   |
 |       REST\_\_PASSWORD        |           ""            | 文本 |                      服务器配置文件中的 AdminPassword                       |

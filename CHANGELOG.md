@@ -2,6 +2,23 @@
 
 本项目采用语义化版本号。重大不兼容调整会提升主版本号。
 
+## [Unreleased]
+
+## [1.1.0] - 2026-07-13
+
+### 变更
+
+- 配置编辑器恢复 Palworld 1.0.0 官方 `RCONEnabled` 与 `RCONPort` 字段，并纳入管理员密码和端口冲突校验。
+- 恢复受 JWT 保护的 RCON 命令接口和管理台终端，支持超时、可选 Base64 兼容模式和多行响应。
+- 同步上游 Palworld 1.0.0 中文帕鲁、物品、被动技能名称与对应图标资源。
+- 配置编辑器覆盖 1.0.0 官方文档中全部 93 个可用参数，并将文档外的默认 INI/底层字段明确标记为兼容参数。
+- 按 1.0.0 配置定义将 `MonsterFarmActionSpeedRate` 的允许范围校正为 `0.1` 至 `5`。
+
+### 修复
+
+- 修复 Palworld 1.0.0 存档中的 `Talent_HP` 未映射，导致帕鲁生命个体值显示为 0 且仍标记为“近战”的问题；生命、攻击和防御字段现按个体值语义展示，旧版 `Talent_Melee` 仍保持兼容。
+- 将不依赖外部存档运行时的 Python 存档编辑测试纳入 CI，避免编辑辅助逻辑只做语法检查。
+
 ## [1.0.0] - 2026-07-11
 
 ### 新增
@@ -58,4 +75,6 @@
 - 替换程序前应停止 PST 和 Palworld 服务端，并备份 `config.yaml`、数据库与整个世界存档目录。
 - 不要将 JSON 重建后的存档直接覆盖正在运行的 `Level.sav`。
 
+[Unreleased]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/xutongxue233/palworld-server-tool/releases/tag/v1.0.0

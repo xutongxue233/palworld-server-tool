@@ -77,8 +77,8 @@ export const SETTING_GROUPS: SettingGroupDefinition[] = [
     id: "network",
     label: text("网络与 API", "Network & API"),
     description: text(
-      "公共连接、REST API 和跨平台连接",
-      "Public access, REST API, and crossplay",
+      "公共连接、REST API、RCON 和跨平台连接",
+      "Public access, REST API, RCON, and crossplay",
     ),
   },
   {
@@ -161,8 +161,8 @@ export const SETTING_DEFINITIONS: SettingDefinition[] = [
     "",
     "管理员密码",
     "Admin password",
-    "用于获取管理员权限；启用 REST API 时必须设置强密码。",
-    "Password used to obtain administrative privileges. Use a strong value when REST API is enabled.",
+    "用于获取管理员权限；启用 REST API 或 RCON 时必须设置强密码。",
+    "Password used to obtain administrative privileges. Use a strong value when REST API or RCON is enabled.",
   ),
   setting(
     "ServerPlayerMaxNum",
@@ -184,7 +184,7 @@ export const SETTING_DEFINITIONS: SettingDefinition[] = [
     "Maximum co-op players",
     "合作模式允许的最大玩家数量。专用服务器总人数由 ServerPlayerMaxNum 控制。",
     "Maximum players allowed in a co-op session. Dedicated-server capacity is controlled by ServerPlayerMaxNum.",
-    { min: 1, max: 4 },
+    { min: 1, max: 4, official: false },
   ),
   setting(
     "bIsUseBackupSaveData",
@@ -205,7 +205,13 @@ export const SETTING_DEFINITIONS: SettingDefinition[] = [
     "Auto-save interval",
     "游戏自动保存世界的间隔。",
     "Interval between automatic world saves.",
-    { min: 30, max: 3600, step: 1, unit: text("秒", "seconds") },
+    {
+      min: 30,
+      max: 3600,
+      step: 1,
+      unit: text("秒", "seconds"),
+      official: false,
+    },
   ),
   setting(
     "LogFormatType",
@@ -272,6 +278,27 @@ export const SETTING_DEFINITIONS: SettingDefinition[] = [
     { min: 1, max: 65535 },
   ),
   setting(
+    "RCONEnabled",
+    "network",
+    "boolean",
+    false,
+    "启用 RCON",
+    "Enable RCON",
+    "启用官方 RCON 管理接口。请仅向受信任网络开放。",
+    "Enable the official RCON management interface. Expose it only to trusted networks.",
+  ),
+  setting(
+    "RCONPort",
+    "network",
+    "integer",
+    25575,
+    "RCON 端口",
+    "RCON port",
+    "官方 RCON 接口的监听端口。",
+    "Listening port for the official RCON interface.",
+    { min: 1, max: 65535 },
+  ),
+  setting(
     "CrossplayPlatforms",
     "network",
     "list",
@@ -312,6 +339,7 @@ export const SETTING_DEFINITIONS: SettingDefinition[] = [
     "Use platform authentication",
     "启用服务器平台认证。",
     "Enable platform authentication for the server.",
+    { official: false },
   ),
   setting(
     "bAllowClientMod",
@@ -332,6 +360,7 @@ export const SETTING_DEFINITIONS: SettingDefinition[] = [
     "Ban list URL",
     "服务器使用的官方远程封禁列表地址。",
     "Official remote ban list URL used by the server.",
+    { official: false },
   ),
   setting(
     "Region",
@@ -354,7 +383,7 @@ export const SETTING_DEFINITIONS: SettingDefinition[] = [
     "Difficulty preset",
     "自定义服务器通常保持 None，并使用下方倍率。",
     "Custom servers normally keep None and use the individual rates below.",
-    { options: ["None"] },
+    { options: ["None"], official: false },
   ),
   setting(
     "DayTimeSpeedRate",
@@ -585,7 +614,7 @@ export const SETTING_DEFINITIONS: SettingDefinition[] = [
     "Ranch production speed",
     "帕鲁在牧场生产物品的速度倍率。",
     "Item production speed multiplier for grazing Pals.",
-    { min: 0.1, max: 10, step: 0.1 },
+    { min: 0.1, max: 5, step: 0.1 },
   ),
   setting(
     "ItemWeightRate",
@@ -806,6 +835,7 @@ export const SETTING_DEFINITIONS: SettingDefinition[] = [
     "Enable Predator Boss Pals",
     "启用世界中的猛兽 Boss 帕鲁。",
     "Enable Predator Boss Pals in the world.",
+    { official: false },
   ),
   setting(
     "bEnableFastTravel",
@@ -1084,6 +1114,7 @@ export const SETTING_DEFINITIONS: SettingDefinition[] = [
     "Pick up other guild drops",
     "允许拾取其他公会玩家的死亡惩罚掉落。",
     "Allow pickup of death-penalty drops from other guilds.",
+    { official: false },
   ),
   setting(
     "bEnableDefenseOtherGuildPlayer",
@@ -1292,7 +1323,13 @@ export const SETTING_DEFINITIONS: SettingDefinition[] = [
     "Pal storage update interval",
     "检查玩家帕鲁仓库数据更新的间隔。",
     "Interval for checking player Pal storage data updates.",
-    { min: 0.1, max: 60, step: 0.1, unit: text("秒", "seconds") },
+    {
+      min: 0.1,
+      max: 60,
+      step: 0.1,
+      unit: text("秒", "seconds"),
+      official: false,
+    },
   ),
   setting(
     "AutoTransferMasterCheckIntervalSeconds",
@@ -1303,7 +1340,13 @@ export const SETTING_DEFINITIONS: SettingDefinition[] = [
     "Guild master transfer check",
     "检查公会会长是否满足自动移交条件的间隔。",
     "Interval for checking guild-master auto-transfer eligibility.",
-    { min: 60, max: 86400, step: 60, unit: text("秒", "seconds") },
+    {
+      min: 60,
+      max: 86400,
+      step: 60,
+      unit: text("秒", "seconds"),
+      official: false,
+    },
   ),
   setting(
     "AutoTransferMasterThresholdDays",
@@ -1314,7 +1357,7 @@ export const SETTING_DEFINITIONS: SettingDefinition[] = [
     "Guild master offline threshold",
     "公会会长离线达到该天数后允许自动移交。",
     "Days the guild master must be offline before automatic transfer.",
-    { min: 1, max: 365, unit: text("天", "days") },
+    { min: 1, max: 365, unit: text("天", "days"), official: false },
   ),
   setting(
     "MaxGuildsPerFrame",
@@ -1325,7 +1368,7 @@ export const SETTING_DEFINITIONS: SettingDefinition[] = [
     "Guilds processed per frame",
     "服务器每帧处理的最大公会数量。",
     "Maximum number of guilds processed per frame.",
-    { min: 1, max: 100 },
+    { min: 1, max: 100, official: false },
   ),
   setting(
     "BuildingNameDisplayCacheTTLSeconds",
@@ -1336,7 +1379,7 @@ export const SETTING_DEFINITIONS: SettingDefinition[] = [
     "Building name cache TTL",
     "建筑名称显示缓存的有效时间。",
     "TTL for the building-name display cache.",
-    { min: 1, max: 3600, unit: text("秒", "seconds") },
+    { min: 1, max: 3600, unit: text("秒", "seconds"), official: false },
   ),
   setting(
     "bIsMultiplay",
