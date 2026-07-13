@@ -1,35 +1,92 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, type QueryFunctionContext } from "@tanstack/react-query";
 
-import { api } from "@/lib/api";
+import { api, getServerScope } from "@/lib/api";
+
+function scopedQueryKey(...parts: Array<string | number | undefined>) {
+  return ["server-scope", getServerScope(), ...parts] as const;
+}
+
+function serverScopeFromQueryKey(queryKey: readonly unknown[]) {
+  const scope = queryKey[0] === "server-scope" ? queryKey[1] : null;
+  if (typeof scope !== "string") {
+    throw new Error("Server query is missing its fleet scope");
+  }
+  return scope;
+}
+
+export function scopedQueryFn<T>(load: (scope: string) => Promise<T>) {
+  // Bind retries and late refetches to the scope encoded in their cache key.
+  return ({ queryKey }: QueryFunctionContext) =>
+    load(serverScopeFromQueryKey(queryKey));
+}
 
 export const queryKeys = {
-  server: ["server"] as const,
-  metrics: ["server", "metrics"] as const,
-  tool: ["server", "tool"] as const,
-  players: ["players"] as const,
-  onlinePlayers: ["players", "online"] as const,
-  player: (playerUid: string) => ["players", playerUid] as const,
-  guilds: ["guilds"] as const,
-  settings: ["server", "settings"] as const,
-  snapshot: ["server", "snapshot"] as const,
-  control: ["server", "control"] as const,
-  steamcmd: ["server", "steamcmd"] as const,
-  officialMods: ["server", "mods"] as const,
-  saveMigration: ["server", "migration"] as const,
-  whitelist: ["whitelist"] as const,
+  get server() {
+    return scopedQueryKey("server");
+  },
+  get metrics() {
+    return scopedQueryKey("server", "metrics");
+  },
+  get tool() {
+    return scopedQueryKey("server", "tool");
+  },
+  get players() {
+    return scopedQueryKey("players");
+  },
+  get onlinePlayers() {
+    return scopedQueryKey("players", "online");
+  },
+  player: (playerUid: string) => scopedQueryKey("players", playerUid),
+  get guilds() {
+    return scopedQueryKey("guilds");
+  },
+  get settings() {
+    return scopedQueryKey("server", "settings");
+  },
+  get snapshot() {
+    return scopedQueryKey("server", "snapshot");
+  },
+  get control() {
+    return scopedQueryKey("server", "control");
+  },
+  get steamcmd() {
+    return scopedQueryKey("server", "steamcmd");
+  },
+  get officialMods() {
+    return scopedQueryKey("server", "mods");
+  },
+  get saveMigration() {
+    return scopedQueryKey("server", "migration");
+  },
+  get whitelist() {
+    return scopedQueryKey("whitelist");
+  },
   backups: (startTime?: number, endTime?: number) =>
-    ["backups", startTime, endTime] as const,
-  nativeBackups: ["backups", "native"] as const,
-  automationTasks: ["automation", "tasks"] as const,
-  automationRuns: ["automation", "runs"] as const,
-  automationSettings: ["automation", "settings"] as const,
-  automationStatus: ["automation", "status"] as const,
+    scopedQueryKey("backups", startTime, endTime),
+  get backupsRoot() {
+    return scopedQueryKey("backups");
+  },
+  get nativeBackups() {
+    return scopedQueryKey("backups", "native");
+  },
+  get automationTasks() {
+    return scopedQueryKey("automation", "tasks");
+  },
+  get automationRuns() {
+    return scopedQueryKey("automation", "runs");
+  },
+  get automationSettings() {
+    return scopedQueryKey("automation", "settings");
+  },
+  get automationStatus() {
+    return scopedQueryKey("automation", "status");
+  },
 };
 
 export function useServerInfo() {
   return useQuery({
     queryKey: queryKeys.server,
-    queryFn: api.getServer,
+    queryFn: scopedQueryFn(api.getServer),
     refetchInterval: 30_000,
     retry: 2,
   });
@@ -38,7 +95,7 @@ export function useServerInfo() {
 export function useServerMetrics() {
   return useQuery({
     queryKey: queryKeys.metrics,
-    queryFn: api.getMetrics,
+    queryFn: scopedQueryFn(api.getMetrics),
     refetchInterval: 5_000,
     retry: 2,
   });
@@ -47,7 +104,7 @@ export function useServerMetrics() {
 export function useServerToolInfo() {
   return useQuery({
     queryKey: queryKeys.tool,
-    queryFn: api.getServerTool,
+    queryFn: scopedQueryFn(api.getServerTool),
     staleTime: 15 * 60_000,
     retry: 1,
   });
@@ -56,7 +113,9 @@ export function useServerToolInfo() {
 export function usePlayers() {
   return useQuery({
     queryKey: queryKeys.players,
-    queryFn: () => api.getPlayers({ order_by: "last_online", desc: true }),
+    queryFn: scopedQueryFn((scope) =>
+      api.getPlayers({ order_by: "last_online", desc: true }, scope),
+    ),
     refetchInterval: 20_000,
   });
 }
@@ -64,7 +123,7 @@ export function usePlayers() {
 export function useOnlinePlayers() {
   return useQuery({
     queryKey: queryKeys.onlinePlayers,
-    queryFn: api.getOnlinePlayers,
+    queryFn: scopedQueryFn(api.getOnlinePlayers),
     refetchInterval: 8_000,
   });
 }
@@ -72,7 +131,7 @@ export function useOnlinePlayers() {
 export function usePlayer(playerUid: string | null) {
   return useQuery({
     queryKey: queryKeys.player(playerUid ?? ""),
-    queryFn: () => api.getPlayer(playerUid ?? ""),
+    queryFn: scopedQueryFn((scope) => api.getPlayer(playerUid ?? "", scope)),
     enabled: Boolean(playerUid),
   });
 }
@@ -80,7 +139,7 @@ export function usePlayer(playerUid: string | null) {
 export function useGuilds() {
   return useQuery({
     queryKey: queryKeys.guilds,
-    queryFn: api.getGuilds,
+    queryFn: scopedQueryFn(api.getGuilds),
     refetchInterval: 30_000,
   });
 }

@@ -14,6 +14,7 @@ import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/lib/auth";
+import { FleetProvider } from "@/lib/fleet";
 import { I18nProvider } from "@/lib/i18n";
 import { App } from "@/app";
 
@@ -35,10 +36,12 @@ createRoot(document.getElementById("root")!).render(
       <I18nProvider>
         <AuthProvider>
           <QueryClientProvider client={queryClient}>
-            <TooltipProvider delayDuration={300}>
-              <App />
-              <Toaster richColors position="top-right" />
-            </TooltipProvider>
+            <FleetProvider>
+              <TooltipProvider delayDuration={300}>
+                <App />
+                <Toaster richColors position="top-right" />
+              </TooltipProvider>
+            </FleetProvider>
           </QueryClientProvider>
         </AuthProvider>
       </I18nProvider>

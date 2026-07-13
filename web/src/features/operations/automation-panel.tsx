@@ -42,7 +42,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { queryKeys } from "@/hooks/use-server-data";
+import { queryKeys, scopedQueryFn } from "@/hooks/use-server-data";
 import { api, getApiErrorCode, getApiErrorMessage } from "@/lib/api";
 import { formatDateTime, formatRelativeTime } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
@@ -114,21 +114,21 @@ export function AutomationPanel() {
 
   const tasksQuery = useQuery({
     queryKey: queryKeys.automationTasks,
-    queryFn: api.getAutomationTasks,
+    queryFn: scopedQueryFn(api.getAutomationTasks),
     refetchInterval: 15_000,
   });
   const runsQuery = useQuery({
     queryKey: queryKeys.automationRuns,
-    queryFn: () => api.getAutomationRuns("", 40),
+    queryFn: scopedQueryFn((scope) => api.getAutomationRuns("", 40, scope)),
     refetchInterval: 15_000,
   });
   const settingsQuery = useQuery({
     queryKey: queryKeys.automationSettings,
-    queryFn: api.getAutomationSettings,
+    queryFn: scopedQueryFn(api.getAutomationSettings),
   });
   const statusQuery = useQuery({
     queryKey: queryKeys.automationStatus,
-    queryFn: api.getAutomationStatus,
+    queryFn: scopedQueryFn(api.getAutomationStatus),
     refetchInterval: 8_000,
   });
 

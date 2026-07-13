@@ -60,6 +60,20 @@ type Config struct {
 	Mods struct {
 		InstallDir string `mapstructure:"install_dir"`
 	} `mapstructure:"mods"`
+	Fleet struct {
+		NodeID         string `mapstructure:"node_id"`
+		NodeName       string `mapstructure:"node_name"`
+		NodeToken      string `mapstructure:"node_token"`
+		TimeoutSeconds int    `mapstructure:"timeout_seconds"`
+		Nodes          []struct {
+			ID                  string `mapstructure:"id"`
+			Name                string `mapstructure:"name"`
+			BaseURL             string `mapstructure:"base_url"`
+			Token               string `mapstructure:"token"`
+			AllowPrivateNetwork bool   `mapstructure:"allow_private_network"`
+			TimeoutSeconds      int    `mapstructure:"timeout_seconds"`
+		} `mapstructure:"nodes"`
+	} `mapstructure:"fleet"`
 	Rcon struct {
 		Address   string `mapstructure:"address"`
 		Password  string `mapstructure:"password"`
@@ -125,6 +139,11 @@ func Init(cfgFile string, conf *Config) {
 	})
 	viper.SetDefault("steamcmd.timeout", 1800)
 	viper.SetDefault("mods.install_dir", "")
+	viper.SetDefault("fleet.node_id", "local")
+	viper.SetDefault("fleet.node_name", "")
+	viper.SetDefault("fleet.node_token", "")
+	viper.SetDefault("fleet.timeout_seconds", 15)
+	viper.SetDefault("fleet.nodes", []map[string]any{})
 
 	viper.SetDefault("rcon.address", "127.0.0.1:25575")
 	viper.SetDefault("rcon.timeout", 5)

@@ -35,6 +35,10 @@ func setupFlags() {
 //	@in							header
 //	@name						Authorization
 
+//	@SecurityDefinitions.apikey	FleetNodeAuth
+//	@in						header
+//	@name						X-PST-Fleet-Token
+
 // @license.name	Apache 2.0
 // @license.url	http://www.apache.org/licenses/LICENSE-2.0.html
 func main() {

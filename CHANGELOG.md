@@ -4,6 +4,30 @@
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-07-13
+
+### 新增
+
+- 新增协议版本为 1 的多服务器节点架构：每个 PalServer 由独立 PST 进程管理自己的配置、数据库、存档、备份、自动化、看门狗和维护锁，中央 PST 只负责聚合与受限转发。
+- Web 顶部新增节点选择器，概览页新增服务器轨道；最多聚合 32 个节点的连通性、玩家数、FPS、延迟、控制状态、PST 版本和配置问题。
+- 概览、玩家、公会、地图、配置、RCON、备份、自动化、SteamCMD、MOD 和存档迁移等现有管理功能均可切换到选定节点，远端不可达时仍保留可诊断状态。
+- 新增 `fleet.node_id`、`fleet.node_name`、`fleet.node_token`、默认超时和远程节点列表配置，并提供一服一目录、一服一端口的三语部署示例。
+- 新增节点状态、聚合列表及严格白名单代理 API，补齐 JWT/Fleet 认证、查询与正文透传、错误映射、协议/身份校验测试和 Swagger 文档。
+
+### 变更
+
+- 前端全部服务器查询缓存按当前节点作用域隔离，自动重试和延迟刷新也固定使用缓存键中的原节点；切换节点会重新挂载管理界面，写操作进行中则禁止切换，避免旧数据或完成回调落到另一个世界。
+- 远程长操作仍由目标节点自己的维护锁、看门狗暂停和恢复事务保护；中央控制器不会在单一进程内热切换全局 Viper、数据库或任务单例。
+- 普通节点状态与代理请求使用可配置的 2-120 秒总超时；SteamCMD 等长操作允许覆盖官方 7200 秒执行上限并保留额外收尾时间。
+
+### 安全
+
+- 节点令牌要求 32-512 个无空白可打印 ASCII 字符，使用专用 `X-PST-Fleet-Token` 请求头和恒定时间比较；配置中的远端令牌及本节点令牌均不会通过状态接口或前端返回。
+- 浏览器只持有中央 JWT；代理转发前移除 `Authorization`，远端 401/403 映射为网关认证失败，不会误清除中央登录状态。
+- 公网节点要求 HTTPS；回环、局域网、CGNAT、私网组网地址或普通 HTTP 必须在本地配置中显式启用 `allow_private_network`。
+- 节点客户端禁用系统代理和重定向，要求 TLS 1.2 以上，并在实际连接时重新解析和校验全部 DNS/IP、依次尝试已校验地址且限制请求总时长，降低代理绕过、DNS 重绑定与慢连接占用风险。
+- 中央代理只允许当前 PST 界面所需的精确方法与路径，拒绝登录代理、Fleet 递归、未知路由、异常路径段和目录穿越；请求正文限制为 8 MiB，并只透传必要的请求/响应头。
+
 ## [1.7.0] - 2026-07-13
 
 ### 新增
@@ -235,7 +259,8 @@
 - 替换程序前应停止 PST 和 Palworld 服务端，并备份 `config.yaml`、数据库与整个世界存档目录。
 - 不要将 JSON 重建后的存档直接覆盖正在运行的 `Level.sav`。
 
-[Unreleased]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.7.0...HEAD
+[Unreleased]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.8.0...HEAD
+[1.8.0]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.4.0...v1.5.0

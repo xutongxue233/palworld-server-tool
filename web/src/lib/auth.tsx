@@ -44,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
     setToken(null);
+    window.dispatchEvent(new CustomEvent("palworld:fleet-reset"));
   }, []);
 
   const login = useCallback(async (password: string) => {

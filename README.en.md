@@ -57,6 +57,7 @@ Additional features provided by the tool:
 - [x] Typed scheduled tasks, an intentional-stop-aware watchdog, and generic/Discord webhook notifications
 - [x] SteamCMD install, update, file validation, and optional restart for fixed app ID 2394010
 - [x] Windows official 1.0.0 mod-loader inventory, dependency preflight, safe `PalModSettings.ini` editing, and rollback
+- [x] One-PST-per-server fleet aggregation, full management-target switching, and a restricted authenticated proxy
 - [x] Same-platform dedicated-server save migration with read-only preflight, a mandatory restore point, atomic replacement, and rollback
 - [x] Automatic PST safety restore points before dangerous save operations
 
@@ -142,6 +143,46 @@ automation:
     allow_private_network: false
 ```
 
+## Multi-server nodes
+
+PST 1.8.0 manages multiple Palworld 1.0.0 servers as **one isolated PST node per server plus a central controller**. Each PalServer keeps its own PST process, `config.yaml`, `pst.db`, save directory, backups, scheduler, watchdog, and maintenance lock. The controller only aggregates node health and forwards existing APIs through a fixed allowlist. Different worlds can therefore run maintenance concurrently while dangerous operations remain protected by the target node's own lock and recovery transaction; global configuration is never swapped inside one process.
+
+When several nodes run on the same host, give every node a **different PST working directory** and `web.port`. For example, use `pst-primary/` and `pst-second/`, each containing its own executable, configuration, and database, with REST, save, control, SteamCMD, and mod paths pointing only to that PalServer instance. Never share `pst.db`, the backup directory, or one world save between two PST processes.
+
+Configure the managed node with an identity and an inbound token containing at least 32 random characters:
+
+```yaml
+web:
+  port: 8081
+
+fleet:
+  node_id: "second"
+  node_name: "Second World"
+  node_token: "replace-with-at-least-32-random-characters"
+  nodes: []
+```
+
+Add that node to the controller's `fleet` section. `id` must equal the remote `node_id`, and `token` must equal the remote `node_token`:
+
+```yaml
+fleet:
+  node_id: "primary"
+  node_name: "Primary World"
+  node_token: "optional-token-if-this-node-is-also-controlled-remotely"
+  timeout_seconds: 15
+  nodes:
+    - id: "second"
+      name: "Second World"
+      base_url: "https://palworld-second.example.com:8081"
+      token: "replace-with-at-least-32-random-characters"
+      allow_private_network: false
+      timeout_seconds: 15
+```
+
+After signing in to the controller, the header selector and overview rail show up to 32 remote PST nodes with reachability, players, FPS, latency, control state, and configuration issues. Selecting a node scopes the overview, players, guilds, map, configuration, RCON, backups, automation, deployment, mods, and migration pages to that server with separate query caches. Switching is disabled while a write mutation is active so completion handlers cannot land on another world.
+
+Public nodes require valid HTTPS. Set `allow_private_network: true` only for a trusted loopback, LAN, or private-overlay address; it also explicitly accepts plain HTTP risk. The node client ignores system proxies, rejects redirects, revalidates every DNS/IP result at connection time, tries validated addresses in order, and bounds the whole request. The controller blocks login and Fleet recursion, unknown methods/paths, traversal, and request bodies larger than 8 MiB. Browsers hold only the controller JWT: remote node tokens are never returned to the frontend, and the controller JWT is never forwarded upstream.
+
 ## SteamCMD install and update
 
 The Palworld 1.0.0 dedicated-server app ID is `2394010`. In Web management mode, open **Operations → Deployment** to run the official `app_update 2394010` install/update workflow with file validation enabled by default. PST does not use a third-party “latest version” API and does not accept shell text, a custom app ID, or arbitrary SteamCMD arguments.
@@ -223,7 +264,7 @@ Download the latest executable files at:
 
 ```bash
 # Download pst_{version}_{platform}_{arch}.tar.gz and extract to the pst directory
-mkdir -p pst && tar -xzf pst_v1.7.0_linux_x86_64.tar.gz -C pst
+mkdir -p pst && tar -xzf pst_v1.8.0_linux_x86_64.tar.gz -C pst
 ```
 
 ##### Configuration
@@ -361,7 +402,7 @@ Access at http://{Server IP}:8080 after opening firewall and security group in c
 
 ##### Download and Extract
 
-Extract `pst_v1.7.0_windows_x86_64.zip` to any directory (recommend naming the folder `pst`).
+Extract `pst_v1.8.0_windows_x86_64.zip` to any directory (recommend naming the folder `pst`).
 
 ##### Configuration
 

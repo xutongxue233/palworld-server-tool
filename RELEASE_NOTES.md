@@ -1,45 +1,68 @@
-# Palworld Server Tool v1.7.0
+# Palworld Server Tool v1.8.0
 
-此版本继续严格面向 Palworld 1.0.0，新增 Windows Dedicated Server 官方 MOD 加载器的安全状态管理。PST 只读取本机官方格式元数据并修改 `PalModSettings.ini`，不会替用户下载、解压或执行任何 MOD 内容。
+此版本继续严格面向 Palworld 1.0.0，新增安全的多服务器管理。架构采用“一个 PalServer 对应一个独立 PST 节点，另由中央 PST 聚合”的方式：不会在同一个进程中切换全局配置、数据库或任务状态，因此不同世界的存档、备份、看门狗和危险操作不会串服。
 
 ## 主要更新
 
-- 在“运维 → MOD 管理”中查看 `<PalServer>/Mods/Workshop/<任意目录>/Info.json` 包目录，无需手工整理 `ActiveModList`。
-- 展示 PackageName、版本、作者、标签、依赖、安装类型、服务器兼容性、已部署、等待重启与等待移除状态。
-- 以 `Info.json → ActiveModList → InstallManifest` 流程说明官方加载器的实际生效阶段。
-- 选择服务端 MOD 时自动加入已发现的依赖；缺失、重复、无效或未启用的依赖会在预检中阻止执行。
-- 检测 `-NoMods` 与 `-workshopdir` 启动覆盖，避免页面设置与实际启动行为不一致。
-- 新增中、英、日三语界面、JWT 保护的状态/预检/执行 API 和 Swagger 文档。
+- 顶部节点选择器和概览服务器轨道可展示最多 32 个 PST 节点的在线状态、玩家数、FPS、延迟、控制状态、工具版本和配置问题。
+- 切换节点后，概览、玩家、公会、地图、配置、RCON、备份、自动化、部署更新、MOD 与存档迁移页面都会操作目标服务器。
+- 所有查询缓存按节点隔离，自动重试与延迟刷新也绑定原节点；有写操作执行时会锁定节点选择，避免完成回调或刷新落到另一个世界。
+- 中央节点并发聚合远程状态；远端 PST 在线但 PalServer 离线时仍可进入该节点排障，身份或协议不匹配时则阻止选择。
+- 新增完整三语部署文档、配置示例、Fleet API、Swagger 和覆盖认证、代理、正文/查询透传及缓存隔离的回归测试。
 
-## 官方 1.0.0 兼容范围
+## 一服一 PST 的隔离模型
 
-- 仅在 Windows Dedicated Server 上允许写入；Linux 会明确显示官方服务端加载器不受支持。
-- 支持官方五种安装类型：UE4SS、Lua、PalSchema、LogicMods、Paks。
-- 服务端包必须包含 `IsServer: true` 和至少一个留在包目录内的安装目标。
-- 默认扫描 `<PalServer>/Mods/Workshop`，可通过 `WorkshopRootDir` 使用另一个本机绝对目录。
-- 根据 `<PalServer>/Mods/ManagedMods/<PackageName>/InstallManifest.json` 判断重启后是否已由游戏部署。
+- 每个 PalServer 使用独立 PST 进程、工作目录、`config.yaml`、`pst.db`、`web.port`、存档路径和备份目录。
+- 每个节点保留自己的调度器、看门狗、维护互斥锁及危险操作恢复事务；不同节点可并行执行互不相关的维护。
+- 中央 PST 只读取节点健康状态，并通过固定 API 白名单转发现有操作，不会热替换 Viper 配置、数据库句柄或后台任务单例。
+- 同一主机可运行多个节点，但禁止两个 PST 进程共享 `pst.db`、备份目录或同一个世界存档。
 
-## 安全应用与失败恢复
+## 配置示例
 
-- 执行前重新扫描全部包并核对设置、`Info.json` 哈希、部署状态与计划摘要；目录或元数据改变后必须重新预检。
-- 变更会独占服务器维护锁、暂停看门狗并确认 PalServer 完全停止。
-- 已有世界必须让本机 `save.path` 指向同一安装目录内的世界，并先创建完整 PST 安全恢复点；备份失败不会修改设置。
-- 每次写入前单独保存 `PalModSettings.ini` 恢复点；同目录暂存、原子替换并回读验证，失败自动恢复旧文件。
-- 选择自动重启后若新 MOD 配置无法启动，PST 会停下失败实例、回滚旧设置，再尝试启动原配置。
-- MOD 仍可能导致服务器崩溃或损坏存档；确认框要求显式接受风险，并应继续保留游戏自带 `backup/world`。
+在被管理节点配置稳定身份和至少 32 个随机字符的入站令牌：
 
-## 明确不会执行的操作
+```yaml
+web:
+  port: 8081
 
-- 不访问 MOD 下载 URL，不调用 Steam Workshop 下载器，不接受任意 Shell 或安装命令。
-- 不解压 ZIP，不复制 DLL/Pak/Lua 内容，不运行 MOD 自带程序。
-- 不绕过 `-NoMods`，也不会静默修改 `palworld.control.arguments`。
-- 不把未知安装类型、客户端专用包、目录穿越目标或符号链接包当作可用服务端 MOD。
+fleet:
+  node_id: "second"
+  node_name: "第二世界"
+  node_token: "replace-with-at-least-32-random-characters"
+  nodes: []
+```
+
+在中央 PST 加入远程节点，`id` 和 `token` 必须分别匹配远端的 `node_id` 与 `node_token`：
+
+```yaml
+fleet:
+  node_id: "primary"
+  node_name: "主世界"
+  timeout_seconds: 15
+  nodes:
+    - id: "second"
+      name: "第二世界"
+      base_url: "https://palworld-second.example.com:8081"
+      token: "replace-with-at-least-32-random-characters"
+      allow_private_network: false
+      timeout_seconds: 15
+```
+
+公网节点必须使用有效 HTTPS。只有可信回环、局域网或私有组网地址才应设置 `allow_private_network: true`；该开关也代表明确接受普通 HTTP 的明文传输风险。
+
+## 认证与代理安全
+
+- 节点令牌限制为 32-512 个无空白可打印 ASCII 字符，通过专用 `X-PST-Fleet-Token` 发送并使用恒定时间比较。
+- 浏览器只保存中央 JWT；远端节点令牌永不返回前端，中央 JWT 也不会转发到远端。
+- 节点客户端不使用系统代理、不跟随重定向，要求 TLS 1.2 以上；连接时复核全部 DNS/IP、依次尝试已校验地址，并限制 DNS、连接、响应头与正文在内的整个请求时长。
+- 代理仅放行当前 PST 管理界面需要的精确方法与路径，拒绝登录代理、Fleet 递归、未知路由、目录穿越和异常路径段。
+- 请求正文上限为 8 MiB，只透传必要头部；远端认证错误映射为网关错误，不会清除中央登录会话。
 
 ## 下载文件
 
-- `pst_v1.7.0_windows_x86_64.zip`
-- `pst_v1.7.0_linux_x86_64.tar.gz`
-- `pst_v1.7.0_linux_aarch64.tar.gz`
+- `pst_v1.8.0_windows_x86_64.zip`
+- `pst_v1.8.0_linux_x86_64.tar.gz`
+- `pst_v1.8.0_linux_aarch64.tar.gz`
 - 对应平台的 `pst-agent` 独立程序
 - `SHA256SUMS.txt`
 
@@ -47,12 +70,12 @@
 
 ## 升级与使用
 
-1. 停止旧版 PST，并备份现有 `config.yaml`、`pst.db` 和世界存档目录；不要用发布包中的示例配置覆盖现有文件。
-2. 旧配置可直接升级。若已配置 `steamcmd.install_dir`，MOD 管理会自动复用；否则添加可选的 `mods.install_dir`，指向包含 `PalServer.exe` 的 Windows 专用服务器绝对目录。
-3. 把经过审核、符合官方格式的包放入 `Mods/Workshop/<任意目录>/Info.json`；PST 不负责获取 MOD 文件。
-4. 已有世界请确认 `save.path` 指向该安装内的本机世界，并先检查游戏自带备份可用。
-5. 在“MOD 管理”中先运行只读预检，核对依赖、安装类型、变更项和恢复点条件，再显式确认 MOD 风险。
-6. 若启动参数包含 `-NoMods`，页面选择不会实际生效；若包含 `-workshopdir`，应先确认该覆盖目录正是预期目录。
-7. 推荐配置 `palworld.control` 以自动停服、重启和失败恢复；未配置时必须在主机系统中完全停止 PalServer，并在页面明确确认。
+1. 停止旧版 PST，备份现有 `config.yaml`、`pst.db` 与世界存档；不要用发布包内的示例配置覆盖旧配置。
+2. 单服务器用户可直接升级，未配置 `fleet` 时仍只显示本地节点，原有功能不受影响。
+3. 每个额外 PalServer 复制一套独立 PST 工作目录并分配不同 `web.port`，确认 REST、存档、控制、SteamCMD 与 MOD 路径只指向对应服务器。
+4. 为远端节点生成强随机 `node_token`，在中央 PST 添加匹配配置；不要在聊天、日志或浏览器脚本中暴露令牌。
+5. 修改配置后重启对应 PST，在中央界面确认节点身份、协议版本、延迟与配置问题，再执行任何写操作。
+6. 跨公网部署应使用受信任证书的 HTTPS；私网明文模式只适用于受控网络，并应同时使用主机防火墙限制来源。
+7. 危险操作仍应检查游戏自带 `backup/world`，并保留 PST 强制恢复点；多服务器聚合不会降低单节点的停服、校验和原子替换要求。
 
-官方格式参考：[Palworld 1.0.0 MOD 说明](https://docs.palworldgame.com/settings-and-operation/mod) 与 [PalworldModUploader](https://github.com/pocketpairjp/PalworldModUploader)。详细变更见 [`CHANGELOG.md`](https://github.com/xutongxue233/palworld-server-tool/blob/main/CHANGELOG.md)。
+详细配置见三语 README，完整变更见 [`CHANGELOG.md`](https://github.com/xutongxue233/palworld-server-tool/blob/main/CHANGELOG.md)。

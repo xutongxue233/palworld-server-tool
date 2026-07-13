@@ -83,6 +83,8 @@ func RegisterRouter(r *gin.Engine) {
 	authGroup := apiGroup.Group("")
 	authGroup.Use(auth.JWTAuthMiddleware())
 	{
+		authGroup.GET("/fleet/nodes", listFleetNodes)
+		authGroup.Any("/fleet/nodes/:node_id/proxy/*path", proxyFleetNode)
 		authGroup.GET("/server/settings", getServerSettings)
 		authGroup.GET("/server/game-data", getWorldActorSnapshot)
 		authGroup.GET("/server/config-file", getGameConfigFile)
@@ -138,5 +140,11 @@ func RegisterRouter(r *gin.Engine) {
 		authGroup.GET("/backup", listBackups)
 		authGroup.GET("/backup/:backup_id", downloadBackup)
 		authGroup.DELETE("/backup/:backup_id", deleteBackup)
+	}
+
+	fleetNodeGroup := apiGroup.Group("/fleet/node")
+	fleetNodeGroup.Use(auth.FleetNodeAuthMiddleware())
+	{
+		fleetNodeGroup.GET("/status", getFleetNodeStatus)
 	}
 }

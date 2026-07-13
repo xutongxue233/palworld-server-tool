@@ -58,6 +58,29 @@ mods:
   # Optional absolute Palworld Dedicated Server install directory for the
   # official Palworld 1.0.0 mod loader. Defaults to steamcmd.install_dir.
   install_dir: ""
+fleet:
+  # Stable identity returned to another PST controller. Use lowercase letters,
+  # numbers, dash, or underscore (1-48 characters).
+  node_id: "local"
+  node_name: ""
+  # Optional inbound controller credential. Generate at least 32 random
+  # characters and use the same value in the controller node entry below.
+  node_token: ""
+  # Normal node status/proxy total request timeout (2-120 seconds).
+  timeout_seconds: 15
+  # Each PalServer keeps its own PST process, config.yaml, pst.db, save path,
+  # scheduler, and maintenance lock. The controller only aggregates and proxies
+  # allowlisted PST API routes; it never switches this process's global config.
+  nodes: []
+  # Example remote node:
+  # nodes:
+  #   - id: "second-world"
+  #     name: "Second World"
+  #     base_url: "https://palworld-node.example.com:8080"
+  #     token: "replace-with-the-remote-node-token"
+  #     # Required for loopback/LAN/CGNAT addresses and for plain HTTP.
+  #     allow_private_network: false
+  #     timeout_seconds: 15
 rcon:
   address: "127.0.0.1:25575"
   password: ""

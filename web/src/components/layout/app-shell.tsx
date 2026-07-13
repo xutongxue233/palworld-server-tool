@@ -19,6 +19,7 @@ import { useTheme } from "next-themes";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { LoginDialog } from "@/components/auth/login-dialog";
+import { ServerSelector } from "@/components/fleet/server-selector";
 import { TelemetryStrip } from "@/components/layout/telemetry-strip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -121,6 +122,7 @@ function HeaderActions({ onLogin }: { onLogin: () => void }) {
 
   return (
     <div className="flex items-center gap-1.5">
+      <ServerSelector />
       <Tooltip>
         <TooltipTrigger asChild>
           <Button variant="ghost" size="icon" onClick={refresh}>
