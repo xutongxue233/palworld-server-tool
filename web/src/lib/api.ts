@@ -24,6 +24,9 @@ import type {
   ServerMetrics,
   ServerToolInfo,
   ServerControlStatus,
+  SteamCMDStatus,
+  SteamCMDUpdateRequest,
+  SteamCMDUpdateResult,
   ScheduledTask,
   ScheduledTaskInput,
   TaskRun,
@@ -163,6 +166,12 @@ export const api = {
     }),
   getServerControlStatus: () =>
     request<ServerControlStatus>("/api/server/control/status"),
+  getSteamCMDStatus: () => request<SteamCMDStatus>("/api/server/steamcmd"),
+  updateServerWithSteamCMD: (update: SteamCMDUpdateRequest) =>
+    request<SteamCMDUpdateResult>("/api/server/steamcmd/update", {
+      method: "POST",
+      body: update,
+    }),
   runRcon: (command: string) =>
     request<{ message: string }>("/api/rcon", {
       method: "POST",

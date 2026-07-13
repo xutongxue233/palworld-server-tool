@@ -55,6 +55,7 @@
 - [x] process、Docker、systemd、Windows サービスの制限付き起動・停止・再起動
 - [x] 認証付き RCON 端末と Palworld 1.0.0 公式 13 コマンドのテンプレート
 - [x] 型付きスケジュールタスク、意図的停止を尊重するウォッチドッグ、汎用/Discord Webhook 通知
+- [x] 固定 App ID 2394010 の SteamCMD インストール、更新、ファイル検証、任意の再起動
 - [x] 危険なセーブ操作前の PST セーフティ復元ポイント
 
 このツールは公式 REST API と Level.sav の同期データを bbolt に保存し、管理画面から利用できます。
@@ -123,6 +124,24 @@ automation:
     allow_private_network: false
 ```
 
+## SteamCMD インストール・更新
+
+Palworld 1.0.0 専用サーバーの App ID は `2394010` です。Web 管理モードの **運用 → 導入・更新** から、公式の `app_update 2394010` 手順を実行でき、既定でファイル検証も行います。PST は第三者の「最新バージョン」API を使わず、Shell、任意の App ID、自由な SteamCMD 引数を受け付けません。
+
+```yaml
+steamcmd:
+  # Windows は steamcmd.exe、Linux は steamcmd.sh または steamcmd。絶対パス必須。
+  executable: "C:/steamcmd/steamcmd.exe"
+  # Palworld Dedicated Server の導入先。ファイルシステムのルートは指定不可。
+  install_dir: "D:/PalworldServer"
+  # 1 回の導入・更新の上限時間。60～7200 秒。
+  timeout: 1800
+```
+
+実行前に SteamCMD のハッシュ、導入先、`appmanifest_2394010.acf`、プラットフォーム用起動ファイル、プランダイジェストを再検証します。導入先にワールドがある場合、ローカル `save.path` はその導入先内のワールドを指す必要があります。PST はサーバーを停止して完全な復元点を必ず作成し、バックアップに失敗した場合は SteamCMD を起動しません。`palworld.control` があれば安全な停止と任意の再起動が可能です。未設定の場合はホスト側で PalServer を完全停止し、UI で明示確認してください。
+
+[Palworld 1.0.0 公式 SteamCMD 導入ガイド](https://docs.palworldgame.com/getting-started/deploy-dedicated-server)も参照してください。
+
 
 ## インストールとデプロイメント
 
@@ -157,7 +176,7 @@ automation:
 
 ```bash
 # pst_{version}_{platform}_{arch}.tar.gz ファイルをダウンロードしてpstディレクトリに解凍します
-mkdir -p pst && tar -xzf pst_v1.4.0_linux_x86_64.tar.gz -C pst
+mkdir -p pst && tar -xzf pst_v1.5.0_linux_x86_64.tar.gz -C pst
 ```
 
 ##### 設定
@@ -294,7 +313,7 @@ kill $(ps aux | grep 'pst' | awk '{print $2}') | head -n 1
 
 ##### ダウンロードと解凍
 
-`pst_v1.4.0_windows_x86_64.zip`を任意のディレクトリに解凍します（`pst`というディレクトリ名を推奨）。
+`pst_v1.5.0_windows_x86_64.zip`を任意のディレクトリに解凍します（`pst`というディレクトリ名を推奨）。
 
 ##### 設定
 

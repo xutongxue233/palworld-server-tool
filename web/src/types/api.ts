@@ -77,6 +77,65 @@ export interface ServerControlStatus {
   busy: boolean;
 }
 
+export interface SteamCMDPlan {
+  configured: boolean;
+  can_execute: boolean;
+  app_id: number;
+  platform: string;
+  executable_path?: string;
+  executable_sha256?: string;
+  install_dir?: string;
+  manifest_path?: string;
+  launcher_path?: string;
+  installed: boolean;
+  partial_installation: boolean;
+  build_id?: string;
+  existing_worlds: number;
+  safety_backup_required: boolean;
+  safety_backup_ready: boolean;
+  save_path?: string;
+  timeout_seconds: number;
+  issues?: string[];
+  warnings?: string[];
+  plan_digest: string;
+}
+
+export interface SteamCMDStatus {
+  plan: SteamCMDPlan;
+  server_control: ServerControlStatus;
+}
+
+export interface SteamCMDUpdateRequest {
+  expected_plan_digest: string;
+  confirm_update: boolean;
+  confirm_server_stopped: boolean;
+  validate_files: boolean;
+  restart_after: boolean;
+  shutdown_seconds: number;
+  shutdown_message?: string;
+}
+
+export interface SteamCMDUpdateExecution {
+  before: SteamCMDPlan;
+  after: SteamCMDPlan;
+  build_id_before?: string;
+  build_id_after?: string;
+  changed: boolean;
+  validated: boolean;
+  output_tail?: string;
+  started_at: string;
+  finished_at: string;
+  duration_ms: number;
+}
+
+export interface SteamCMDUpdateResult {
+  update: SteamCMDUpdateExecution;
+  safety_backup?: Backup;
+  maintenance: MaintenanceStopResult;
+  restarted: boolean;
+  restart_error?: string;
+}
+
 export type AutomationAction =
   | "save_world"
   | "broadcast"

@@ -52,6 +52,11 @@ type Config struct {
 			AllowPrivateNetwork bool     `mapstructure:"allow_private_network"`
 		} `mapstructure:"notification"`
 	} `mapstructure:"automation"`
+	SteamCMD struct {
+		Executable string `mapstructure:"executable"`
+		InstallDir string `mapstructure:"install_dir"`
+		Timeout    int    `mapstructure:"timeout"`
+	} `mapstructure:"steamcmd"`
 	Rcon struct {
 		Address   string `mapstructure:"address"`
 		Password  string `mapstructure:"password"`
@@ -115,6 +120,7 @@ func Init(cfgFile string, conf *Config) {
 		"watchdog.recovered",
 		"watchdog.recovery_failed",
 	})
+	viper.SetDefault("steamcmd.timeout", 1800)
 
 	viper.SetDefault("rcon.address", "127.0.0.1:25575")
 	viper.SetDefault("rcon.timeout", 5)
