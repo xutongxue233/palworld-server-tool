@@ -387,6 +387,57 @@ definitions:
       seconds:
         type: integer
     type: object
+  api.SteamCMDStatusResponse:
+    properties:
+      plan:
+        $ref: '#/definitions/tool.SteamCMDPlan'
+      server_control:
+        $ref: '#/definitions/tool.ServerControlStatus'
+    type: object
+  api.SteamCMDUpdateErrorResponse:
+    properties:
+      code:
+        type: string
+      error:
+        type: string
+      result:
+        $ref: '#/definitions/api.SteamCMDUpdateResponse'
+    type: object
+  api.SteamCMDUpdateRequest:
+    properties:
+      confirm_server_stopped:
+        type: boolean
+      confirm_update:
+        type: boolean
+      expected_plan_digest:
+        type: string
+      restart_after:
+        type: boolean
+      shutdown_message:
+        maxLength: 256
+        type: string
+      shutdown_seconds:
+        maximum: 300
+        minimum: 0
+        type: integer
+      validate_files:
+        type: boolean
+    required:
+    - expected_plan_digest
+    type: object
+  api.SteamCMDUpdateResponse:
+    properties:
+      maintenance:
+        $ref: '#/definitions/tool.MaintenanceStopResult'
+      restart_error:
+        type: string
+      restarted:
+        type: boolean
+      safety_backup:
+        $ref: '#/definitions/database.Backup'
+      update:
+        $ref: '#/definitions/tool.SteamCMDUpdateResult'
+    type: object
   api.SuccessResponse:
     properties:
       success:
@@ -1316,6 +1367,76 @@ definitions:
         type: string
       target:
         type: string
+    type: object
+  tool.SteamCMDPlan:
+    properties:
+      app_id:
+        type: integer
+      build_id:
+        type: string
+      can_execute:
+        type: boolean
+      configured:
+        type: boolean
+      executable_path:
+        type: string
+      executable_sha256:
+        type: string
+      existing_worlds:
+        type: integer
+      install_dir:
+        type: string
+      installed:
+        type: boolean
+      issues:
+        items:
+          type: string
+        type: array
+      launcher_path:
+        type: string
+      manifest_path:
+        type: string
+      partial_installation:
+        type: boolean
+      plan_digest:
+        type: string
+      platform:
+        type: string
+      safety_backup_ready:
+        type: boolean
+      safety_backup_required:
+        type: boolean
+      save_path:
+        type: string
+      timeout_seconds:
+        type: integer
+      warnings:
+        items:
+          type: string
+        type: array
+    type: object
+  tool.SteamCMDUpdateResult:
+    properties:
+      after:
+        $ref: '#/definitions/tool.SteamCMDPlan'
+      before:
+        $ref: '#/definitions/tool.SteamCMDPlan'
+      build_id_after:
+        type: string
+      build_id_before:
+        type: string
+      changed:
+        type: boolean
+      duration_ms:
+        type: integer
+      finished_at:
+        type: string
+      output_tail:
+        type: string
+      started_at:
+        type: string
+      validated:
+        type: boolean
     type: object
   tool.WorldOptionMutation:
     properties:
@@ -3019,6 +3140,68 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Start managed Palworld server
+      tags:
+      - Server
+  /api/server/steamcmd:
+    get:
+      description: Validate fixed App ID 2394010 paths, manifest, launcher, save-backup
+        readiness, and managed server state without running SteamCMD
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SteamCMDStatusResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Inspect the restricted Palworld SteamCMD install/update plan
+      tags:
+      - Server
+  /api/server/steamcmd/update:
+    post:
+      consumes:
+      - application/json
+      description: Revalidate a fixed App ID 2394010 plan, stop the server, create
+        a mandatory save restore point when world data exists, run SteamCMD without
+        a shell, verify the manifest and launcher, and optionally restart
+      parameters:
+      - description: Confirmed SteamCMD operation
+        in: body
+        name: update
+        required: true
+        schema:
+          $ref: '#/definitions/api.SteamCMDUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SteamCMDUpdateResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.SteamCMDUpdateErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/api.SteamCMDUpdateErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/api.SteamCMDUpdateErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Install or update Palworld Dedicated Server with SteamCMD
       tags:
       - Server
   /api/server/stop:

@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   CalendarClock,
   DatabaseBackup,
+  Download,
   LockKeyhole,
   RadioTower,
   ShieldCheck,
@@ -17,6 +18,7 @@ import { useI18n } from "@/lib/i18n";
 import { BackupsPanel } from "@/features/operations/backups-panel";
 import { AutomationPanel } from "@/features/operations/automation-panel";
 import { ServerControls } from "@/features/operations/server-controls";
+import { SteamCMDPanel } from "@/features/operations/steamcmd-panel";
 import { WhitelistPanel } from "@/features/operations/whitelist-panel";
 
 export default function OperationsView() {
@@ -68,6 +70,9 @@ export default function OperationsView() {
               <TabsTrigger value="automation">
                 <CalendarClock /> {t("operations.automation")}
               </TabsTrigger>
+              <TabsTrigger value="deployment">
+                <Download /> {t("operations.deployment")}
+              </TabsTrigger>
               <TabsTrigger value="backups">
                 <DatabaseBackup /> {t("operations.backups")}
               </TabsTrigger>
@@ -82,6 +87,9 @@ export default function OperationsView() {
             </TabsContent>
             <TabsContent value="automation" className="m-0">
               <AutomationPanel />
+            </TabsContent>
+            <TabsContent value="deployment" className="m-0">
+              <SteamCMDPanel />
             </TabsContent>
             <TabsContent value="backups" className="m-0">
               <BackupsPanel />

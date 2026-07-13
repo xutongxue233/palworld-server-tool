@@ -815,6 +815,17 @@ func SetWatchdogDesiredRunning(desired bool) {
 	}
 }
 
+func GetWatchdogDesiredRunning() (bool, bool) {
+	manager, err := GetAutomationManager()
+	if err != nil {
+		return false, false
+	}
+	manager.mu.RLock()
+	desired := manager.settings.Watchdog.DesiredRunning
+	manager.mu.RUnlock()
+	return desired, true
+}
+
 func BeginManualServerOperation(desiredRunning *bool) (func(), error) {
 	release, acquired := tryBeginServerOperation()
 	if !acquired {

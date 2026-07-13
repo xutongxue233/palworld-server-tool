@@ -47,6 +47,13 @@ automation:
     timeout_seconds: 10
     # Keep false to block localhost/private-network webhook destinations and redirects.
     allow_private_network: false
+steamcmd:
+  # Absolute path to steamcmd.exe on Windows or steamcmd.sh/steamcmd on Linux.
+  executable: ""
+  # Absolute Palworld Dedicated Server install directory. App ID is fixed to 2394010.
+  install_dir: ""
+  # Maximum install/update duration in seconds (60-7200).
+  timeout: 1800
 rcon:
   address: "127.0.0.1:25575"
   password: ""

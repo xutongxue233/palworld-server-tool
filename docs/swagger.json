@@ -2558,6 +2558,100 @@
                 }
             }
         },
+        "/api/server/steamcmd": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Validate fixed App ID 2394010 paths, manifest, launcher, save-backup readiness, and managed server state without running SteamCMD",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Server"
+                ],
+                "summary": "Inspect the restricted Palworld SteamCMD install/update plan",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SteamCMDStatusResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/server/steamcmd/update": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Revalidate a fixed App ID 2394010 plan, stop the server, create a mandatory save restore point when world data exists, run SteamCMD without a shell, verify the manifest and launcher, and optionally restart",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Server"
+                ],
+                "summary": "Install or update Palworld Dedicated Server with SteamCMD",
+                "parameters": [
+                    {
+                        "description": "Confirmed SteamCMD operation",
+                        "name": "update",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.SteamCMDUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SteamCMDUpdateResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.SteamCMDUpdateErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/api.SteamCMDUpdateErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/api.SteamCMDUpdateErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/server/stop": {
             "post": {
                 "security": [
@@ -3471,6 +3565,83 @@
                 },
                 "seconds": {
                     "type": "integer"
+                }
+            }
+        },
+        "api.SteamCMDStatusResponse": {
+            "type": "object",
+            "properties": {
+                "plan": {
+                    "$ref": "#/definitions/tool.SteamCMDPlan"
+                },
+                "server_control": {
+                    "$ref": "#/definitions/tool.ServerControlStatus"
+                }
+            }
+        },
+        "api.SteamCMDUpdateErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "result": {
+                    "$ref": "#/definitions/api.SteamCMDUpdateResponse"
+                }
+            }
+        },
+        "api.SteamCMDUpdateRequest": {
+            "type": "object",
+            "required": [
+                "expected_plan_digest"
+            ],
+            "properties": {
+                "confirm_server_stopped": {
+                    "type": "boolean"
+                },
+                "confirm_update": {
+                    "type": "boolean"
+                },
+                "expected_plan_digest": {
+                    "type": "string"
+                },
+                "restart_after": {
+                    "type": "boolean"
+                },
+                "shutdown_message": {
+                    "type": "string",
+                    "maxLength": 256
+                },
+                "shutdown_seconds": {
+                    "type": "integer",
+                    "maximum": 300,
+                    "minimum": 0
+                },
+                "validate_files": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "api.SteamCMDUpdateResponse": {
+            "type": "object",
+            "properties": {
+                "maintenance": {
+                    "$ref": "#/definitions/tool.MaintenanceStopResult"
+                },
+                "restart_error": {
+                    "type": "string"
+                },
+                "restarted": {
+                    "type": "boolean"
+                },
+                "safety_backup": {
+                    "$ref": "#/definitions/database.Backup"
+                },
+                "update": {
+                    "$ref": "#/definitions/tool.SteamCMDUpdateResult"
                 }
             }
         },
@@ -4866,6 +5037,112 @@
                 },
                 "target": {
                     "type": "string"
+                }
+            }
+        },
+        "tool.SteamCMDPlan": {
+            "type": "object",
+            "properties": {
+                "app_id": {
+                    "type": "integer"
+                },
+                "build_id": {
+                    "type": "string"
+                },
+                "can_execute": {
+                    "type": "boolean"
+                },
+                "configured": {
+                    "type": "boolean"
+                },
+                "executable_path": {
+                    "type": "string"
+                },
+                "executable_sha256": {
+                    "type": "string"
+                },
+                "existing_worlds": {
+                    "type": "integer"
+                },
+                "install_dir": {
+                    "type": "string"
+                },
+                "installed": {
+                    "type": "boolean"
+                },
+                "issues": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "launcher_path": {
+                    "type": "string"
+                },
+                "manifest_path": {
+                    "type": "string"
+                },
+                "partial_installation": {
+                    "type": "boolean"
+                },
+                "plan_digest": {
+                    "type": "string"
+                },
+                "platform": {
+                    "type": "string"
+                },
+                "safety_backup_ready": {
+                    "type": "boolean"
+                },
+                "safety_backup_required": {
+                    "type": "boolean"
+                },
+                "save_path": {
+                    "type": "string"
+                },
+                "timeout_seconds": {
+                    "type": "integer"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "tool.SteamCMDUpdateResult": {
+            "type": "object",
+            "properties": {
+                "after": {
+                    "$ref": "#/definitions/tool.SteamCMDPlan"
+                },
+                "before": {
+                    "$ref": "#/definitions/tool.SteamCMDPlan"
+                },
+                "build_id_after": {
+                    "type": "string"
+                },
+                "build_id_before": {
+                    "type": "string"
+                },
+                "changed": {
+                    "type": "boolean"
+                },
+                "duration_ms": {
+                    "type": "integer"
+                },
+                "finished_at": {
+                    "type": "string"
+                },
+                "output_tail": {
+                    "type": "string"
+                },
+                "started_at": {
+                    "type": "string"
+                },
+                "validated": {
+                    "type": "boolean"
                 }
             }
         },

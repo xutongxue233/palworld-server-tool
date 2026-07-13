@@ -55,6 +55,7 @@ Additional features provided by the tool:
 - [x] Restricted process, Docker, systemd, and Windows service lifecycle control
 - [x] JWT-protected RCON terminal with all 13 Palworld 1.0.0 official command templates
 - [x] Typed scheduled tasks, an intentional-stop-aware watchdog, and generic/Discord webhook notifications
+- [x] SteamCMD install, update, file validation, and optional restart for fixed app ID 2394010
 - [x] Automatic PST safety restore points before dangerous save operations
 
 This tool stores synchronized REST API and Level.sav data in a single bbolt database and exposes it through the management interface.
@@ -139,6 +140,24 @@ automation:
     allow_private_network: false
 ```
 
+## SteamCMD install and update
+
+The Palworld 1.0.0 dedicated-server app ID is `2394010`. In Web management mode, open **Operations → Deployment** to run the official `app_update 2394010` install/update workflow with file validation enabled by default. PST does not use a third-party “latest version” API and does not accept shell text, a custom app ID, or arbitrary SteamCMD arguments.
+
+```yaml
+steamcmd:
+  # steamcmd.exe on Windows; steamcmd.sh or steamcmd on Linux. Must be absolute.
+  executable: "C:/steamcmd/steamcmd.exe"
+  # Palworld Dedicated Server install directory; a filesystem root is rejected.
+  install_dir: "D:/PalworldServer"
+  # Maximum duration for one install/update, from 60 to 7200 seconds.
+  timeout: 1800
+```
+
+Before every run, PST revalidates the SteamCMD hash, install directory, `appmanifest_2394010.acf`, platform launcher, and plan digest. If world data already exists in the install directory, local `save.path` must resolve to a world inside that installation. PST stops the server and creates a mandatory full restore point; SteamCMD is not started if the backup fails. With `palworld.control`, PST can stop and optionally restart the server. Without it, fully stop PalServer in the host system and explicitly confirm that state in the UI.
+
+See the [official Palworld 1.0.0 SteamCMD deployment guide](https://docs.palworldgame.com/getting-started/deploy-dedicated-server).
+
 
 ## Installation and Deployment
 
@@ -173,7 +192,7 @@ Download the latest executable files at:
 
 ```bash
 # Download pst_{version}_{platform}_{arch}.tar.gz and extract to the pst directory
-mkdir -p pst && tar -xzf pst_v1.4.0_linux_x86_64.tar.gz -C pst
+mkdir -p pst && tar -xzf pst_v1.5.0_linux_x86_64.tar.gz -C pst
 ```
 
 ##### Configuration
@@ -311,7 +330,7 @@ Access at http://{Server IP}:8080 after opening firewall and security group in c
 
 ##### Download and Extract
 
-Extract `pst_v1.4.0_windows_x86_64.zip` to any directory (recommend naming the folder `pst`).
+Extract `pst_v1.5.0_windows_x86_64.zip` to any directory (recommend naming the folder `pst`).
 
 ##### Configuration
 

@@ -89,6 +89,8 @@ func RegisterRouter(r *gin.Engine) {
 		authGroup.PUT("/server/config-file", putGameConfigFile)
 		authGroup.PUT("/server/world-option", syncWorldOption)
 		authGroup.GET("/server/control/status", getServerControlStatus)
+		authGroup.GET("/server/steamcmd", getSteamCMDStatus)
+		authGroup.POST("/server/steamcmd/update", updateServerWithSteamCMD)
 		authGroup.GET("/server/backups/native", listNativeBackups)
 		authGroup.POST("/server/backups/native/:backup_id/restore", restoreNativeBackup)
 		authGroup.POST("/server/start", startServer)

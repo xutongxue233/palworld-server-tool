@@ -59,6 +59,7 @@
 - [x] 进程、Docker、systemd 与 Windows 服务的受限启停/重启
 - [x] 受 Web 管理认证保护的 RCON 命令终端和全部 13 条 1.0.0 官方命令模板
 - [x] 类型化定时任务、不会干扰人工停服的服务器看门狗，以及通用/Discord Webhook 通知
+- [x] 固定 App ID 2394010 的 SteamCMD 安装、更新、文件校验和可选自动重启
 - [x] 危险存档操作前自动创建 PST 安全恢复点
 
 ### 存档校验与离线编辑
@@ -167,6 +168,24 @@ automation:
     allow_private_network: false
 ```
 
+## SteamCMD 安装与更新
+
+Palworld 1.0.0 官方专用服务器应用 ID 为 `2394010`。在 Web 管理模式的“运维 → 部署更新”中，PST 可以执行官方 `app_update 2394010` 安装/更新流程，并默认启用文件校验。PST 不查询第三方“最新版本”接口，也不接受 Shell、自定义应用 ID 或任意 SteamCMD 参数。
+
+```yaml
+steamcmd:
+  # Windows 使用 steamcmd.exe；Linux 使用 steamcmd.sh 或 steamcmd。必须是绝对路径。
+  executable: "C:/steamcmd/steamcmd.exe"
+  # Palworld Dedicated Server 安装目录，不能是磁盘根目录。
+  install_dir: "D:/PalworldServer"
+  # 单次安装/更新最大用时，允许 60-7200 秒。
+  timeout: 1800
+```
+
+每次执行都会重新校验 SteamCMD 文件哈希、安装目录、`appmanifest_2394010.acf`、平台启动文件和计划摘要。若安装目录中已有世界数据，`save.path` 必须指向该安装目录内的本地世界，PST 会先停止服务器并强制创建完整恢复点，备份失败则不会运行 SteamCMD。配置了 `palworld.control` 时可安全停服并按需重新启动；否则必须先在系统中完全停止 PalServer，再在页面明确确认。
+
+参考：[Palworld 1.0.0 官方 SteamCMD 部署说明](https://docs.palworldgame.com/getting-started/deploy-dedicated-server)。
+
 
 ## 安装部署
 
@@ -212,7 +231,7 @@ automation:
 
 ```bash
 # 下载 pst_{version}_{platform}_{arch}.tar.gz 文件并解压到 pst 目录
-mkdir -p pst && tar -xzf pst_v1.4.0_linux_x86_64.tar.gz -C pst
+mkdir -p pst && tar -xzf pst_v1.5.0_linux_x86_64.tar.gz -C pst
 ```
 
 ##### 配置
@@ -351,7 +370,7 @@ kill $(ps aux | grep 'pst' | awk '{print $2}') | head -n 1
 
 ##### 下载解压
 
-解压 `pst_v1.4.0_windows_x86_64.zip` 到任意目录（推荐命名文件夹目录名称为 `pst`）
+解压 `pst_v1.5.0_windows_x86_64.zip` 到任意目录（推荐命名文件夹目录名称为 `pst`）
 
 ##### 配置
 

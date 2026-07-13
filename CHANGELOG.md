@@ -4,6 +4,24 @@
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-07-13
+
+### 新增
+
+- 新增 Palworld 1.0.0 SteamCMD 安装/更新能力，应用 ID 固定为 `2394010`；支持首次安装、现有安装更新、可选 `validate`、构建 ID 读取和更新后平台启动文件校验。
+- Web 运维页新增“部署更新”工作区，以预检卡片、五步维护流水线、恢复点状态、托管/手动停服提示和二次确认面向新手展示整个过程，并提供中、英、日三语界面。
+- 新增受 JWT 保护的 SteamCMD 预检与执行 API，并同步生成 Swagger 文档。
+
+### 变更
+
+- SteamCMD 维护加入全局服务器操作锁；执行时暂停看门狗，保存并停止正在运行的服务器，完成后按用户选择重新启动，失败时独立尝试恢复原运行状态。
+- 若安装目录中存在世界数据，`save.path` 必须解析到同一安装目录内的本地世界，并在运行 SteamCMD 前强制创建完整 PST 恢复点。
+
+### 安全
+
+- SteamCMD 只接受配置文件中的绝对可执行文件和安装目录，拒绝符号链接、文件系统根目录、自定义应用 ID、任意参数与 Shell；执行前后都会重新校验计划摘要、可执行文件哈希、App manifest、构建 ID 和平台启动文件。
+- 更新决策不依赖第三方版本 API；SteamCMD 输出只保留有界末尾，执行时间限制为 60-7200 秒。
+
 ## [1.4.0] - 2026-07-13
 
 ### 新增
@@ -170,7 +188,8 @@
 - 替换程序前应停止 PST 和 Palworld 服务端，并备份 `config.yaml`、数据库与整个世界存档目录。
 - 不要将 JSON 重建后的存档直接覆盖正在运行的 `Level.sav`。
 
-[Unreleased]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.3.1...v1.4.0
 [1.3.1]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.2.0...v1.3.0
