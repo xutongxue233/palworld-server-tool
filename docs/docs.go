@@ -19,6 +19,435 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/automation/notifications/test": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Automation"
+                ],
+                "summary": "Send a test automation notification",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/automation/runs": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Automation"
+                ],
+                "summary": "List automation task runs",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Optional task ID",
+                        "name": "task_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Maximum records, up to 200",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/task.TaskRun"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/automation/settings": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Return redacted automation settings; webhook tokens and HMAC secrets are never returned",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Automation"
+                ],
+                "summary": "Get watchdog and notification settings",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/task.AutomationSettingsView"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Persist validated settings; empty credentials keep existing values unless their clear flag is set",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Automation"
+                ],
+                "summary": "Update watchdog and notification settings",
+                "parameters": [
+                    {
+                        "description": "Automation settings",
+                        "name": "settings",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/task.AutomationSettingsUpdate"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/task.AutomationSettingsView"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/automation/status": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Automation"
+                ],
+                "summary": "Get automation runtime status",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/task.AutomationStatus"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/automation/tasks": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "List persisted allowlisted maintenance tasks with their next and most recent runs",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Automation"
+                ],
+                "summary": "List typed scheduled tasks",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/task.ScheduledTaskView"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Create an interval, daily, or weekly task using an allowlisted action; arbitrary commands and shell scripts are rejected",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Automation"
+                ],
+                "summary": "Create a typed scheduled task",
+                "parameters": [
+                    {
+                        "description": "Typed task",
+                        "name": "task",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/task.ScheduledTaskInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/task.ScheduledTaskView"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/automation/tasks/{task_id}": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Replace one persisted task and immediately reschedule or disable it",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Automation"
+                ],
+                "summary": "Update a typed scheduled task",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Typed task",
+                        "name": "task",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/task.ScheduledTaskInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/task.ScheduledTaskView"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Automation"
+                ],
+                "summary": "Delete a typed scheduled task",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/automation/tasks/{task_id}/run": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Execute one allowlisted task immediately while enforcing the global automation operation lock",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Automation"
+                ],
+                "summary": "Run a typed task now",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/task.TaskRun"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/automation/watchdog/reset": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Automation"
+                ],
+                "summary": "Reset watchdog failures and recovery backoff",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/backup": {
             "get": {
                 "security": [
@@ -1509,6 +1938,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/api.ErrorResponse"
                         }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
                     }
                 }
             }
@@ -1693,6 +2128,12 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/api.ErrorResponse"
                         }
@@ -1937,6 +2378,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/api.ErrorResponse"
                         }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
                     }
                 }
             }
@@ -1971,6 +2418,12 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/api.ErrorResponse"
                         }
@@ -2063,6 +2516,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/api.ErrorResponse"
                         }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
                     }
                 }
             }
@@ -2100,6 +2559,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/api.ErrorResponse"
                         }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
                     }
                 }
             }
@@ -2134,6 +2599,12 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/api.ErrorResponse"
                         }
@@ -3552,6 +4023,419 @@ const docTemplate = `{
                 }
             }
         },
+        "task.ActionParameters": {
+            "type": "object",
+            "properties": {
+                "delay_seconds": {
+                    "type": "integer"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "task.AutomationAction": {
+            "type": "string",
+            "enum": [
+                "save_world",
+                "broadcast",
+                "start_server",
+                "stop_server",
+                "restart_server",
+                "sync_save",
+                "pst_backup"
+            ],
+            "x-enum-varnames": [
+                "ActionSaveWorld",
+                "ActionBroadcast",
+                "ActionStart",
+                "ActionStop",
+                "ActionRestart",
+                "ActionSyncSave",
+                "ActionBackup"
+            ]
+        },
+        "task.AutomationSettingsUpdate": {
+            "type": "object",
+            "properties": {
+                "notification": {
+                    "$ref": "#/definitions/task.NotificationSettingsUpdate"
+                },
+                "watchdog": {
+                    "$ref": "#/definitions/task.WatchdogSettings"
+                }
+            }
+        },
+        "task.AutomationSettingsView": {
+            "type": "object",
+            "properties": {
+                "notification": {
+                    "$ref": "#/definitions/task.NotificationSettingsView"
+                },
+                "watchdog": {
+                    "$ref": "#/definitions/task.WatchdogSettings"
+                }
+            }
+        },
+        "task.AutomationStatus": {
+            "type": "object",
+            "properties": {
+                "active_task_id": {
+                    "type": "string"
+                },
+                "busy": {
+                    "type": "boolean"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "notification": {
+                    "$ref": "#/definitions/task.NotificationRuntimeStatus"
+                },
+                "watchdog": {
+                    "$ref": "#/definitions/task.WatchdogRuntimeStatus"
+                }
+            }
+        },
+        "task.NotificationEvent": {
+            "type": "string",
+            "enum": [
+                "task.succeeded",
+                "task.failed",
+                "server.started",
+                "server.stopped",
+                "server.restarted",
+                "watchdog.unhealthy",
+                "watchdog.recovered",
+                "watchdog.recovery_failed",
+                "notification.test"
+            ],
+            "x-enum-varnames": [
+                "EventTaskSucceeded",
+                "EventTaskFailed",
+                "EventServerStarted",
+                "EventServerStopped",
+                "EventServerRestarted",
+                "EventWatchdogUnhealthy",
+                "EventWatchdogRecovered",
+                "EventWatchdogRecoveryFailed",
+                "EventNotificationTest"
+            ]
+        },
+        "task.NotificationProvider": {
+            "type": "string",
+            "enum": [
+                "generic",
+                "discord"
+            ],
+            "x-enum-varnames": [
+                "NotificationGeneric",
+                "NotificationDiscord"
+            ]
+        },
+        "task.NotificationRuntimeStatus": {
+            "type": "object",
+            "properties": {
+                "configured": {
+                    "type": "boolean"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "last_attempt_at": {
+                    "type": "string"
+                },
+                "last_error": {
+                    "type": "string"
+                },
+                "last_success_at": {
+                    "type": "string"
+                },
+                "provider": {
+                    "type": "string"
+                },
+                "secret_configured": {
+                    "type": "boolean"
+                },
+                "webhook_preview": {
+                    "type": "string"
+                }
+            }
+        },
+        "task.NotificationSettingsUpdate": {
+            "type": "object",
+            "properties": {
+                "clear_secret": {
+                    "type": "boolean"
+                },
+                "clear_webhook": {
+                    "type": "boolean"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "events": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/task.NotificationEvent"
+                    }
+                },
+                "provider": {
+                    "$ref": "#/definitions/task.NotificationProvider"
+                },
+                "secret": {
+                    "type": "string"
+                },
+                "timeout_seconds": {
+                    "type": "integer"
+                },
+                "webhook_url": {
+                    "type": "string"
+                }
+            }
+        },
+        "task.NotificationSettingsView": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "events": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/task.NotificationEvent"
+                    }
+                },
+                "provider": {
+                    "$ref": "#/definitions/task.NotificationProvider"
+                },
+                "secret_configured": {
+                    "type": "boolean"
+                },
+                "timeout_seconds": {
+                    "type": "integer"
+                },
+                "webhook_configured": {
+                    "type": "boolean"
+                },
+                "webhook_preview": {
+                    "type": "string"
+                }
+            }
+        },
+        "task.ScheduleKind": {
+            "type": "string",
+            "enum": [
+                "interval",
+                "daily",
+                "weekly"
+            ],
+            "x-enum-varnames": [
+                "ScheduleInterval",
+                "ScheduleDaily",
+                "ScheduleWeekly"
+            ]
+        },
+        "task.ScheduledTaskInput": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "$ref": "#/definitions/task.AutomationAction"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "parameters": {
+                    "$ref": "#/definitions/task.ActionParameters"
+                },
+                "schedule": {
+                    "$ref": "#/definitions/task.TaskSchedule"
+                }
+            }
+        },
+        "task.ScheduledTaskView": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "$ref": "#/definitions/task.AutomationAction"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "last_run": {
+                    "$ref": "#/definitions/task.TaskRun"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "next_run_at": {
+                    "type": "string"
+                },
+                "parameters": {
+                    "$ref": "#/definitions/task.ActionParameters"
+                },
+                "running": {
+                    "type": "boolean"
+                },
+                "schedule": {
+                    "$ref": "#/definitions/task.TaskSchedule"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "task.TaskRun": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "$ref": "#/definitions/task.AutomationAction"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "finished_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "started_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/task.TaskRunStatus"
+                },
+                "summary": {
+                    "type": "string"
+                },
+                "task_id": {
+                    "type": "string"
+                },
+                "task_name": {
+                    "type": "string"
+                },
+                "trigger": {
+                    "$ref": "#/definitions/task.TaskRunTrigger"
+                }
+            }
+        },
+        "task.TaskRunStatus": {
+            "type": "string",
+            "enum": [
+                "running",
+                "succeeded",
+                "failed",
+                "skipped"
+            ],
+            "x-enum-varnames": [
+                "TaskRunRunning",
+                "TaskRunSucceeded",
+                "TaskRunFailed",
+                "TaskRunSkipped"
+            ]
+        },
+        "task.TaskRunTrigger": {
+            "type": "string",
+            "enum": [
+                "scheduled",
+                "manual"
+            ],
+            "x-enum-varnames": [
+                "TaskTriggerScheduled",
+                "TaskTriggerManual"
+            ]
+        },
+        "task.TaskSchedule": {
+            "type": "object",
+            "properties": {
+                "interval_minutes": {
+                    "type": "integer"
+                },
+                "kind": {
+                    "$ref": "#/definitions/task.ScheduleKind"
+                },
+                "time_of_day": {
+                    "type": "string"
+                },
+                "weekdays": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "task.WatchdogRuntimeStatus": {
+            "type": "object",
+            "properties": {
+                "consecutive_failures": {
+                    "type": "integer"
+                },
+                "desired_running": {
+                    "type": "boolean"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "last_check_at": {
+                    "type": "string"
+                },
+                "last_error": {
+                    "type": "string"
+                },
+                "last_healthy_at": {
+                    "type": "string"
+                },
+                "last_recovery_at": {
+                    "type": "string"
+                },
+                "next_check_at": {
+                    "type": "string"
+                },
+                "recovery_attempts": {
+                    "type": "integer"
+                },
+                "state": {
+                    "type": "string"
+                }
+            }
+        },
+        "task.WatchdogSettings": {
+            "type": "object",
+            "properties": {
+                "check_interval_seconds": {
+                    "type": "integer"
+                },
+                "desired_running": {
+                    "type": "boolean"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "failure_threshold": {
+                    "type": "integer"
+                },
+                "max_recovery_attempts": {
+                    "type": "integer"
+                },
+                "restart_cooldown_seconds": {
+                    "type": "integer"
+                },
+                "startup_grace_seconds": {
+                    "type": "integer"
+                }
+            }
+        },
         "tool.GameConfigFile": {
             "type": "object",
             "properties": {
@@ -3970,6 +4854,9 @@ const docTemplate = `{
         "tool.ServerControlStatus": {
             "type": "object",
             "properties": {
+                "busy": {
+                    "type": "boolean"
+                },
                 "configured": {
                     "type": "boolean"
                 },

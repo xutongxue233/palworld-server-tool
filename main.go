@@ -88,7 +88,7 @@ func main() {
 	logger.Infof("Listening on http://127.0.0.1:%d or http://%s:%d\n", viper.GetInt("web.port"), localIp, viper.GetInt("web.port"))
 	logger.Infof("Swagger on http://127.0.0.1:%d/swagger/index.html\n", viper.GetInt("web.port"))
 
-	go task.Schedule(db)
+	task.Schedule(db)
 	defer task.Shutdown()
 
 	sigChan := make(chan os.Signal, 1)

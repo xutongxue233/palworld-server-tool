@@ -741,6 +741,291 @@ definitions:
       user_id:
         type: string
     type: object
+  task.ActionParameters:
+    properties:
+      delay_seconds:
+        type: integer
+      message:
+        type: string
+    type: object
+  task.AutomationAction:
+    enum:
+    - save_world
+    - broadcast
+    - start_server
+    - stop_server
+    - restart_server
+    - sync_save
+    - pst_backup
+    type: string
+    x-enum-varnames:
+    - ActionSaveWorld
+    - ActionBroadcast
+    - ActionStart
+    - ActionStop
+    - ActionRestart
+    - ActionSyncSave
+    - ActionBackup
+  task.AutomationSettingsUpdate:
+    properties:
+      notification:
+        $ref: '#/definitions/task.NotificationSettingsUpdate'
+      watchdog:
+        $ref: '#/definitions/task.WatchdogSettings'
+    type: object
+  task.AutomationSettingsView:
+    properties:
+      notification:
+        $ref: '#/definitions/task.NotificationSettingsView'
+      watchdog:
+        $ref: '#/definitions/task.WatchdogSettings'
+    type: object
+  task.AutomationStatus:
+    properties:
+      active_task_id:
+        type: string
+      busy:
+        type: boolean
+      location:
+        type: string
+      notification:
+        $ref: '#/definitions/task.NotificationRuntimeStatus'
+      watchdog:
+        $ref: '#/definitions/task.WatchdogRuntimeStatus'
+    type: object
+  task.NotificationEvent:
+    enum:
+    - task.succeeded
+    - task.failed
+    - server.started
+    - server.stopped
+    - server.restarted
+    - watchdog.unhealthy
+    - watchdog.recovered
+    - watchdog.recovery_failed
+    - notification.test
+    type: string
+    x-enum-varnames:
+    - EventTaskSucceeded
+    - EventTaskFailed
+    - EventServerStarted
+    - EventServerStopped
+    - EventServerRestarted
+    - EventWatchdogUnhealthy
+    - EventWatchdogRecovered
+    - EventWatchdogRecoveryFailed
+    - EventNotificationTest
+  task.NotificationProvider:
+    enum:
+    - generic
+    - discord
+    type: string
+    x-enum-varnames:
+    - NotificationGeneric
+    - NotificationDiscord
+  task.NotificationRuntimeStatus:
+    properties:
+      configured:
+        type: boolean
+      enabled:
+        type: boolean
+      last_attempt_at:
+        type: string
+      last_error:
+        type: string
+      last_success_at:
+        type: string
+      provider:
+        type: string
+      secret_configured:
+        type: boolean
+      webhook_preview:
+        type: string
+    type: object
+  task.NotificationSettingsUpdate:
+    properties:
+      clear_secret:
+        type: boolean
+      clear_webhook:
+        type: boolean
+      enabled:
+        type: boolean
+      events:
+        items:
+          $ref: '#/definitions/task.NotificationEvent'
+        type: array
+      provider:
+        $ref: '#/definitions/task.NotificationProvider'
+      secret:
+        type: string
+      timeout_seconds:
+        type: integer
+      webhook_url:
+        type: string
+    type: object
+  task.NotificationSettingsView:
+    properties:
+      enabled:
+        type: boolean
+      events:
+        items:
+          $ref: '#/definitions/task.NotificationEvent'
+        type: array
+      provider:
+        $ref: '#/definitions/task.NotificationProvider'
+      secret_configured:
+        type: boolean
+      timeout_seconds:
+        type: integer
+      webhook_configured:
+        type: boolean
+      webhook_preview:
+        type: string
+    type: object
+  task.ScheduleKind:
+    enum:
+    - interval
+    - daily
+    - weekly
+    type: string
+    x-enum-varnames:
+    - ScheduleInterval
+    - ScheduleDaily
+    - ScheduleWeekly
+  task.ScheduledTaskInput:
+    properties:
+      action:
+        $ref: '#/definitions/task.AutomationAction'
+      enabled:
+        type: boolean
+      name:
+        type: string
+      parameters:
+        $ref: '#/definitions/task.ActionParameters'
+      schedule:
+        $ref: '#/definitions/task.TaskSchedule'
+    type: object
+  task.ScheduledTaskView:
+    properties:
+      action:
+        $ref: '#/definitions/task.AutomationAction'
+      created_at:
+        type: string
+      enabled:
+        type: boolean
+      id:
+        type: string
+      last_run:
+        $ref: '#/definitions/task.TaskRun'
+      name:
+        type: string
+      next_run_at:
+        type: string
+      parameters:
+        $ref: '#/definitions/task.ActionParameters'
+      running:
+        type: boolean
+      schedule:
+        $ref: '#/definitions/task.TaskSchedule'
+      updated_at:
+        type: string
+    type: object
+  task.TaskRun:
+    properties:
+      action:
+        $ref: '#/definitions/task.AutomationAction'
+      error:
+        type: string
+      finished_at:
+        type: string
+      id:
+        type: string
+      started_at:
+        type: string
+      status:
+        $ref: '#/definitions/task.TaskRunStatus'
+      summary:
+        type: string
+      task_id:
+        type: string
+      task_name:
+        type: string
+      trigger:
+        $ref: '#/definitions/task.TaskRunTrigger'
+    type: object
+  task.TaskRunStatus:
+    enum:
+    - running
+    - succeeded
+    - failed
+    - skipped
+    type: string
+    x-enum-varnames:
+    - TaskRunRunning
+    - TaskRunSucceeded
+    - TaskRunFailed
+    - TaskRunSkipped
+  task.TaskRunTrigger:
+    enum:
+    - scheduled
+    - manual
+    type: string
+    x-enum-varnames:
+    - TaskTriggerScheduled
+    - TaskTriggerManual
+  task.TaskSchedule:
+    properties:
+      interval_minutes:
+        type: integer
+      kind:
+        $ref: '#/definitions/task.ScheduleKind'
+      time_of_day:
+        type: string
+      weekdays:
+        items:
+          type: integer
+        type: array
+    type: object
+  task.WatchdogRuntimeStatus:
+    properties:
+      consecutive_failures:
+        type: integer
+      desired_running:
+        type: boolean
+      enabled:
+        type: boolean
+      last_check_at:
+        type: string
+      last_error:
+        type: string
+      last_healthy_at:
+        type: string
+      last_recovery_at:
+        type: string
+      next_check_at:
+        type: string
+      recovery_attempts:
+        type: integer
+      state:
+        type: string
+    type: object
+  task.WatchdogSettings:
+    properties:
+      check_interval_seconds:
+        type: integer
+      desired_running:
+        type: boolean
+      enabled:
+        type: boolean
+      failure_threshold:
+        type: integer
+      max_recovery_attempts:
+        type: integer
+      restart_cooldown_seconds:
+        type: integer
+      startup_grace_seconds:
+        type: integer
+    type: object
   tool.GameConfigFile:
     properties:
       configured:
@@ -1015,6 +1300,8 @@ definitions:
     type: object
   tool.ServerControlStatus:
     properties:
+      busy:
+        type: boolean
       configured:
         type: boolean
       detail:
@@ -1074,6 +1361,278 @@ info:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
 paths:
+  /api/automation/notifications/test:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Send a test automation notification
+      tags:
+      - Automation
+  /api/automation/runs:
+    get:
+      parameters:
+      - description: Optional task ID
+        in: query
+        name: task_id
+        type: string
+      - description: Maximum records, up to 200
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/task.TaskRun'
+            type: array
+      security:
+      - ApiKeyAuth: []
+      summary: List automation task runs
+      tags:
+      - Automation
+  /api/automation/settings:
+    get:
+      description: Return redacted automation settings; webhook tokens and HMAC secrets
+        are never returned
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/task.AutomationSettingsView'
+      security:
+      - ApiKeyAuth: []
+      summary: Get watchdog and notification settings
+      tags:
+      - Automation
+    put:
+      consumes:
+      - application/json
+      description: Persist validated settings; empty credentials keep existing values
+        unless their clear flag is set
+      parameters:
+      - description: Automation settings
+        in: body
+        name: settings
+        required: true
+        schema:
+          $ref: '#/definitions/task.AutomationSettingsUpdate'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/task.AutomationSettingsView'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Update watchdog and notification settings
+      tags:
+      - Automation
+  /api/automation/status:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/task.AutomationStatus'
+      security:
+      - ApiKeyAuth: []
+      summary: Get automation runtime status
+      tags:
+      - Automation
+  /api/automation/tasks:
+    get:
+      description: List persisted allowlisted maintenance tasks with their next and
+        most recent runs
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/task.ScheduledTaskView'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: List typed scheduled tasks
+      tags:
+      - Automation
+    post:
+      consumes:
+      - application/json
+      description: Create an interval, daily, or weekly task using an allowlisted
+        action; arbitrary commands and shell scripts are rejected
+      parameters:
+      - description: Typed task
+        in: body
+        name: task
+        required: true
+        schema:
+          $ref: '#/definitions/task.ScheduledTaskInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/task.ScheduledTaskView'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Create a typed scheduled task
+      tags:
+      - Automation
+  /api/automation/tasks/{task_id}:
+    delete:
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Delete a typed scheduled task
+      tags:
+      - Automation
+    put:
+      consumes:
+      - application/json
+      description: Replace one persisted task and immediately reschedule or disable
+        it
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        type: string
+      - description: Typed task
+        in: body
+        name: task
+        required: true
+        schema:
+          $ref: '#/definitions/task.ScheduledTaskInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/task.ScheduledTaskView'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Update a typed scheduled task
+      tags:
+      - Automation
+  /api/automation/tasks/{task_id}/run:
+    post:
+      description: Execute one allowlisted task immediately while enforcing the global
+        automation operation lock
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/task.TaskRun'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Run a typed task now
+      tags:
+      - Automation
+  /api/automation/watchdog/reset:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Reset watchdog failures and recovery backoff
+      tags:
+      - Automation
   /api/backup:
     get:
       consumes:
@@ -2052,6 +2611,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
       security:
       - ApiKeyAuth: []
       summary: Run RCON Command
@@ -2172,6 +2735,10 @@ paths:
             $ref: '#/definitions/api.ErrorResponse'
         "401":
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       security:
@@ -2330,6 +2897,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
       security:
       - ApiKeyAuth: []
       summary: Restart managed Palworld server
@@ -2351,6 +2922,10 @@ paths:
             $ref: '#/definitions/api.ErrorResponse'
         "401":
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       security:
@@ -2409,6 +2984,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
       security:
       - ApiKeyAuth: []
       summary: Shutdown Server
@@ -2433,6 +3012,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
       security:
       - ApiKeyAuth: []
       summary: Start managed Palworld server
@@ -2454,6 +3037,10 @@ paths:
             $ref: '#/definitions/api.ErrorResponse'
         "401":
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       security:

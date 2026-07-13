@@ -99,6 +99,11 @@ func restoreNativeBackup(c *gin.Context) {
 		writeNativeBackupError(c, err)
 		return
 	}
+	release, ok := beginManualOperation(c, nil)
+	if !ok {
+		return
+	}
+	defer release()
 
 	maintenance, err := tool.StopServerForMaintenance(
 		c.Request.Context(),
@@ -139,11 +144,14 @@ func restoreNativeBackup(c *gin.Context) {
 		response.SyncError = err.Error()
 	}
 	if req.RestartAfter {
+		task.SetWatchdogDesiredRunning(true)
 		if err := tool.StartManagedServer(c.Request.Context()); err != nil {
 			response.RestartError = err.Error()
 		} else {
 			response.Restarted = true
 		}
+	} else {
+		task.SetWatchdogDesiredRunning(false)
 	}
 	c.JSON(http.StatusOK, response)
 }

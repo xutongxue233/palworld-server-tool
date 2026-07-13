@@ -30,6 +30,7 @@ type RconCommandRequest struct {
 //	@Success		200		{object}	MessageResponse
 //	@Failure		400		{object}	ErrorResponse
 //	@Failure		401		{object}	ErrorResponse
+//	@Failure		409		{object}	ErrorResponse
 //	@Router			/api/rcon [post]
 func runRconCommand(c *gin.Context) {
 	var request RconCommandRequest
@@ -46,6 +47,11 @@ func runRconCommand(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "command is too long"})
 		return
 	}
+	release, ok := beginManualOperation(c, desiredRunningForRCON(command))
+	if !ok {
+		return
+	}
+	defer release()
 	response, err := executeRCONCommand(command)
 	if err != nil {
 		if errors.Is(err, executor.ErrPasswordEmpty) {
@@ -56,4 +62,17 @@ func runRconCommand(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": response})
+}
+
+func desiredRunningForRCON(command string) *bool {
+	fields := strings.Fields(command)
+	if len(fields) == 0 {
+		return nil
+	}
+	name := strings.ToLower(strings.TrimPrefix(fields[0], "/"))
+	if name != "shutdown" && name != "doexit" {
+		return nil
+	}
+	desired := false
+	return &desired
 }

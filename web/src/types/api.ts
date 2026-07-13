@@ -74,6 +74,148 @@ export interface ServerControlStatus {
   running: boolean;
   state: string;
   detail?: string;
+  busy: boolean;
+}
+
+export type AutomationAction =
+  | "save_world"
+  | "broadcast"
+  | "start_server"
+  | "stop_server"
+  | "restart_server"
+  | "sync_save"
+  | "pst_backup";
+
+export type AutomationScheduleKind = "interval" | "daily" | "weekly";
+
+export interface AutomationTaskSchedule {
+  kind: AutomationScheduleKind;
+  interval_minutes?: number;
+  time_of_day?: string;
+  weekdays?: number[];
+}
+
+export interface AutomationActionParameters {
+  message?: string;
+  delay_seconds?: number;
+}
+
+export interface ScheduledTaskInput {
+  name: string;
+  enabled: boolean;
+  action: AutomationAction;
+  schedule: AutomationTaskSchedule;
+  parameters: AutomationActionParameters;
+}
+
+export type TaskRunStatus = "running" | "succeeded" | "failed" | "skipped";
+export type TaskRunTrigger = "scheduled" | "manual";
+
+export interface TaskRun {
+  id: string;
+  task_id: string;
+  task_name: string;
+  action: AutomationAction;
+  trigger: TaskRunTrigger;
+  status: TaskRunStatus;
+  started_at: string;
+  finished_at?: string;
+  summary?: string;
+  error?: string;
+}
+
+export interface ScheduledTask extends ScheduledTaskInput {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  next_run_at?: string;
+  running: boolean;
+  last_run?: TaskRun;
+}
+
+export interface WatchdogSettings {
+  enabled: boolean;
+  desired_running: boolean;
+  check_interval_seconds: number;
+  failure_threshold: number;
+  restart_cooldown_seconds: number;
+  max_recovery_attempts: number;
+  startup_grace_seconds: number;
+}
+
+export type AutomationNotificationProvider = "generic" | "discord";
+
+export type AutomationNotificationEvent =
+  | "task.succeeded"
+  | "task.failed"
+  | "server.started"
+  | "server.stopped"
+  | "server.restarted"
+  | "watchdog.unhealthy"
+  | "watchdog.recovered"
+  | "watchdog.recovery_failed";
+
+export interface AutomationNotificationSettings {
+  enabled: boolean;
+  provider: AutomationNotificationProvider;
+  webhook_configured: boolean;
+  webhook_preview?: string;
+  secret_configured: boolean;
+  events: AutomationNotificationEvent[];
+  timeout_seconds: number;
+}
+
+export interface AutomationSettings {
+  watchdog: WatchdogSettings;
+  notification: AutomationNotificationSettings;
+}
+
+export interface AutomationNotificationSettingsUpdate {
+  enabled: boolean;
+  provider: AutomationNotificationProvider;
+  webhook_url?: string;
+  clear_webhook?: boolean;
+  secret?: string;
+  clear_secret?: boolean;
+  events: AutomationNotificationEvent[];
+  timeout_seconds: number;
+}
+
+export interface AutomationSettingsUpdate {
+  watchdog: WatchdogSettings;
+  notification: AutomationNotificationSettingsUpdate;
+}
+
+export interface WatchdogRuntimeStatus {
+  enabled: boolean;
+  desired_running: boolean;
+  state: string;
+  consecutive_failures: number;
+  recovery_attempts: number;
+  last_check_at?: string;
+  last_healthy_at?: string;
+  last_recovery_at?: string;
+  next_check_at?: string;
+  last_error?: string;
+}
+
+export interface AutomationNotificationRuntimeStatus {
+  configured: boolean;
+  enabled: boolean;
+  provider?: string;
+  webhook_preview?: string;
+  secret_configured: boolean;
+  last_attempt_at?: string;
+  last_success_at?: string;
+  last_error?: string;
+}
+
+export interface AutomationStatus {
+  location: string;
+  busy: boolean;
+  active_task_id?: string;
+  watchdog: WatchdogRuntimeStatus;
+  notification: AutomationNotificationRuntimeStatus;
 }
 
 export interface Pal {

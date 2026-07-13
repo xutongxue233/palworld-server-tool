@@ -1,5 +1,8 @@
 import type {
   ApiSuccess,
+  AutomationSettings,
+  AutomationSettingsUpdate,
+  AutomationStatus,
   Backup,
   EditPalHealthResult,
   EditPalLevelResult,
@@ -21,6 +24,9 @@ import type {
   ServerMetrics,
   ServerToolInfo,
   ServerControlStatus,
+  ScheduledTask,
+  ScheduledTaskInput,
+  TaskRun,
   UnlockPlayerMapProgressResult,
   WhitelistPlayer,
   WorldSnapshot,
@@ -180,6 +186,50 @@ export const api = {
     request<ApiSuccess>("/api/server/restart", {
       method: "POST",
       body: { seconds, message },
+    }),
+  getAutomationTasks: () => request<ScheduledTask[]>("/api/automation/tasks"),
+  createAutomationTask: (task: ScheduledTaskInput) =>
+    request<ScheduledTask>("/api/automation/tasks", {
+      method: "POST",
+      body: task,
+    }),
+  updateAutomationTask: (taskId: string, task: ScheduledTaskInput) =>
+    request<ScheduledTask>(
+      `/api/automation/tasks/${encodeURIComponent(taskId)}`,
+      {
+        method: "PUT",
+        body: task,
+      },
+    ),
+  deleteAutomationTask: (taskId: string) =>
+    request<ApiSuccess>(`/api/automation/tasks/${encodeURIComponent(taskId)}`, {
+      method: "DELETE",
+    }),
+  runAutomationTask: (taskId: string) =>
+    request<TaskRun>(
+      `/api/automation/tasks/${encodeURIComponent(taskId)}/run`,
+      { method: "POST" },
+    ),
+  getAutomationRuns: (taskId = "", limit = 50) =>
+    request<TaskRun[]>(
+      `/api/automation/runs${buildQuery({ task_id: taskId, limit })}`,
+    ),
+  getAutomationSettings: () =>
+    request<AutomationSettings>("/api/automation/settings"),
+  updateAutomationSettings: (settings: AutomationSettingsUpdate) =>
+    request<AutomationSettings>("/api/automation/settings", {
+      method: "PUT",
+      body: settings,
+    }),
+  getAutomationStatus: () =>
+    request<AutomationStatus>("/api/automation/status"),
+  testAutomationNotification: () =>
+    request<ApiSuccess>("/api/automation/notifications/test", {
+      method: "POST",
+    }),
+  resetAutomationWatchdog: () =>
+    request<ApiSuccess>("/api/automation/watchdog/reset", {
+      method: "POST",
     }),
   getPlayers: (params: Record<string, unknown> = {}) =>
     request<PlayerSummary[]>(`/api/player${buildQuery(params)}`),

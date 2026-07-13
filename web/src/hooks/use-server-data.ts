@@ -17,6 +17,10 @@ export const queryKeys = {
   backups: (startTime?: number, endTime?: number) =>
     ["backups", startTime, endTime] as const,
   nativeBackups: ["backups", "native"] as const,
+  automationTasks: ["automation", "tasks"] as const,
+  automationRuns: ["automation", "runs"] as const,
+  automationSettings: ["automation", "settings"] as const,
+  automationStatus: ["automation", "status"] as const,
 };
 
 export function useServerInfo() {

@@ -26,6 +26,13 @@ var (
 )
 
 func BackupTask(db *bbolt.DB) {
+	release, err := BeginManualServerOperation(nil)
+	if err != nil {
+		logger.Warnf("Skipping scheduled backup while another maintenance operation is running: %v\n", err)
+		return
+	}
+	defer release()
+
 	logger.Info("Scheduling backup...\n")
 	backup, err := tool.BackupAndRecord(db)
 	if err != nil {
@@ -150,6 +157,12 @@ func CheckAndKickPlayers(db *bbolt.DB, players []database.OnlinePlayer) {
 }
 
 func SavSync() {
+	release, err := BeginManualServerOperation(nil)
+	if err != nil {
+		logger.Warnf("Skipping scheduled save sync while another maintenance operation is running: %v\n", err)
+		return
+	}
+	defer release()
 	_ = SavSyncNow()
 }
 
@@ -215,6 +228,14 @@ func Schedule(db *bbolt.DB) {
 		logger.Errorf("%v\n", err)
 	}
 
+	automation, err := NewAutomationManager(db, scheduler)
+	if err != nil {
+		logger.Errorf("failed to initialize automation manager: %v\n", err)
+	} else {
+		SetAutomationManager(automation)
+		automation.Start()
+	}
+
 	scheduler.Start()
 }
 
@@ -225,6 +246,11 @@ func Shutdown() {
 	err := s.Shutdown()
 	if err != nil {
 		logger.Errorf("%v\n", err)
+	}
+	manager, managerErr := GetAutomationManager()
+	if managerErr == nil {
+		manager.Close()
+		SetAutomationManager(nil)
 	}
 }
 

@@ -4,6 +4,36 @@
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-07-13
+
+### 新增
+
+- 新增类型化定时任务：支持每隔一段时间、每天和每周规则，并提供保存世界、公告、受限启停/重启、存档同步和额外 PST 安全备份七种固定动作。
+- 定时任务、自动化设置及最近 500 次运行结果持久化到 bbolt；PST 重启后自动恢复任务和精确的下次运行时间。
+- 新增服务器看门狗，同时检查受限控制驱动的进程状态与 Palworld REST `/info`，提供连续失败阈值、启动宽限、恢复冷却、最大尝试次数和防抖限制。
+- 新增通用 JSON 与 Discord Webhook 通知，可按任务、人工启停、服务器异常和恢复事件筛选；通用 Webhook 支持 `X-PST-Signature` HMAC-SHA256 签名。
+- Web 运维页新增“自动化”工作区、常用维护模板、运行历史、看门狗状态轨道和三语设置界面；无需填写 Cron。
+- 新增受 JWT 保护的自动化任务、运行记录、设置、通知测试和看门狗重置 API，并同步更新 Swagger。
+
+### 变更
+
+- 人工服务控制、RCON、离线存档编辑、配置写入、旧版周期同步/备份、类型化任务、游戏原生备份恢复和 `WorldOption.sav` 同步共享服务器操作互斥锁，避免保存、停服、恢复和配置写入重叠执行。
+- Web 或定时任务主动停止服务器时会持久记录“允许停机”，看门狗不会违背管理员意图自动拉起；启动或重启会恢复“保持运行”目标。
+- 通过 RCON 执行 `Shutdown` 或 `DoExit` 也会记录有意停机，避免看门狗与管理员命令冲突。
+- 服务器控制状态新增维护占用标记，前端可明确显示当前是否有独占操作进行中。
+
+### 修复
+
+- 启用看门狗但尚未配置 `palworld.control` 时返回稳定错误码，并在中、英、日界面显示可执行的配置提示。
+- 看门狗恢复成功后仍保留短期尝试计数，只有持续稳定后才清零，避免反复抖动绕过最大恢复次数。
+
+### 安全
+
+- 自动化 API 只接受固定动作及强类型参数，不接受任意 Shell、Cron 文本或任意 RCON 命令。
+- Webhook 默认只允许公网 HTTPS，拒绝重定向、系统代理、localhost、私网、CGNAT、基准测试/文档网段、链路本地、多播、IPv6 过渡网段及 DNS 解析后的受限地址；私网放行只能在本地配置文件中显式启用。
+- Webhook 完整地址、令牌和签名密钥不会通过读取 API 回显；通知队列在发送时再次校验事件过滤规则。
+- Discord 通知显式禁用用户、角色与 `@everyone` 提及，避免任务名称或错误文本触发意外通知风暴。
+
 ## [1.3.1] - 2026-07-13
 
 ### 修复
@@ -140,7 +170,8 @@
 - 替换程序前应停止 PST 和 Palworld 服务端，并备份 `config.yaml`、数据库与整个世界存档目录。
 - 不要将 JSON 重建后的存档直接覆盖正在运行的 `Level.sav`。
 
-[Unreleased]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.3.1...HEAD
+[Unreleased]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.3.1...v1.4.0
 [1.3.1]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.1.0...v1.2.0

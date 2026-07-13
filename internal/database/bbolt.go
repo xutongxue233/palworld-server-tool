@@ -40,6 +40,22 @@ func InitDB() *bbolt.DB {
 	if err != nil {
 		logger.Panic(err)
 	}
+	// automation
+	err = db_.Update(func(tx *bbolt.Tx) error {
+		for _, name := range []string{
+			"automation_tasks",
+			"automation_runs",
+			"automation_settings",
+		} {
+			if _, err := tx.CreateBucketIfNotExists([]byte(name)); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		logger.Panic(err)
+	}
 	return db_
 }
 
