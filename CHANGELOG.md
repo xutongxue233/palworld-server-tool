@@ -4,6 +4,25 @@
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-07-13
+
+### 新增
+
+- 新增 Palworld 1.0.0 本地存档迁移向导，支持从 `Level.sav`、世界目录、`Saved` 或 PalServer 安装目录只读发现世界，计算结构摘要，并用 `sav_cli` 验证 Level、LevelMeta、全部玩家档和可选 WorldOption 的存档类别。
+- Web 运维页新增“存档迁移”工作区，以源世界到当前世界的传输清单展示玩家数、关键文件、大小、平台、`WorldOption.sav` 行为、精确替换范围和阻止原因，提供中、英、日三语界面。
+- 新增受 JWT 保护的存档迁移预检与执行 API，并更新 Swagger 文档。
+
+### 变更
+
+- 存档迁移复用全局维护锁并暂停看门狗；执行前保存并停止服务器、强制创建当前世界的 PST 恢复点，完成后同步解析数据并可通过受限控制驱动重新启动。
+- 迁移只替换 `Level.sav`、`LevelMeta.sav`、`Players/` 和可选 `WorldOption.sav`；目标的游戏内置 `backup/` 及未知顶层文件保留，源 `backup/` 明确忽略。
+
+### 安全
+
+- 自动迁移仅支持同平台专用服务器，明确阻止合作主机 `00000000000000000000000000000001.sav`、合作/单人类型和 Windows/Linux 跨平台 GUID 转换，不集成已知存在公会、帕鲁与容器风险的实验性第三方转换工具。
+- 源与目标路径必须是本机绝对真实路径并拒绝远程源、符号链接和同一目录；暂存前后持续复核摘要，原子替换后再次验证，失败自动回滚。
+- 原子替换或回滚自身失败时不清理事务目录，保留 `.pst-save-migration-*` 恢复文件并在错误中返回位置。
+
 ## [1.5.0] - 2026-07-13
 
 ### 新增
@@ -188,7 +207,8 @@
 - 替换程序前应停止 PST 和 Palworld 服务端，并备份 `config.yaml`、数据库与整个世界存档目录。
 - 不要将 JSON 重建后的存档直接覆盖正在运行的 `Level.sav`。
 
-[Unreleased]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.3.1...v1.4.0
 [1.3.1]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.3.0...v1.3.1

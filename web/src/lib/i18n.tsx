@@ -299,6 +299,7 @@ const zh: Messages = {
   "operations.automation": "自动化",
   "operations.backups": "备份",
   "operations.deployment": "部署更新",
+  "operations.migration": "存档迁移",
   "operations.diagnostics": "诊断",
   "steamcmd.title": "SteamCMD 部署与更新",
   "steamcmd.description": "固定应用 2394010 的安全安装、更新与文件校验流程",
@@ -374,6 +375,115 @@ const zh: Messages = {
   "steamcmd.confirmWarning":
     "请勿在执行过程中启动 PalServer、替换 SteamCMD 或修改安装路径。计划发生变化时 PST 会安全中止。",
   "steamcmd.confirmRun": "确认并开始",
+  "migration.title": "安全存档迁移",
+  "migration.description": "把同平台专用服务器世界安全导入当前 save.path",
+  "migration.sourcePath": "源存档绝对路径",
+  "migration.sourcePathPlaceholder":
+    "例如 D:\\PalServer-old\\Pal\\Saved 或世界目录",
+  "migration.sourcePathHint":
+    "可填写 Level.sav、世界目录、Saved 目录或 PalServer 安装目录；只读取本机文件。",
+  "migration.sourcePlatform": "源服务器平台",
+  "migration.platformCurrent": "与当前服务器相同（推荐）",
+  "migration.sourceKind": "源存档类型",
+  "migration.kindDedicated": "专用服务器",
+  "migration.kindCoop": "合作主机 / 单人",
+  "migration.preflightAction": "只读预检",
+  "migration.preflightAgain": "重新预检",
+  "migration.preflighting": "正在验证存档",
+  "migration.emptyTitle": "先定位要导入的世界",
+  "migration.emptyDescription":
+    "预检会解析目录、计算所有关键存档摘要，并用 sav_cli 验证 Level、LevelMeta、玩家档和 WorldOption 的类别，不会修改任何文件。",
+  "migration.safeScopeTitle": "限定为可验证的专服迁移",
+  "migration.safeScopeHint":
+    "仅自动处理同平台、同玩家身份体系的专用服务器存档；不会执行 GUID 重写或实验性修复。",
+  "migration.coopBlockedTitle": "合作主机存档不能自动迁移",
+  "migration.coopBlockedHint":
+    "合作主机的 000...001 玩家身份需要 GUID 转换。已知第三方转换仍可能破坏公会、帕鲁和容器数据，因此当前版本只做检测并阻止执行。",
+  "migration.preflightReady": "可以安全迁移",
+  "migration.preflightReadyHint": "已验证 {players} 个玩家存档",
+  "migration.preflightBlocked": "预检已阻止",
+  "migration.planUnavailable": "存档迁移计划不可用，请重新预检",
+  "migration.sourceWorld": "源世界",
+  "migration.destinationWorld": "当前服务器世界",
+  "migration.players": "玩家档",
+  "migration.files": "关键文件",
+  "migration.size": "数据大小",
+  "migration.notConfigured": "尚未配置 save.path",
+  "migration.replaceScope": "迁移时只替换这些项目",
+  "migration.preservedTitle": "当前服务器的其他内容会保留",
+  "migration.preservedHint":
+    "游戏自带 backup/ 目录及未知顶层文件不会被覆盖；源存档里的 backup/ 也不会导入。",
+  "migration.blockers": "必须先解决",
+  "migration.warnings": "执行前请确认",
+  "migration.pipeline": "带回滚的迁移事务",
+  "migration.pipelineHint":
+    "每一步都会复核源和目标摘要；任何中途变化都会在原子替换前中止，安装后验证失败则自动回滚。",
+  "migration.pipelinePlan": "复核迁移计划",
+  "migration.pipelineStop": "保存并停止服务器",
+  "migration.pipelineBackup": "创建强制恢复点",
+  "migration.pipelineStage": "暂存并验证源存档",
+  "migration.pipelineSwap": "原子替换并回滚保护",
+  "migration.pipelineSync": "同步数据并按需重启",
+  "migration.serverState": "服务器停机方式",
+  "migration.managedState": "已配置受限控制驱动；当前状态：{state}",
+  "migration.restStopAvailable":
+    "检测到服务器在线，PST 会先保存并平滑关服；未配置控制驱动时不能自动重启。",
+  "migration.manualState":
+    "未配置控制驱动，请在主机侧确认 PalServer 已完全停止。",
+  "migration.restartAfter": "迁移完成后启动服务器",
+  "migration.restartAfterHint": "通过受限控制驱动启动并等待服务器就绪",
+  "migration.restartUnavailable":
+    "PST 可以先平滑关服，但迁移后需要你在主机侧手动启动。",
+  "migration.manualStopConfirm": "我已手动停止 PalServer",
+  "migration.manualStopHint": "进程或容器完全停止后才能开启",
+  "migration.applyAction": "迁移到当前服务器",
+  "migration.running": "正在安全迁移",
+  "migration.resolveBlockers": "先解决预检中的阻止项",
+  "migration.serverBusy": "另一项维护操作正在运行",
+  "migration.serverStatusUnknown": "无法确认托管服务状态，请先修复控制驱动",
+  "migration.confirmManualStopFirst": "请先确认 PalServer 已完全停止",
+  "migration.shutdownMessage": "服务器将停止以迁移世界存档，请稍后重新连接。",
+  "migration.success": "存档迁移完成",
+  "migration.successHint": "已将 {source} 安全迁移到 {destination}",
+  "migration.syncFailed": "迁移成功，但存档数据同步失败",
+  "migration.restartFailed": "迁移成功，但服务器未能重新启动",
+  "migration.lastResult": "最近一次迁移结果",
+  "migration.completed": "迁移完成",
+  "migration.validated": "安装后验证通过",
+  "migration.restarted": "服务器已重启",
+  "migration.safetyBackup": "迁移前恢复点",
+  "migration.confirmTitle": "确认替换当前世界存档？",
+  "migration.confirmDescription":
+    "当前世界的关键存档会被源世界替换。PST 将先停服并创建强制安全备份，再进行暂存、验证和原子替换。",
+  "migration.mandatory": "强制创建",
+  "migration.confirmWarning":
+    "执行期间不要启动 PalServer，也不要修改源目录或当前 save.path。计划或文件发生变化时操作会安全中止。",
+  "migration.confirmRun": "确认并开始迁移",
+  "migration.notice.destination_platform_unsupported":
+    "目标系统仅支持 Windows 或 Linux。",
+  "migration.notice.source_kind_required": "请选择专用服务器或合作主机存档。",
+  "migration.notice.source_platform_required": "请选择源服务器平台。",
+  "migration.notice.cross_platform_identity_unsupported":
+    "Windows 与 Linux 的玩家身份方案不同，当前不会自动执行跨平台 GUID 转换。",
+  "migration.notice.coop_source_unsupported":
+    "合作主机存档需要玩家 GUID 转换，当前版本明确禁止自动迁移。",
+  "migration.notice.destination_not_configured":
+    "请先在 config.yaml 中配置本机 save.path。",
+  "migration.notice.coop_host_detected":
+    "检测到 00000000000000000000000000000001.sav，这是合作主机玩家档，已阻止实验性转换。",
+  "migration.notice.source_is_destination":
+    "源世界与当前服务器世界是同一个目录。",
+  "migration.notice.source_native_backups_ignored":
+    "源存档中的游戏内置备份不会导入。",
+  "migration.notice.source_entries_ignored":
+    "源目录中的非标准顶层项目不会导入。",
+  "migration.notice.source_has_no_players": "源世界的 Players 目录为空。",
+  "migration.notice.native_backup_source":
+    "选择的是游戏内置备份，建议优先使用“备份”页的原生恢复流程。",
+  "migration.notice.world_option_imported":
+    "源 WorldOption.sav 会在迁移后覆盖 PalWorldSettings.ini 的对应设置。",
+  "migration.notice.world_option_removed":
+    "源世界没有 WorldOption.sav，目标现有的 WorldOption.sav 将被移除。",
   "automation.tasks": "定时任务",
   "automation.tasksDescription":
     "仅执行经过校验的固定运维动作，不接受 Shell 或任意命令",
@@ -1036,6 +1146,7 @@ const en: Messages = {
   "operations.automation": "Automation",
   "operations.backups": "Backups",
   "operations.deployment": "Deployment",
+  "operations.migration": "Save migration",
   "operations.diagnostics": "Diagnostics",
   "steamcmd.title": "SteamCMD deployment and updates",
   "steamcmd.description":
@@ -1123,6 +1234,128 @@ const en: Messages = {
   "steamcmd.confirmWarning":
     "Do not start PalServer, replace SteamCMD, or change the install path while this runs. PST aborts safely if the plan changes.",
   "steamcmd.confirmRun": "Confirm and start",
+  "migration.title": "Safe save migration",
+  "migration.description":
+    "Import a same-platform dedicated-server world into the configured save.path",
+  "migration.sourcePath": "Absolute source path",
+  "migration.sourcePathPlaceholder":
+    "For example D:\\PalServer-old\\Pal\\Saved or a world directory",
+  "migration.sourcePathHint":
+    "Accepts Level.sav, a world directory, Saved, or a PalServer install root. Only local files are read.",
+  "migration.sourcePlatform": "Source server platform",
+  "migration.platformCurrent": "Current server (recommended)",
+  "migration.sourceKind": "Source save type",
+  "migration.kindDedicated": "Dedicated server",
+  "migration.kindCoop": "Co-op host / single-player",
+  "migration.preflightAction": "Run read-only preflight",
+  "migration.preflightAgain": "Run preflight again",
+  "migration.preflighting": "Validating saves",
+  "migration.emptyTitle": "Locate the world to import",
+  "migration.emptyDescription":
+    "Preflight resolves the directory, hashes every critical save, and uses sav_cli to validate Level, LevelMeta, player, and WorldOption classes without modifying files.",
+  "migration.safeScopeTitle": "Restricted to verifiable dedicated saves",
+  "migration.safeScopeHint":
+    "Automatic migration is limited to same-platform dedicated-server identity schemes. It never performs GUID rewriting or experimental repair.",
+  "migration.coopBlockedTitle":
+    "Co-op host saves cannot be migrated automatically",
+  "migration.coopBlockedHint":
+    "The 000...001 host identity requires GUID conversion. Known third-party conversion can still damage guild, Pal, and container data, so this release detects and blocks it.",
+  "migration.preflightReady": "Ready to migrate safely",
+  "migration.preflightReadyHint": "Validated {players} player save(s)",
+  "migration.preflightBlocked": "Preflight blocked",
+  "migration.planUnavailable":
+    "The save migration plan is unavailable; run preflight again",
+  "migration.sourceWorld": "Source world",
+  "migration.destinationWorld": "Current server world",
+  "migration.players": "Player saves",
+  "migration.files": "Critical files",
+  "migration.size": "Data size",
+  "migration.notConfigured": "save.path is not configured",
+  "migration.replaceScope": "Only these entries are replaced",
+  "migration.preservedTitle": "Other current-server data is preserved",
+  "migration.preservedHint":
+    "The game-managed backup/ tree and unknown top-level entries remain untouched. The source backup/ tree is not imported.",
+  "migration.blockers": "Resolve before continuing",
+  "migration.warnings": "Review before execution",
+  "migration.pipeline": "Rollback-protected migration transaction",
+  "migration.pipelineHint":
+    "Source and destination digests are checked throughout. Mid-operation changes abort before the atomic swap, and failed post-install validation rolls back.",
+  "migration.pipelinePlan": "Recheck migration plan",
+  "migration.pipelineStop": "Save and stop server",
+  "migration.pipelineBackup": "Create mandatory restore point",
+  "migration.pipelineStage": "Stage and validate source",
+  "migration.pipelineSwap": "Atomic swap with rollback",
+  "migration.pipelineSync": "Synchronize and optionally restart",
+  "migration.serverState": "Server shutdown method",
+  "migration.managedState":
+    "Restricted control is configured; current state: {state}",
+  "migration.restStopAvailable":
+    "The server is online. PST will save and shut it down gracefully; without a control driver it cannot restart automatically.",
+  "migration.manualState":
+    "No control driver is configured. Confirm PalServer is fully stopped in the host system.",
+  "migration.restartAfter": "Start server after migration",
+  "migration.restartAfterHint":
+    "Start through the restricted control driver and wait for readiness",
+  "migration.restartUnavailable":
+    "PST can shut the online server down gracefully, but you must start it manually afterward.",
+  "migration.manualStopConfirm": "I have manually stopped PalServer",
+  "migration.manualStopHint":
+    "Enable only after the process or container has fully stopped",
+  "migration.applyAction": "Migrate into current server",
+  "migration.running": "Migrating safely",
+  "migration.resolveBlockers": "Resolve the preflight blockers first",
+  "migration.serverBusy": "Another maintenance operation is running",
+  "migration.serverStatusUnknown":
+    "The managed server state cannot be verified; fix the control driver first",
+  "migration.confirmManualStopFirst": "Confirm that PalServer is fully stopped",
+  "migration.shutdownMessage":
+    "The server is stopping to migrate the world save. Please reconnect shortly.",
+  "migration.success": "Save migration completed",
+  "migration.successHint": "Safely migrated {source} into {destination}",
+  "migration.syncFailed":
+    "Migration succeeded, but decoded save synchronization failed",
+  "migration.restartFailed":
+    "Migration succeeded, but the server could not restart",
+  "migration.lastResult": "Latest migration result",
+  "migration.completed": "Migration completed",
+  "migration.validated": "Post-install validation passed",
+  "migration.restarted": "Server restarted",
+  "migration.safetyBackup": "Pre-migration restore point",
+  "migration.confirmTitle": "Replace the current world save?",
+  "migration.confirmDescription":
+    "Critical files in the current world will be replaced by the source world. PST stops the server and creates a mandatory safety backup before staging, validation, and atomic replacement.",
+  "migration.mandatory": "Mandatory",
+  "migration.confirmWarning":
+    "Do not start PalServer or modify the source directory or current save.path while this runs. Changed plans or files abort safely.",
+  "migration.confirmRun": "Confirm and migrate",
+  "migration.notice.destination_platform_unsupported":
+    "The destination must run on Windows or Linux.",
+  "migration.notice.source_kind_required":
+    "Choose a dedicated-server or co-op source.",
+  "migration.notice.source_platform_required":
+    "Choose the source server platform.",
+  "migration.notice.cross_platform_identity_unsupported":
+    "Windows and Linux use different player identity schemes; automatic cross-platform GUID conversion is not supported.",
+  "migration.notice.coop_source_unsupported":
+    "Co-op saves require player GUID conversion and are intentionally blocked.",
+  "migration.notice.destination_not_configured":
+    "Configure a local save.path in config.yaml first.",
+  "migration.notice.coop_host_detected":
+    "Detected 00000000000000000000000000000001.sav, the co-op host player save; experimental conversion is blocked.",
+  "migration.notice.source_is_destination":
+    "The source and current server world resolve to the same directory.",
+  "migration.notice.source_native_backups_ignored":
+    "Game-managed backups in the source are not imported.",
+  "migration.notice.source_entries_ignored":
+    "Non-standard top-level entries in the source are not imported.",
+  "migration.notice.source_has_no_players":
+    "The source Players directory is empty.",
+  "migration.notice.native_backup_source":
+    "This is a game-managed backup; prefer the native restore workflow on the Backups tab.",
+  "migration.notice.world_option_imported":
+    "The source WorldOption.sav will override matching PalWorldSettings.ini values after migration.",
+  "migration.notice.world_option_removed":
+    "The source has no WorldOption.sav, so the destination copy will be removed.",
   "automation.tasks": "Scheduled tasks",
   "automation.tasksDescription":
     "Validated maintenance actions only; shell scripts and arbitrary commands are not accepted",
@@ -1539,6 +1772,7 @@ const ja: Messages = {
   "operations.automation": "自動化",
   "operations.backups": "バックアップ",
   "operations.deployment": "導入・更新",
+  "operations.migration": "セーブ移行",
   "steamcmd.title": "SteamCMD 導入・更新",
   "steamcmd.description":
     "固定 App 2394010 の安全なインストール、更新、ファイル検証",
@@ -1624,6 +1858,125 @@ const ja: Messages = {
   "steamcmd.confirmWarning":
     "実行中に PalServer を起動したり、SteamCMD や導入先を変更しないでください。プラン変更時は安全に中止します。",
   "steamcmd.confirmRun": "確認して開始",
+  "migration.title": "安全なセーブ移行",
+  "migration.description":
+    "同一プラットフォームの専用サーバーワールドを現在の save.path へ安全に導入",
+  "migration.sourcePath": "移行元の絶対パス",
+  "migration.sourcePathPlaceholder":
+    "例: D:\\PalServer-old\\Pal\\Saved またはワールドディレクトリ",
+  "migration.sourcePathHint":
+    "Level.sav、ワールド、Saved、PalServer ルートを指定できます。ローカルファイルだけを読み取ります。",
+  "migration.sourcePlatform": "移行元サーバーの OS",
+  "migration.platformCurrent": "現在のサーバーと同じ（推奨）",
+  "migration.sourceKind": "移行元セーブの種類",
+  "migration.kindDedicated": "専用サーバー",
+  "migration.kindCoop": "協力ホスト / シングル",
+  "migration.preflightAction": "読み取り専用チェック",
+  "migration.preflightAgain": "再チェック",
+  "migration.preflighting": "セーブを検証中",
+  "migration.emptyTitle": "導入するワールドを指定してください",
+  "migration.emptyDescription":
+    "事前確認ではディレクトリを解決し、重要ファイルをハッシュ化し、sav_cli で Level・LevelMeta・プレイヤー・WorldOption の種類を検証します。ファイルは変更しません。",
+  "migration.safeScopeTitle": "検証可能な専用サーバー移行に限定",
+  "migration.safeScopeHint":
+    "同一 OS・同一プレイヤー ID 方式の専用サーバーだけを自動移行します。GUID 書き換えや実験的修復は行いません。",
+  "migration.coopBlockedTitle": "協力ホストの自動移行はできません",
+  "migration.coopBlockedHint":
+    "000...001 のホスト ID には GUID 変換が必要です。既知の外部変換にはギルド、Pal、コンテナ破損の可能性があるため、この版では検出して停止します。",
+  "migration.preflightReady": "安全に移行できます",
+  "migration.preflightReadyHint":
+    "{players} 件のプレイヤーセーブを検証しました",
+  "migration.preflightBlocked": "事前確認で停止",
+  "migration.planUnavailable":
+    "移行プランを取得できません。再チェックしてください",
+  "migration.sourceWorld": "移行元ワールド",
+  "migration.destinationWorld": "現在のサーバーワールド",
+  "migration.players": "プレイヤーセーブ",
+  "migration.files": "重要ファイル",
+  "migration.size": "データサイズ",
+  "migration.notConfigured": "save.path 未設定",
+  "migration.replaceScope": "置き換える項目はこの範囲だけです",
+  "migration.preservedTitle": "現在のその他データは保持されます",
+  "migration.preservedHint":
+    "ゲーム管理の backup/ と未知のトップレベル項目は変更しません。移行元の backup/ も導入しません。",
+  "migration.blockers": "先に解決が必要です",
+  "migration.warnings": "実行前の確認事項",
+  "migration.pipeline": "ロールバック保護付き移行",
+  "migration.pipelineHint":
+    "途中で移行元・移行先のハッシュを再確認します。変更があれば原子置換前に中止し、導入後の検証失敗時は自動で戻します。",
+  "migration.pipelinePlan": "移行プランを再確認",
+  "migration.pipelineStop": "保存して停止",
+  "migration.pipelineBackup": "必須の復元点を作成",
+  "migration.pipelineStage": "移行元を一時配置・検証",
+  "migration.pipelineSwap": "原子置換とロールバック",
+  "migration.pipelineSync": "同期して必要なら再起動",
+  "migration.serverState": "サーバー停止方法",
+  "migration.managedState": "制限付き制御を設定済み。現在: {state}",
+  "migration.restStopAvailable":
+    "オンラインを検出しました。PST が保存して安全に停止します。制御ドライバー未設定時は自動再起動できません。",
+  "migration.manualState":
+    "制御ドライバー未設定です。ホスト側で PalServer の完全停止を確認してください。",
+  "migration.restartAfter": "移行後にサーバーを起動",
+  "migration.restartAfterHint": "制限付き制御で起動し、準備完了まで待機します",
+  "migration.restartUnavailable":
+    "安全な停止はできますが、移行後はホスト側で手動起動してください。",
+  "migration.manualStopConfirm": "PalServer を手動で停止しました",
+  "migration.manualStopHint":
+    "プロセスまたはコンテナが完全停止してから有効にします",
+  "migration.applyAction": "現在のサーバーへ移行",
+  "migration.running": "安全に移行中",
+  "migration.resolveBlockers": "事前確認の問題を解決してください",
+  "migration.serverBusy": "別のメンテナンス処理が実行中です",
+  "migration.serverStatusUnknown":
+    "管理サービスの状態を確認できません。先に制御ドライバーを修正してください",
+  "migration.confirmManualStopFirst": "PalServer の完全停止を確認してください",
+  "migration.shutdownMessage":
+    "ワールドセーブ移行のためサーバーを停止します。しばらくしてから再接続してください。",
+  "migration.success": "セーブ移行が完了しました",
+  "migration.successHint": "{source} を {destination} へ安全に移行しました",
+  "migration.syncFailed":
+    "移行は成功しましたが、解析済みデータの同期に失敗しました",
+  "migration.restartFailed":
+    "移行は成功しましたが、サーバーを再起動できませんでした",
+  "migration.lastResult": "直近の移行結果",
+  "migration.completed": "移行完了",
+  "migration.validated": "導入後の検証 OK",
+  "migration.restarted": "サーバー再起動済み",
+  "migration.safetyBackup": "移行前の復元点",
+  "migration.confirmTitle": "現在のワールドセーブを置き換えますか？",
+  "migration.confirmDescription":
+    "現在の重要セーブを移行元ワールドで置き換えます。PST は先にサーバーを停止して必須バックアップを作り、一時配置・検証・原子置換を行います。",
+  "migration.mandatory": "必須",
+  "migration.confirmWarning":
+    "実行中は PalServer を起動せず、移行元や save.path を変更しないでください。プランやファイルが変われば安全に中止します。",
+  "migration.confirmRun": "確認して移行",
+  "migration.notice.destination_platform_unsupported":
+    "移行先は Windows または Linux が必要です。",
+  "migration.notice.source_kind_required":
+    "専用サーバーまたは協力ホストを選択してください。",
+  "migration.notice.source_platform_required": "移行元 OS を選択してください。",
+  "migration.notice.cross_platform_identity_unsupported":
+    "Windows と Linux はプレイヤー ID 方式が異なるため、OS 間 GUID 自動変換には対応していません。",
+  "migration.notice.coop_source_unsupported":
+    "協力ホストはプレイヤー GUID 変換が必要なため、自動移行を禁止しています。",
+  "migration.notice.destination_not_configured":
+    "先に config.yaml でローカル save.path を設定してください。",
+  "migration.notice.coop_host_detected":
+    "協力ホストの 00000000000000000000000000000001.sav を検出したため、実験的変換を停止しました。",
+  "migration.notice.source_is_destination":
+    "移行元と現在のワールドが同じディレクトリです。",
+  "migration.notice.source_native_backups_ignored":
+    "移行元のゲーム内バックアップは導入しません。",
+  "migration.notice.source_entries_ignored":
+    "移行元の非標準トップレベル項目は導入しません。",
+  "migration.notice.source_has_no_players":
+    "移行元の Players ディレクトリは空です。",
+  "migration.notice.native_backup_source":
+    "ゲーム内バックアップが選ばれています。「バックアップ」タブの標準復元を推奨します。",
+  "migration.notice.world_option_imported":
+    "移行元 WorldOption.sav は移行後に PalWorldSettings.ini の該当値より優先されます。",
+  "migration.notice.world_option_removed":
+    "移行元に WorldOption.sav がないため、移行先のファイルは削除されます。",
   "automation.tasks": "スケジュールタスク",
   "automation.tasksDescription":
     "検証済みの運用操作のみを実行し、Shell や任意コマンドは受け付けません",

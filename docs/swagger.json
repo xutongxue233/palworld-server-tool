@@ -2320,6 +2320,120 @@
                 }
             }
         },
+        "/api/server/migration/apply": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Revalidate the Palworld 1.0.0 plan, stop the server, create a mandatory PST safety backup, stage and validate the source, atomically replace only Level.sav, LevelMeta.sav, Players, and optional WorldOption.sav, synchronize decoded data, and optionally restart.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Server"
+                ],
+                "summary": "Safely migrate a local Palworld dedicated-server world",
+                "parameters": [
+                    {
+                        "description": "Confirmed local save migration",
+                        "name": "migration",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.SaveMigrationApplyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SaveMigrationApplyResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.SaveMigrationErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/api.SaveMigrationErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/api.SaveMigrationErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/server/migration/preflight": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Resolve and validate a same-platform Palworld 1.0.0 dedicated-server world without modifying either source or destination. Co-op host GUID conversion and cross-platform identity conversion are intentionally blocked.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Server"
+                ],
+                "summary": "Preflight a local Palworld dedicated-server save migration",
+                "parameters": [
+                    {
+                        "description": "Local migration source",
+                        "name": "preflight",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.SaveMigrationPreflightRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SaveMigrationPreflightResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/server/restart": {
             "post": {
                 "security": [
@@ -3454,6 +3568,131 @@
                 },
                 "sync_error": {
                     "type": "string"
+                }
+            }
+        },
+        "api.SaveMigrationApplyRequest": {
+            "type": "object",
+            "required": [
+                "expected_plan_digest",
+                "source_kind",
+                "source_path",
+                "source_platform"
+            ],
+            "properties": {
+                "confirm_migration": {
+                    "type": "boolean"
+                },
+                "confirm_server_stopped": {
+                    "type": "boolean"
+                },
+                "expected_plan_digest": {
+                    "type": "string"
+                },
+                "restart_after": {
+                    "type": "boolean"
+                },
+                "shutdown_message": {
+                    "type": "string",
+                    "maxLength": 256
+                },
+                "shutdown_seconds": {
+                    "type": "integer",
+                    "maximum": 300,
+                    "minimum": 0
+                },
+                "source_kind": {
+                    "type": "string",
+                    "enum": [
+                        "dedicated",
+                        "coop"
+                    ]
+                },
+                "source_path": {
+                    "type": "string",
+                    "maxLength": 4096
+                },
+                "source_platform": {
+                    "type": "string",
+                    "enum": [
+                        "current",
+                        "windows",
+                        "linux"
+                    ]
+                }
+            }
+        },
+        "api.SaveMigrationApplyResponse": {
+            "type": "object",
+            "properties": {
+                "maintenance": {
+                    "$ref": "#/definitions/tool.MaintenanceStopResult"
+                },
+                "migration": {
+                    "$ref": "#/definitions/tool.SaveMigrationResult"
+                },
+                "restart_error": {
+                    "type": "string"
+                },
+                "restarted": {
+                    "type": "boolean"
+                },
+                "sync_error": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.SaveMigrationErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "result": {
+                    "$ref": "#/definitions/api.SaveMigrationApplyResponse"
+                }
+            }
+        },
+        "api.SaveMigrationPreflightRequest": {
+            "type": "object",
+            "required": [
+                "source_kind",
+                "source_path",
+                "source_platform"
+            ],
+            "properties": {
+                "source_kind": {
+                    "type": "string",
+                    "enum": [
+                        "dedicated",
+                        "coop"
+                    ]
+                },
+                "source_path": {
+                    "type": "string",
+                    "maxLength": 4096
+                },
+                "source_platform": {
+                    "type": "string",
+                    "enum": [
+                        "current",
+                        "windows",
+                        "linux"
+                    ]
+                }
+            }
+        },
+        "api.SaveMigrationPreflightResponse": {
+            "type": "object",
+            "properties": {
+                "plan": {
+                    "$ref": "#/definitions/tool.SaveMigrationPlan"
+                },
+                "server_control": {
+                    "$ref": "#/definitions/tool.ServerControlStatus"
                 }
             }
         },
@@ -5008,6 +5247,126 @@
                 },
                 "technology_before": {
                     "type": "integer"
+                }
+            }
+        },
+        "tool.SaveMigrationNotice": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "tool.SaveMigrationPlan": {
+            "type": "object",
+            "properties": {
+                "can_migrate": {
+                    "type": "boolean"
+                },
+                "configured": {
+                    "type": "boolean"
+                },
+                "coop_host_detected": {
+                    "type": "boolean"
+                },
+                "destination_digest": {
+                    "type": "string"
+                },
+                "destination_file_count": {
+                    "type": "integer"
+                },
+                "destination_has_world_option": {
+                    "type": "boolean"
+                },
+                "destination_path": {
+                    "type": "string"
+                },
+                "destination_platform": {
+                    "type": "string"
+                },
+                "destination_player_files": {
+                    "type": "integer"
+                },
+                "destination_size_bytes": {
+                    "type": "integer"
+                },
+                "destination_world_id": {
+                    "type": "string"
+                },
+                "game_version": {
+                    "type": "string"
+                },
+                "issues": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/tool.SaveMigrationNotice"
+                    }
+                },
+                "plan_digest": {
+                    "type": "string"
+                },
+                "source_digest": {
+                    "type": "string"
+                },
+                "source_file_count": {
+                    "type": "integer"
+                },
+                "source_has_native_backups": {
+                    "type": "boolean"
+                },
+                "source_has_world_option": {
+                    "type": "boolean"
+                },
+                "source_ignored_entries": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "source_input": {
+                    "type": "string"
+                },
+                "source_kind": {
+                    "type": "string"
+                },
+                "source_path": {
+                    "type": "string"
+                },
+                "source_platform": {
+                    "type": "string"
+                },
+                "source_player_files": {
+                    "type": "integer"
+                },
+                "source_size_bytes": {
+                    "type": "integer"
+                },
+                "source_world_id": {
+                    "type": "string"
+                },
+                "validation_passed": {
+                    "type": "boolean"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/tool.SaveMigrationNotice"
+                    }
+                }
+            }
+        },
+        "tool.SaveMigrationResult": {
+            "type": "object",
+            "properties": {
+                "plan": {
+                    "$ref": "#/definitions/tool.SaveMigrationPlan"
+                },
+                "safety_backup": {
+                    "$ref": "#/definitions/database.Backup"
                 }
             }
         },

@@ -19,6 +19,10 @@ import type {
   Player,
   PlayerSummary,
   RenamePalResult,
+  SaveMigrationApplyRequest,
+  SaveMigrationApplyResult,
+  SaveMigrationPreflightRequest,
+  SaveMigrationPreflightResult,
   SetItemQuantityResult,
   ServerInfo,
   ServerMetrics,
@@ -171,6 +175,16 @@ export const api = {
     request<SteamCMDUpdateResult>("/api/server/steamcmd/update", {
       method: "POST",
       body: update,
+    }),
+  preflightSaveMigration: (source: SaveMigrationPreflightRequest) =>
+    request<SaveMigrationPreflightResult>("/api/server/migration/preflight", {
+      method: "POST",
+      body: source,
+    }),
+  applySaveMigration: (migration: SaveMigrationApplyRequest) =>
+    request<SaveMigrationApplyResult>("/api/server/migration/apply", {
+      method: "POST",
+      body: migration,
     }),
   runRcon: (command: string) =>
     request<{ message: string }>("/api/rcon", {

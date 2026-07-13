@@ -3,6 +3,7 @@ import {
   CalendarClock,
   DatabaseBackup,
   Download,
+  FolderInput,
   LockKeyhole,
   RadioTower,
   ShieldCheck,
@@ -18,6 +19,7 @@ import { useI18n } from "@/lib/i18n";
 import { BackupsPanel } from "@/features/operations/backups-panel";
 import { AutomationPanel } from "@/features/operations/automation-panel";
 import { ServerControls } from "@/features/operations/server-controls";
+import { SaveMigrationPanel } from "@/features/operations/save-migration-panel";
 import { SteamCMDPanel } from "@/features/operations/steamcmd-panel";
 import { WhitelistPanel } from "@/features/operations/whitelist-panel";
 
@@ -73,6 +75,9 @@ export default function OperationsView() {
               <TabsTrigger value="deployment">
                 <Download /> {t("operations.deployment")}
               </TabsTrigger>
+              <TabsTrigger value="migration">
+                <FolderInput /> {t("operations.migration")}
+              </TabsTrigger>
               <TabsTrigger value="backups">
                 <DatabaseBackup /> {t("operations.backups")}
               </TabsTrigger>
@@ -90,6 +95,9 @@ export default function OperationsView() {
             </TabsContent>
             <TabsContent value="deployment" className="m-0">
               <SteamCMDPanel />
+            </TabsContent>
+            <TabsContent value="migration" className="m-0">
+              <SaveMigrationPanel />
             </TabsContent>
             <TabsContent value="backups" className="m-0">
               <BackupsPanel />
