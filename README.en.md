@@ -54,6 +54,7 @@ Additional features provided by the tool:
 - [x] Direct `PalWorldSettings.ini` editing plus WorldOption override detection and safe generation/synchronization
 - [x] Restricted process, Docker, systemd, and Windows service lifecycle control
 - [x] JWT-protected RCON terminal with all 13 Palworld 1.0.0 official command templates
+- [x] Typed scheduled tasks, an intentional-stop-aware watchdog, and generic/Discord webhook notifications
 - [x] Automatic PST safety restore points before dangerous save operations
 
 This tool stores synchronized REST API and Level.sav data in a single bbolt database and exposes it through the management interface.
@@ -106,6 +107,38 @@ rcon:
 
 Expose the RCON port only to the PST host or another trusted network. Keep `use_base64` disabled when connecting directly to the official server.
 
+## Automation, watchdog, and notifications
+
+After entering Web management mode, open **Operations → Automation** to create interval, daily, or weekly tasks without learning cron syntax. Actions are restricted to world save, announcement, start, safe stop, save-and-restart, decoded-save synchronization, and an extra PST safety backup. User input is never converted into shell text or an arbitrary RCON command. Tasks, the latest 500 run records, and settings are persisted in `pst.db` and re-registered after PST restarts.
+
+The watchdog checks both the restricted control driver's process state and the Palworld REST `/info` response. Recovery starts only after consecutive failures reach the threshold and is bounded by startup grace, cooldown, and a maximum attempt count. A Stop action from the Web UI or typed scheduler records intentional downtime, so the watchdog does not fight the administrator; starting the server restores the keep-running target.
+
+Offline save edits, configuration writes, RCON, legacy periodic sync/backups, and automated maintenance share one operation lock. RCON `Shutdown` and `DoExit` also record intentional downtime so the watchdog does not fight an administrator command.
+
+Notifications support generic JSON and Discord webhooks with selectable task, lifecycle, unhealthy, and recovery events. Generic endpoints can verify `X-PST-Signature: sha256=<HMAC>`. Public HTTPS destinations are required by default; redirects, localhost, and private-network addresses are rejected. Webhook tokens and signing secrets are never returned by read APIs.
+
+`automation.watchdog` and `automation.notification` in `config.yaml` seed first-run defaults and can then be managed in the Web UI. The watchdog requires `palworld.control`. The design was informed by [palworld-server-docker's scheduled backup and Discord notification flows](https://github.com/thijsvanloef/palworld-server-docker) and [TRRabbit Palworld Server Manager's Scheduler/Guardian UX](https://github.com/TRRabbit/palworld-server-manager), while PST keeps its own allowlisted actions, operation lock, and outbound-only notification boundary.
+
+```yaml
+automation:
+  watchdog:
+    enabled: false
+    desired_running: true
+    check_interval_seconds: 30
+    failure_threshold: 3
+    restart_cooldown_seconds: 120
+    max_recovery_attempts: 3
+    startup_grace_seconds: 90
+  notification:
+    enabled: false
+    provider: "generic" # generic or discord
+    webhook_url: ""
+    secret: "" # optional HMAC-SHA256 secret for generic webhooks
+    events: ["task.failed", "watchdog.unhealthy", "watchdog.recovered"]
+    timeout_seconds: 10
+    allow_private_network: false
+```
+
 
 ## Installation and Deployment
 
@@ -140,7 +173,7 @@ Download the latest executable files at:
 
 ```bash
 # Download pst_{version}_{platform}_{arch}.tar.gz and extract to the pst directory
-mkdir -p pst && tar -xzf pst_v1.3.1_linux_x86_64.tar.gz -C pst
+mkdir -p pst && tar -xzf pst_v1.4.0_linux_x86_64.tar.gz -C pst
 ```
 
 ##### Configuration
@@ -220,7 +253,7 @@ mkdir -p pst && tar -xzf pst_v1.3.1_linux_x86_64.tar.gz -C pst
      # Save Backup Keep Days
      backup_keep_days: 7
 
-   # Automation Config
+   # Manage Config
    manage:
      # Auto Kick non-whitelisted
      kick_non_whitelist: false
@@ -278,7 +311,7 @@ Access at http://{Server IP}:8080 after opening firewall and security group in c
 
 ##### Download and Extract
 
-Extract `pst_v1.3.1_windows_x86_64.zip` to any directory (recommend naming the folder `pst`).
+Extract `pst_v1.4.0_windows_x86_64.zip` to any directory (recommend naming the folder `pst`).
 
 ##### Configuration
 
@@ -355,7 +388,7 @@ save:
   # Save Backup Keep Days
   backup_keep_days: 7
 
-# Automation Config
+# Manage Config
 manage:
   # Auto Kick non-whitelisted
   kick_non_whitelist: false

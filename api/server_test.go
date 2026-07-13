@@ -1,15 +1,20 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-co-op/gocron/v2"
 	"github.com/spf13/viper"
 	"github.com/zaigie/palworld-server-tool/internal/auth"
+	"github.com/zaigie/palworld-server-tool/internal/task"
+	"go.etcd.io/bbolt"
 )
 
 func TestOfficialServerManagementRoutes(t *testing.T) {
@@ -68,6 +73,14 @@ func TestOfficialServerManagementRoutes(t *testing.T) {
 		{http.MethodPost, "/api/server/backups/native/2026.07.13-10.00.00/restore"},
 		{http.MethodPost, "/api/server/start"},
 		{http.MethodPost, "/api/server/restart"},
+		{http.MethodGet, "/api/automation/tasks"},
+		{http.MethodPost, "/api/automation/tasks"},
+		{http.MethodGet, "/api/automation/runs"},
+		{http.MethodGet, "/api/automation/settings"},
+		{http.MethodPut, "/api/automation/settings"},
+		{http.MethodGet, "/api/automation/status"},
+		{http.MethodPost, "/api/automation/notifications/test"},
+		{http.MethodPost, "/api/automation/watchdog/reset"},
 	} {
 		request = httptest.NewRequest(protected.method, protected.path, nil)
 		response = httptest.NewRecorder()
@@ -123,6 +136,133 @@ func TestOfficialServerManagementRoutes(t *testing.T) {
 	}
 	if metrics.BaseCampNum != 3 {
 		t.Fatalf("base camp metric was not exposed: %#v", metrics)
+	}
+}
+
+func TestAutomationTaskRoutes(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	viper.Reset()
+	viper.Set("web.password", "admin-secret")
+	t.Cleanup(viper.Reset)
+
+	db, err := bbolt.Open(filepath.Join(t.TempDir(), "automation.db"), 0600, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	scheduler, err := gocron.NewScheduler()
+	if err != nil {
+		_ = db.Close()
+		t.Fatal(err)
+	}
+	manager, err := task.NewAutomationManager(db, scheduler)
+	if err != nil {
+		_ = scheduler.Shutdown()
+		_ = db.Close()
+		t.Fatal(err)
+	}
+	task.SetAutomationManager(manager)
+	scheduler.Start()
+	t.Cleanup(func() {
+		task.SetAutomationManager(nil)
+		_ = scheduler.Shutdown()
+		manager.Close()
+		_ = db.Close()
+	})
+
+	token, err := auth.GenerateToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+	router := gin.New()
+	RegisterRouter(router)
+
+	body := `{"name":"Hourly save","enabled":true,"action":"save_world","schedule":{"kind":"interval","interval_minutes":60},"parameters":{}}`
+	request := httptest.NewRequest(http.MethodPost, "/api/automation/tasks", strings.NewReader(body))
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "Bearer "+token)
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusCreated {
+		t.Fatalf("create automation task returned %d: %s", response.Code, response.Body.String())
+	}
+	var created task.ScheduledTaskView
+	if err := json.Unmarshal(response.Body.Bytes(), &created); err != nil {
+		t.Fatal(err)
+	}
+	if created.ID == "" || created.Action != task.ActionSaveWorld {
+		t.Fatalf("unexpected created task: %#v", created)
+	}
+
+	request = httptest.NewRequest(http.MethodGet, "/api/automation/tasks", nil)
+	request.Header.Set("Authorization", "Bearer "+token)
+	response = httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("list automation tasks returned %d: %s", response.Code, response.Body.String())
+	}
+	var tasks []task.ScheduledTaskView
+	if err := json.Unmarshal(response.Body.Bytes(), &tasks); err != nil {
+		t.Fatal(err)
+	}
+	if len(tasks) != 1 || tasks[0].ID != created.ID {
+		t.Fatalf("unexpected task list: %#v", tasks)
+	}
+
+	invalid := `{"name":"Unsafe","enabled":true,"action":"shell","schedule":{"kind":"interval","interval_minutes":60},"parameters":{"message":"rm -rf /"}}`
+	request = httptest.NewRequest(http.MethodPost, "/api/automation/tasks", strings.NewReader(invalid))
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "Bearer "+token)
+	response = httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("unsafe automation action returned %d: %s", response.Code, response.Body.String())
+	}
+
+	for _, path := range []string{"/api/automation/settings", "/api/automation/status", "/api/automation/runs"} {
+		request = httptest.NewRequest(http.MethodGet, path, nil)
+		request.Header.Set("Authorization", "Bearer "+token)
+		response = httptest.NewRecorder()
+		router.ServeHTTP(response, request)
+		if response.Code != http.StatusOK {
+			t.Fatalf("GET %s returned %d: %s", path, response.Code, response.Body.String())
+		}
+	}
+
+	defaults := task.DefaultAutomationSettings()
+	defaults.Watchdog.Enabled = true
+	settingsBody, err := json.Marshal(task.AutomationSettingsUpdate{
+		Watchdog: defaults.Watchdog,
+		Notification: task.NotificationSettingsUpdate{
+			Provider:       task.NotificationGeneric,
+			Events:         defaults.Notification.Events,
+			TimeoutSeconds: defaults.Notification.TimeoutSeconds,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request = httptest.NewRequest(http.MethodPut, "/api/automation/settings", bytes.NewReader(settingsBody))
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "Bearer "+token)
+	response = httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("enable unconfigured watchdog returned %d: %s", response.Code, response.Body.String())
+	}
+	var settingsError ErrorResponse
+	if err := json.Unmarshal(response.Body.Bytes(), &settingsError); err != nil {
+		t.Fatal(err)
+	}
+	if settingsError.Code != "watchdog_control_required" {
+		t.Fatalf("unexpected watchdog settings error: %#v", settingsError)
+	}
+
+	request = httptest.NewRequest(http.MethodDelete, "/api/automation/tasks/"+created.ID, nil)
+	request.Header.Set("Authorization", "Bearer "+token)
+	response = httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("delete automation task returned %d: %s", response.Code, response.Body.String())
 	}
 }
 

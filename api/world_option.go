@@ -56,6 +56,11 @@ func syncWorldOption(c *gin.Context) {
 		writeWorldOptionError(c, err)
 		return
 	}
+	release, ok := beginManualOperation(c, nil)
+	if !ok {
+		return
+	}
+	defer release()
 	controlStatus := tool.GetServerControlStatus(c.Request.Context())
 	if (controlStatus.Online || controlStatus.Running) && !controlStatus.Configured {
 		c.JSON(http.StatusConflict, ErrorResponse{

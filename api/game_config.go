@@ -60,6 +60,11 @@ func putGameConfigFile(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	release, ok := beginManualOperation(c, nil)
+	if !ok {
+		return
+	}
+	defer release()
 	result, err := tool.WriteGameConfigFile(req.Content, req.ExpectedSHA256)
 	if err != nil {
 		status := http.StatusBadRequest

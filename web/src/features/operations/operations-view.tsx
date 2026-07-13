@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  CalendarClock,
   DatabaseBackup,
   LockKeyhole,
   RadioTower,
@@ -14,6 +15,7 @@ import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 
 import { BackupsPanel } from "@/features/operations/backups-panel";
+import { AutomationPanel } from "@/features/operations/automation-panel";
 import { ServerControls } from "@/features/operations/server-controls";
 import { WhitelistPanel } from "@/features/operations/whitelist-panel";
 
@@ -63,6 +65,9 @@ export default function OperationsView() {
               <TabsTrigger value="whitelist">
                 <ShieldCheck /> {t("operations.whitelist")}
               </TabsTrigger>
+              <TabsTrigger value="automation">
+                <CalendarClock /> {t("operations.automation")}
+              </TabsTrigger>
               <TabsTrigger value="backups">
                 <DatabaseBackup /> {t("operations.backups")}
               </TabsTrigger>
@@ -74,6 +79,9 @@ export default function OperationsView() {
             </TabsContent>
             <TabsContent value="whitelist" className="m-0">
               <WhitelistPanel />
+            </TabsContent>
+            <TabsContent value="automation" className="m-0">
+              <AutomationPanel />
             </TabsContent>
             <TabsContent value="backups" className="m-0">
               <BackupsPanel />

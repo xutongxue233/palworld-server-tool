@@ -1,30 +1,32 @@
-# Palworld Server Tool v1.3.1
+# Palworld Server Tool v1.4.0
 
-此版本继续面向 Palworld 1.0.0，重点补齐游戏原生备份恢复、`WorldOption.sav` 覆盖处理和完整 RCON 命令模板。v1.3.1 同时修复 v1.3.0 Windows 发布包缺少 `sav_cli.exe` 的打包问题；所有平台包现已执行必需文件与 SHA-256 校验。
+此版本继续严格面向 Palworld 1.0.0，新增面向新手的类型化定时任务、服务器看门狗和结构化通知。所有自动化动作都经过白名单校验，并与已有的启停、游戏原生备份恢复和 `WorldOption.sav` 安全写入共享互斥边界。
 
 ## 主要更新
 
-- 备份页可直接发现并逐文件校验当前世界 `backup/world/<时间戳>` 下的游戏原生备份；游戏自带备份作为日常恢复首选，PST 不再重复维护另一套日常快照。
-- 新增原生备份安全恢复事务：停服前复核快照、完整内容摘要、恢复前 PST 安全包、同文件系统暂存、原子替换、失败回滚和可选自动重启。
-- 配置页会检测活动世界中的 `WorldOption.sav` 并明确提示其优先级；可把已保存的 `PalWorldSettings.ini` 安全生成或同步为 Palworld 1.0.0 世界配置。
-- `sav_cli` 新增 `sync-world-option` 模式，支持布尔、整数、浮点、字符串、枚举和枚举数组，写入后执行 GVAS 无损往返与目标字段校验。
-- RCON 终端收录 Palworld 1.0.0 官方命令表全部 13 条模板，按用途与风险分组；带参数模板会自动选中首个占位符，快捷按钮只填充、不自动执行。
-- 使用用户提供的 9,449 字节真实玩家存档完成技术点编辑、重压缩和校验回归，不再复现 `Player save does not contain SaveData`。
-- Windows 发布任务会传播构建失败，并在 ZIP 创建前后确认 `sav_cli.exe`、GPL/第三方许可证、主程序和启动配置全部存在。
+- 在“运维 → 自动化”中直接创建间隔、每天或每周任务，不需要学习 Cron；支持保存世界、发送公告、启动、安全停止、保存并重启、同步存档解析和额外 PST 安全备份。
+- 提供每小时保存、每天维护重启、每周安全备份和定时存档同步模板；任务与设置保存在 `pst.db`，PST 重启后会自动恢复。
+- 服务器看门狗同时检查受限控制驱动的进程状态和 Palworld REST `/info`，并通过失败阈值、启动宽限、冷却与最大恢复次数限制自动恢复。
+- 人工或类型化任务主动停止服务器时会持久记录“允许停机”，看门狗不会把管理员明确停止的服务器重新拉起。
+- 支持通用 JSON 和 Discord Webhook，可选择任务、人工启停、服务器异常、恢复成功和恢复失败事件；通用 Webhook 可使用 HMAC-SHA256 签名。
+- 新增运行记录和维护状态轨道，最多保留最近 500 次结果；服务控制状态会显示独占维护操作是否正在执行。
+- 新增完整自动化 REST API 与 Swagger 文档，并为中、英、日界面补齐错误提示和操作说明。
 
-## 安全约束
+## 安全边界
 
-- 原生备份拒绝符号链接、非普通文件、未知顶层条目和恢复过程中发生变化的快照。
-- `WorldOption.sav` 生成固定校验 Pal-Conf 1.0.0 模板、109 个允许字段、已知枚举值、来源提交与 SHA-256；不下载运行远程代码，也不接受任意 Shell。
-- 原生恢复和 WorldOption 同步都会先创建完整存档恢复点；现有目标使用摘要防并发覆盖，并以原子替换或不覆盖目标的同文件系统安装完成写入。
-- 存档复制和安全备份拒绝符号链接及非普通文件；压缩失败时会清理半成品归档。
-- 已配置受限控制驱动时，工具会恢复操作前的服务器运行状态；未配置托管启停时，必须先手动确认 PalServer 已停止。
+- 定时任务只接受七种固定动作及强类型参数，不接受任意 Shell、任意 Cron 文本或任意 RCON 命令。
+- 人工控制、RCON、离线存档编辑、配置写入、旧版周期任务、自动化任务、原生备份恢复和 WorldOption 同步共享服务器操作锁，避免保存、停止、恢复和配置写入互相覆盖。
+- RCON 的 `Shutdown` 与 `DoExit` 会记录有意停机；Discord 通知禁用所有用户、角色和 `@everyone` 提及。
+- Webhook 默认仅允许公网 HTTPS，拒绝重定向、系统代理、localhost、私网、CGNAT、基准测试/文档网段、链路本地、多播、IPv6 过渡网段和 DNS 解析后的受限地址。
+- 私网 Webhook 只能由本机管理员在 `config.yaml` 中显式开启；Web UI 不能放宽该边界。
+- Webhook 完整路径、令牌和签名密钥不会通过读取 API 回显；通知只出站发送状态事件，不接收远程控制命令。
+- 看门狗必须使用 `palworld.control` 的受限 `process`、`docker`、`systemd` 或 `windows_service` 驱动，不会执行用户提供的 Shell 文本。
 
 ## 下载文件
 
-- `pst_v1.3.1_windows_x86_64.zip`
-- `pst_v1.3.1_linux_x86_64.tar.gz`
-- `pst_v1.3.1_linux_aarch64.tar.gz`
+- `pst_v1.4.0_windows_x86_64.zip`
+- `pst_v1.4.0_linux_x86_64.tar.gz`
+- `pst_v1.4.0_linux_aarch64.tar.gz`
 - 对应平台的 `pst-agent` 独立程序
 - `SHA256SUMS.txt`
 
@@ -32,11 +34,11 @@
 
 ## 升级与配置
 
-1. 停止旧版 PST，并备份 `config.yaml`、数据库和整个世界存档目录；不要用发布包中的示例配置覆盖现有文件。
-2. 将 `save.path` 设置为 PST 本机可访问的当前世界目录，才能发现游戏原生备份、创建安全恢复点和管理 `WorldOption.sav`。
-3. 将 `palworld.config_path` 设置为本机可访问的 `PalWorldSettings.ini`，才能读取、写入和同步配置。
-4. 若要自动停服及恢复运行状态，请配置 `palworld.control.mode` 与 `target`；支持 `process`、`docker`、`systemd`、`windows_service`。
-5. `WorldOption.sav` 会优先于 `PalWorldSettings.ini`；同步后仍需重启 Palworld 服务端才能使用新配置。
-6. 若希望额外保留 PST 周期备份，可将 `save.backup_interval` 从默认 `0` 改为所需秒数。
+1. 停止旧版 PST，并备份现有 `config.yaml`、`pst.db` 和世界存档目录；不要用发布包中的示例配置覆盖现有文件。
+2. 旧配置可以直接升级。自动化首次使用默认关闭；进入 Web 管理模式后可在“运维 → 自动化”中创建任务和配置通知。
+3. 若要使用启动、重启或看门狗，请先配置 `palworld.control.mode` 与 `target`。看门狗在未配置受限控制驱动时会拒绝启用。
+4. 看门狗需要可用的 Palworld REST API；请确认 `rest.address`、管理员密码和游戏端 `RESTAPIEnabled=True`。
+5. 通用/Discord Webhook 默认必须是公网 HTTPS。只有明确受信任的内网接收端才应在本地配置中设置 `automation.notification.allow_private_network: true`。
+6. Palworld 1.0.0 的日常存档恢复仍优先使用游戏自带 `backup/world`；PST 额外备份用于危险写入前恢复点或明确创建的计划任务。
 
 详细变更见 [`CHANGELOG.md`](https://github.com/xutongxue233/palworld-server-tool/blob/main/CHANGELOG.md)。

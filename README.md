@@ -58,6 +58,7 @@
 - [x] 直接编辑 `PalWorldSettings.ini`，检测并安全生成/同步 `WorldOption.sav`
 - [x] 进程、Docker、systemd 与 Windows 服务的受限启停/重启
 - [x] 受 Web 管理认证保护的 RCON 命令终端和全部 13 条 1.0.0 官方命令模板
+- [x] 类型化定时任务、不会干扰人工停服的服务器看门狗，以及通用/Discord Webhook 通知
 - [x] 危险存档操作前自动创建 PST 安全恢复点
 
 ### 存档校验与离线编辑
@@ -134,6 +135,38 @@ rcon:
 
 RCON 端口只应向 PST 所在主机或受信任网络开放。`use_base64` 仅用于兼容明确支持 Base64 命令的代理，直连官方服务端时保持 `false`。
 
+## 自动化、看门狗与通知
+
+登录 Web 管理模式后，在“运维 → 自动化”中可以创建每隔一段时间、每天或每周执行的任务，不需要填写 Cron。支持的动作固定为保存世界、发送公告、启动、安全停止、保存并重启、同步解析存档和额外 PST 安全备份；后端不会把用户输入拼接成 Shell 或任意 RCON 命令。任务、最近 500 次运行结果和自动化设置保存在 `pst.db`，PST 重启后会重新注册任务。
+
+服务器看门狗同时检查受限控制驱动的进程状态和 Palworld REST `/info` 响应。只有连续失败达到阈值后才尝试恢复，并带启动宽限、冷却和最大恢复次数。通过 Web 或类型化任务主动停止服务器时，PST 会持久记录“允许停机”，看门狗不会把它重新拉起；重新启动服务器后会恢复“保持运行”目标。
+
+离线存档编辑、配置写入、RCON、旧版周期同步/备份和自动化维护共享同一个操作锁。通过 RCON 执行 `Shutdown` 或 `DoExit` 同样会记录有意停机，避免看门狗与管理员命令互相对抗。
+
+通知支持通用 JSON Webhook 和 Discord Webhook，可选择任务、手动启停、服务器异常与恢复事件。通用 Webhook 可使用 `X-PST-Signature: sha256=<HMAC>` 验证消息。默认仅允许公网 HTTPS 目标，并拒绝跳转、localhost 和私有网络地址。Webhook 地址和签名密钥不会通过读取 API 回显。
+
+首次启动时可由 `config.yaml` 的 `automation.watchdog` 与 `automation.notification` 提供默认值，之后可在 Web UI 中保存。看门狗要求先配置 `palworld.control`。设计参考了 [palworld-server-docker 的定时备份/Discord 通知](https://github.com/thijsvanloef/palworld-server-docker) 和 [TRRabbit Palworld Server Manager 的 Scheduler/Guardian 交互](https://github.com/TRRabbit/palworld-server-manager)，但 PST 保留自己的白名单动作、安全互斥和出站通知边界。
+
+```yaml
+automation:
+  watchdog:
+    enabled: false
+    desired_running: true
+    check_interval_seconds: 30
+    failure_threshold: 3
+    restart_cooldown_seconds: 120
+    max_recovery_attempts: 3
+    startup_grace_seconds: 90
+  notification:
+    enabled: false
+    provider: "generic" # generic 或 discord
+    webhook_url: ""
+    secret: "" # 通用 Webhook 可选 HMAC-SHA256 密钥
+    events: ["task.failed", "watchdog.unhealthy", "watchdog.recovered"]
+    timeout_seconds: 10
+    allow_private_network: false
+```
+
 
 ## 安装部署
 
@@ -179,7 +212,7 @@ RCON 端口只应向 PST 所在主机或受信任网络开放。`use_base64` 仅
 
 ```bash
 # 下载 pst_{version}_{platform}_{arch}.tar.gz 文件并解压到 pst 目录
-mkdir -p pst && tar -xzf pst_v1.3.1_linux_x86_64.tar.gz -C pst
+mkdir -p pst && tar -xzf pst_v1.4.0_linux_x86_64.tar.gz -C pst
 ```
 
 ##### 配置
@@ -260,7 +293,7 @@ mkdir -p pst && tar -xzf pst_v1.3.1_linux_x86_64.tar.gz -C pst
      # 存档定时备份保留天数，默认为7天
      backup_keep_days: 7
 
-   # Automation Config 自动化管理相关
+   # Manage Config 白名单管理相关
    manage:
      # 玩家不在白名单是否自动踢出
      kick_non_whitelist: false
@@ -318,7 +351,7 @@ kill $(ps aux | grep 'pst' | awk '{print $2}') | head -n 1
 
 ##### 下载解压
 
-解压 `pst_v1.3.1_windows_x86_64.zip` 到任意目录（推荐命名文件夹目录名称为 `pst`）
+解压 `pst_v1.4.0_windows_x86_64.zip` 到任意目录（推荐命名文件夹目录名称为 `pst`）
 
 ##### 配置
 
@@ -396,7 +429,7 @@ save:
   # 存档定时备份保留天数，默认为7天
   backup_keep_days: 7
 
-# Automation Config 自动化管理相关
+# Manage Config 白名单管理相关
 manage:
   # 玩家不在白名单是否自动踢出
   kick_non_whitelist: false

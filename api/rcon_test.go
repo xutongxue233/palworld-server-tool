@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/zaigie/palworld-server-tool/internal/executor"
+	"github.com/zaigie/palworld-server-tool/internal/task"
 )
 
 func TestRunRconCommand(t *testing.T) {
@@ -101,5 +102,37 @@ func TestRunRconCommandReturnsExecutionError(t *testing.T) {
 
 	if response.Code != http.StatusBadRequest || !strings.Contains(response.Body.String(), "dial failed") {
 		t.Fatalf("unexpected response %d: %s", response.Code, response.Body.String())
+	}
+}
+
+func TestRCONShutdownCommandsRecordIntentionalDowntime(t *testing.T) {
+	for _, command := range []string{"Shutdown 60 maintenance", "/DoExit", " doexit "} {
+		desired := desiredRunningForRCON(command)
+		if desired == nil || *desired {
+			t.Fatalf("%q did not record intentional downtime", command)
+		}
+	}
+	for _, command := range []string{"Info", "Save", "Broadcast hello"} {
+		if desired := desiredRunningForRCON(command); desired != nil {
+			t.Fatalf("%q unexpectedly changed watchdog intent", command)
+		}
+	}
+}
+
+func TestRunRconCommandRejectsOverlappingMaintenance(t *testing.T) {
+	release, err := task.BeginManualServerOperation(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+
+	router := gin.New()
+	router.POST("/api/rcon", runRconCommand)
+	request := httptest.NewRequest(http.MethodPost, "/api/rcon", strings.NewReader(`{"command":"Info"}`))
+	request.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusConflict {
+		t.Fatalf("overlapping RCON command returned %d: %s", response.Code, response.Body.String())
 	}
 }

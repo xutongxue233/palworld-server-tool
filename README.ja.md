@@ -54,6 +54,7 @@
 - [x] `PalWorldSettings.ini` の直接編集と WorldOption の検出、安全な生成・同期
 - [x] process、Docker、systemd、Windows サービスの制限付き起動・停止・再起動
 - [x] 認証付き RCON 端末と Palworld 1.0.0 公式 13 コマンドのテンプレート
+- [x] 型付きスケジュールタスク、意図的停止を尊重するウォッチドッグ、汎用/Discord Webhook 通知
 - [x] 危険なセーブ操作前の PST セーフティ復元ポイント
 
 このツールは公式 REST API と Level.sav の同期データを bbolt に保存し、管理画面から利用できます。
@@ -90,6 +91,38 @@ https://github.com/zaigie/palworld-server-tool/assets/17232619/afdf485c-4b34-491
 
 次に **REST API** を有効にします
 
+## 自動化、ウォッチドッグ、通知
+
+Web 管理モードの **運用 → 自動化** から、Cron を書かずに一定間隔・毎日・毎週のタスクを作成できます。操作はワールド保存、アナウンス、起動、安全停止、保存して再起動、セーブ解析同期、追加 PST バックアップに限定され、Shell や任意 RCON コマンドには変換されません。タスク、最新 500 件の結果、設定は `pst.db` に保存されます。
+
+ウォッチドッグは制限付き制御ドライバーのプロセス状態と Palworld REST `/info` の両方を確認します。連続失敗しきい値、起動猶予、クールダウン、最大復旧回数を備えています。Web または型付きタスクで手動停止した場合は「停止を許可」として永続化され、意図に反して再起動しません。
+
+オフラインセーブ編集、設定書き込み、RCON、従来の定期同期/バックアップ、自動メンテナンスは同じ操作ロックを共有します。RCON の `Shutdown` と `DoExit` も意図的停止として記録され、ウォッチドッグが管理者コマンドと競合しません。
+
+通知は汎用 JSON Webhook と Discord Webhook に対応し、タスク、手動起動停止、異常、復旧イベントを選択できます。汎用 Webhook は `X-PST-Signature: sha256=<HMAC>` を検証できます。既定では公開 HTTPS のみを許可し、リダイレクト、localhost、プライベートネットワークを拒否します。Webhook トークンと署名シークレットは読み取り API に表示されません。
+
+初回値は `config.yaml` の `automation.watchdog` と `automation.notification` から読み込み、その後 Web UI で保存できます。ウォッチドッグには `palworld.control` が必要です。設計では [palworld-server-docker](https://github.com/thijsvanloef/palworld-server-docker) と [TRRabbit Palworld Server Manager](https://github.com/TRRabbit/palworld-server-manager) の運用 UX を参考にしつつ、PST 独自の許可リスト操作、排他制御、送信専用通知を維持しています。
+
+```yaml
+automation:
+  watchdog:
+    enabled: false
+    desired_running: true
+    check_interval_seconds: 30
+    failure_threshold: 3
+    restart_cooldown_seconds: 120
+    max_recovery_attempts: 3
+    startup_grace_seconds: 90
+  notification:
+    enabled: false
+    provider: "generic" # generic または discord
+    webhook_url: ""
+    secret: "" # 汎用 Webhook の任意 HMAC-SHA256 キー
+    events: ["task.failed", "watchdog.unhealthy", "watchdog.recovered"]
+    timeout_seconds: 10
+    allow_private_network: false
+```
+
 
 ## インストールとデプロイメント
 
@@ -124,7 +157,7 @@ https://github.com/zaigie/palworld-server-tool/assets/17232619/afdf485c-4b34-491
 
 ```bash
 # pst_{version}_{platform}_{arch}.tar.gz ファイルをダウンロードしてpstディレクトリに解凍します
-mkdir -p pst && tar -xzf pst_v1.3.1_linux_x86_64.tar.gz -C pst
+mkdir -p pst && tar -xzf pst_v1.4.0_linux_x86_64.tar.gz -C pst
 ```
 
 ##### 設定
@@ -203,7 +236,7 @@ mkdir -p pst && tar -xzf pst_v1.3.1_linux_x86_64.tar.gz -C pst
      # Sav Backup Keep Days アーカイブ自動バックアップを保持する日数です、日単位
      backup_keep_days: 7
 
-   # Automation Config 自動化管理関連
+   # Manage Config ホワイトリスト管理関連
    manage:
      # プレイヤーがホワイトリストにない場合に自動的にキックするかどうか
      kick_non_whitelist: false
@@ -261,7 +294,7 @@ kill $(ps aux | grep 'pst' | awk '{print $2}') | head -n 1
 
 ##### ダウンロードと解凍
 
-`pst_v1.3.1_windows_x86_64.zip`を任意のディレクトリに解凍します（`pst`というディレクトリ名を推奨）。
+`pst_v1.4.0_windows_x86_64.zip`を任意のディレクトリに解凍します（`pst`というディレクトリ名を推奨）。
 
 ##### 設定
 
@@ -337,7 +370,7 @@ save:
   # Sav Backup Keep Days アーカイブ自動バックアップを保持する日数です、日単位
   backup_keep_days: 7
 
-# Automation Config 自動化管理関連
+# Manage Config ホワイトリスト管理関連
 manage:
   # プレイヤーがホワイトリストにない場合に自動的にキックするかどうか
   kick_non_whitelist: false

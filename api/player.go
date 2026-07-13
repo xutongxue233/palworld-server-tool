@@ -485,6 +485,11 @@ func givePlayerItem(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	release, ok := beginManualOperation(c, nil)
+	if !ok {
+		return
+	}
+	defer release()
 	result, err := tool.GivePlayerItem(database.GetDB(), tool.GiveItemOptions{
 		PlayerUID:            c.Param("player_uid"),
 		ItemID:               req.ItemID,
@@ -536,6 +541,11 @@ func setPlayerItemQuantity(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "slot index must be zero or greater"})
 		return
 	}
+	release, ok := beginManualOperation(c, nil)
+	if !ok {
+		return
+	}
+	defer release()
 	result, err := tool.SetPlayerItemQuantity(database.GetDB(), tool.SetItemQuantityOptions{
 		PlayerUID:            c.Param("player_uid"),
 		Container:            c.Param("container"),
@@ -583,6 +593,11 @@ func editPlayerProfile(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	release, ok := beginManualOperation(c, nil)
+	if !ok {
+		return
+	}
+	defer release()
 	result, err := tool.EditPlayerProfile(database.GetDB(), tool.EditPlayerProfileOptions{
 		PlayerUID:            c.Param("player_uid"),
 		ExpectedNickname:     req.ExpectedNickname,
@@ -629,6 +644,11 @@ func editPlayerStatPoints(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 		return
 	}
+	release, ok := beginManualOperation(c, nil)
+	if !ok {
+		return
+	}
+	defer release()
 	result, err := tool.EditPlayerStatPoints(database.GetDB(), tool.EditPlayerStatPointsOptions{
 		PlayerUID:                c.Param("player_uid"),
 		ExpectedUnusedStatPoints: *req.ExpectedUnusedStatPoints,
@@ -673,6 +693,11 @@ func editPlayerTechnologyPoints(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 		return
 	}
+	release, ok := beginManualOperation(c, nil)
+	if !ok {
+		return
+	}
+	defer release()
 	result, err := tool.EditPlayerTechnologyPoints(database.GetDB(), tool.EditPlayerTechnologyPointsOptions{
 		PlayerUID:                       c.Param("player_uid"),
 		ExpectedTechnologyPoints:        *req.ExpectedTechnologyPoints,
@@ -719,6 +744,11 @@ func unlockPlayerMap(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 		return
 	}
+	release, ok := beginManualOperation(c, nil)
+	if !ok {
+		return
+	}
+	defer release()
 	result, err := tool.UnlockPlayerMap(database.GetDB(), tool.UnlockPlayerMapOptions{
 		PlayerUID:              c.Param("player_uid"),
 		ExpectedProgressDigest: *req.ExpectedProgressDigest,
@@ -763,6 +793,11 @@ func renamePal(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 		return
 	}
+	release, ok := beginManualOperation(c, nil)
+	if !ok {
+		return
+	}
+	defer release()
 	result, err := tool.RenamePal(database.GetDB(), tool.RenamePalOptions{
 		PlayerUID:            c.Param("player_uid"),
 		InstanceID:           c.Param("instance_id"),
@@ -811,6 +846,11 @@ func editPalLevel(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 		return
 	}
+	release, ok := beginManualOperation(c, nil)
+	if !ok {
+		return
+	}
+	defer release()
 	result, err := tool.EditPalLevel(database.GetDB(), tool.EditPalLevelOptions{
 		PlayerUID:            c.Param("player_uid"),
 		InstanceID:           c.Param("instance_id"),
@@ -861,6 +901,11 @@ func restorePalHealth(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 		return
 	}
+	release, ok := beginManualOperation(c, nil)
+	if !ok {
+		return
+	}
+	defer release()
 	result, err := tool.RestorePalHealth(database.GetDB(), tool.RestorePalHealthOptions{
 		PlayerUID:            c.Param("player_uid"),
 		InstanceID:           c.Param("instance_id"),

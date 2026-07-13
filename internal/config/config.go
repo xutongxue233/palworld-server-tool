@@ -32,6 +32,26 @@ type Config struct {
 		PlayerLoginMessage  string `mapstructure:"player_login_message"`
 		PlayerLogoutMessage string `mapstructure:"player_logout_message"`
 	} `mapstructure:"task"`
+	Automation struct {
+		Watchdog struct {
+			Enabled                bool `mapstructure:"enabled"`
+			DesiredRunning         bool `mapstructure:"desired_running"`
+			CheckIntervalSeconds   int  `mapstructure:"check_interval_seconds"`
+			FailureThreshold       int  `mapstructure:"failure_threshold"`
+			RestartCooldownSeconds int  `mapstructure:"restart_cooldown_seconds"`
+			MaxRecoveryAttempts    int  `mapstructure:"max_recovery_attempts"`
+			StartupGraceSeconds    int  `mapstructure:"startup_grace_seconds"`
+		} `mapstructure:"watchdog"`
+		Notification struct {
+			Enabled             bool     `mapstructure:"enabled"`
+			Provider            string   `mapstructure:"provider"`
+			WebhookURL          string   `mapstructure:"webhook_url"`
+			Secret              string   `mapstructure:"secret"`
+			Events              []string `mapstructure:"events"`
+			TimeoutSeconds      int      `mapstructure:"timeout_seconds"`
+			AllowPrivateNetwork bool     `mapstructure:"allow_private_network"`
+		} `mapstructure:"notification"`
+	} `mapstructure:"automation"`
 	Rcon struct {
 		Address   string `mapstructure:"address"`
 		Password  string `mapstructure:"password"`
@@ -78,6 +98,23 @@ func Init(cfgFile string, conf *Config) {
 	viper.SetDefault("web.port", 8080)
 
 	viper.SetDefault("task.sync_interval", 60)
+	viper.SetDefault("automation.watchdog.enabled", false)
+	viper.SetDefault("automation.watchdog.desired_running", true)
+	viper.SetDefault("automation.watchdog.check_interval_seconds", 30)
+	viper.SetDefault("automation.watchdog.failure_threshold", 3)
+	viper.SetDefault("automation.watchdog.restart_cooldown_seconds", 120)
+	viper.SetDefault("automation.watchdog.max_recovery_attempts", 3)
+	viper.SetDefault("automation.watchdog.startup_grace_seconds", 90)
+	viper.SetDefault("automation.notification.enabled", false)
+	viper.SetDefault("automation.notification.provider", "generic")
+	viper.SetDefault("automation.notification.timeout_seconds", 10)
+	viper.SetDefault("automation.notification.allow_private_network", false)
+	viper.SetDefault("automation.notification.events", []string{
+		"task.failed",
+		"watchdog.unhealthy",
+		"watchdog.recovered",
+		"watchdog.recovery_failed",
+	})
 
 	viper.SetDefault("rcon.address", "127.0.0.1:25575")
 	viper.SetDefault("rcon.timeout", 5)

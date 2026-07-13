@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/zaigie/palworld-server-tool/internal/logger"
+	"github.com/zaigie/palworld-server-tool/internal/task"
 	"github.com/zaigie/palworld-server-tool/internal/tool"
 )
 
@@ -180,6 +181,7 @@ func getWorldActorSnapshot(c *gin.Context) {
 //	@Success		200			{object}	SuccessResponse
 //	@Failure		400			{object}	ErrorResponse
 //	@Failure		401			{object}	ErrorResponse
+//	@Failure		409			{object}	ErrorResponse
 //	@Router			/api/server/broadcast [post]
 func publishBroadcast(c *gin.Context) {
 	var req BroadcastRequest
@@ -191,6 +193,11 @@ func publishBroadcast(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	release, ok := beginManualOperation(c, nil)
+	if !ok {
+		return
+	}
+	defer release()
 	if err := tool.Broadcast(req.Message); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -211,6 +218,7 @@ func publishBroadcast(c *gin.Context) {
 //	@Success		200			{object}	SuccessResponse
 //	@Failure		400			{object}	ErrorResponse
 //	@Failure		401			{object}	ErrorResponse
+//	@Failure		409			{object}	ErrorResponse
 //	@Router			/api/server/shutdown [post]
 func shutdownServer(c *gin.Context) {
 	var req ShutdownRequest
@@ -225,6 +233,12 @@ func shutdownServer(c *gin.Context) {
 	if req.Seconds == 0 {
 		req.Seconds = 60
 	}
+	desiredRunning := false
+	release, ok := beginManualOperation(c, &desiredRunning)
+	if !ok {
+		return
+	}
+	defer release()
 	if err := tool.Shutdown(req.Seconds, req.Message); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -242,8 +256,14 @@ func shutdownServer(c *gin.Context) {
 //	@Success		200	{object}	SuccessResponse
 //	@Failure		400	{object}	ErrorResponse
 //	@Failure		401	{object}	ErrorResponse
+//	@Failure		409	{object}	ErrorResponse
 //	@Router			/api/server/save [post]
 func saveWorld(c *gin.Context) {
+	release, ok := beginManualOperation(c, nil)
+	if !ok {
+		return
+	}
+	defer release()
 	if err := tool.SaveWorld(); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -261,12 +281,20 @@ func saveWorld(c *gin.Context) {
 //	@Success		200	{object}	SuccessResponse
 //	@Failure		400	{object}	ErrorResponse
 //	@Failure		401	{object}	ErrorResponse
+//	@Failure		409	{object}	ErrorResponse
 //	@Router			/api/server/stop [post]
 func stopServer(c *gin.Context) {
+	desiredRunning := false
+	release, ok := beginManualOperation(c, &desiredRunning)
+	if !ok {
+		return
+	}
+	defer release()
 	if err := tool.ForceStopManagedServer(c.Request.Context()); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	task.NotifyAutomationEvent(task.EventServerStopped, "Palworld server stopped", "The managed server was stopped manually.", nil)
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
@@ -294,12 +322,20 @@ func getServerControlStatus(c *gin.Context) {
 //	@Success		200	{object}	SuccessResponse
 //	@Failure		400	{object}	ErrorResponse
 //	@Failure		401	{object}	ErrorResponse
+//	@Failure		409	{object}	ErrorResponse
 //	@Router			/api/server/start [post]
 func startServer(c *gin.Context) {
+	desiredRunning := true
+	release, ok := beginManualOperation(c, &desiredRunning)
+	if !ok {
+		return
+	}
+	defer release()
 	if err := tool.StartManagedServer(c.Request.Context()); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	task.NotifyAutomationEvent(task.EventServerStarted, "Palworld server started", "The managed server was started manually.", nil)
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
@@ -315,6 +351,7 @@ func startServer(c *gin.Context) {
 //	@Success		200		{object}	SuccessResponse
 //	@Failure		400		{object}	ErrorResponse
 //	@Failure		401		{object}	ErrorResponse
+//	@Failure		409		{object}	ErrorResponse
 //	@Router			/api/server/restart [post]
 func restartServer(c *gin.Context) {
 	var req ShutdownRequest
@@ -326,10 +363,17 @@ func restartServer(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "seconds cannot be negative"})
 		return
 	}
+	desiredRunning := true
+	release, ok := beginManualOperation(c, &desiredRunning)
+	if !ok {
+		return
+	}
+	defer release()
 	if err := tool.RestartManagedServer(c.Request.Context(), req.Seconds, req.Message); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	task.NotifyAutomationEvent(task.EventServerRestarted, "Palworld server restarted", "The managed server was restarted manually.", nil)
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 

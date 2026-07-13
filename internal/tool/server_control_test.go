@@ -10,17 +10,24 @@ import (
 )
 
 type fakeControlDriver struct {
-	started bool
-	stopped bool
+	started         bool
+	stopped         bool
+	busyDuringStart bool
+	startCalls      int
+	stopCalls       int
 }
 
 func (d *fakeControlDriver) Start(context.Context) error {
 	d.started = true
+	d.stopped = false
+	d.busyDuringStart = IsServerControlBusy()
+	d.startCalls++
 	return nil
 }
 
 func (d *fakeControlDriver) Stop(context.Context) error {
 	d.stopped = true
+	d.stopCalls++
 	return nil
 }
 
@@ -43,6 +50,7 @@ func configureControlTest(t *testing.T, driver *fakeControlDriver) {
 	serverControlDriverFactory = func(serverControlConfig) (serverControlDriver, error) { return driver, nil }
 	controlPollInterval = time.Millisecond
 	t.Cleanup(func() {
+		serverControlBusy.Store(false)
 		viper.Reset()
 		serverControlDriverFactory = oldFactory
 		serverOnlineProbe = oldProbe
@@ -62,6 +70,9 @@ func TestStartManagedServerWaitsForReadiness(t *testing.T) {
 	}
 	if !driver.started {
 		t.Fatal("driver was not started")
+	}
+	if !driver.busyDuringStart || IsServerControlBusy() {
+		t.Fatalf("busy state was not scoped to the operation: %#v", driver)
 	}
 }
 
@@ -97,8 +108,28 @@ type restartAwareFakeDriver struct {
 
 func (d *restartAwareFakeDriver) Start(context.Context) error {
 	d.started = true
+	d.stopped = false
+	d.busyDuringStart = IsServerControlBusy()
+	d.startCalls++
 	*d.online = true
 	return nil
+}
+
+func TestRecoverManagedServerReplacesUnresponsiveProcess(t *testing.T) {
+	driver := &fakeControlDriver{started: true}
+	configureControlTest(t, driver)
+	online := false
+	serverOnlineProbe = func() bool { return online }
+	serverControlDriverFactory = func(serverControlConfig) (serverControlDriver, error) {
+		return &restartAwareFakeDriver{fakeControlDriver: driver, online: &online}, nil
+	}
+
+	if err := RecoverManagedServer(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if !driver.started || driver.stopped || !online || driver.stopCalls != 1 || driver.startCalls != 1 {
+		t.Fatalf("unresponsive process was not replaced: driver=%#v online=%v", driver, online)
+	}
 }
 
 func TestForceStopFallsBackToConfiguredDriver(t *testing.T) {

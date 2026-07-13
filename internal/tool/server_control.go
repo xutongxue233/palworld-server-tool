@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	dockerclient "github.com/moby/moby/client"
@@ -20,6 +21,7 @@ import (
 var (
 	ErrServerControlNotConfigured = errors.New("palworld.control is not configured")
 	serverControlMu               sync.Mutex
+	serverControlBusy             atomic.Bool
 	managedProcessMu              sync.Mutex
 	managedProcess                *os.Process
 	controlPollInterval           = time.Second
@@ -41,6 +43,7 @@ type ServerControlStatus struct {
 	Running    bool   `json:"running"`
 	State      string `json:"state"`
 	Detail     string `json:"detail,omitempty"`
+	Busy       bool   `json:"busy"`
 }
 
 type MaintenanceStopResult struct {
@@ -95,6 +98,7 @@ func GetServerControlStatus(ctx context.Context) ServerControlStatus {
 		Target:     config.Target,
 		Online:     serverOnlineProbe(),
 		State:      "unconfigured",
+		Busy:       serverControlBusy.Load(),
 	}
 	if configErr != nil {
 		if !errors.Is(configErr, ErrServerControlNotConfigured) {
@@ -119,9 +123,21 @@ func GetServerControlStatus(ctx context.Context) ServerControlStatus {
 	return status
 }
 
+func IsServerControlBusy() bool {
+	return serverControlBusy.Load()
+}
+
+func markServerControlBusy() func() {
+	serverControlBusy.Store(true)
+	return func() {
+		serverControlBusy.Store(false)
+	}
+}
+
 func StartManagedServer(ctx context.Context) error {
 	serverControlMu.Lock()
 	defer serverControlMu.Unlock()
+	defer markServerControlBusy()()
 
 	config, err := getServerControlConfig()
 	if err != nil {
@@ -148,6 +164,7 @@ func StartManagedServer(ctx context.Context) error {
 func RestartManagedServer(ctx context.Context, seconds int, message string) error {
 	serverControlMu.Lock()
 	defer serverControlMu.Unlock()
+	defer markServerControlBusy()()
 
 	config, err := getServerControlConfig()
 	if err != nil {
@@ -206,6 +223,42 @@ func RestartManagedServer(ctx context.Context, seconds int, message string) erro
 	return waitForServerState(startCtx, true)
 }
 
+func RecoverManagedServer(ctx context.Context) error {
+	serverControlMu.Lock()
+	defer serverControlMu.Unlock()
+	defer markServerControlBusy()()
+
+	config, err := getServerControlConfig()
+	if err != nil {
+		return err
+	}
+	if serverOnlineProbe() {
+		return nil
+	}
+	driver, err := serverControlDriverFactory(config)
+	if err != nil {
+		return err
+	}
+	operationCtx, cancel := context.WithTimeout(ctx, config.Timeout)
+	defer cancel()
+	running, _, err := driver.Status(operationCtx)
+	if err != nil {
+		return fmt.Errorf("check managed server before recovery: %w", err)
+	}
+	if running {
+		if err := driver.Stop(operationCtx); err != nil {
+			return fmt.Errorf("stop unresponsive managed server: %w", err)
+		}
+		if err := waitForDriverStopped(operationCtx, driver); err != nil {
+			return fmt.Errorf("wait for managed server to stop during recovery: %w", err)
+		}
+	}
+	if err := driver.Start(operationCtx); err != nil {
+		return fmt.Errorf("start managed server during recovery: %w", err)
+	}
+	return waitForServerState(operationCtx, true)
+}
+
 func waitForDriverStopped(ctx context.Context, driver serverControlDriver) error {
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
@@ -228,6 +281,7 @@ func waitForDriverStopped(ctx context.Context, driver serverControlDriver) error
 func ForceStopManagedServer(ctx context.Context) error {
 	serverControlMu.Lock()
 	defer serverControlMu.Unlock()
+	defer markServerControlBusy()()
 
 	restErr := controlRESTStop()
 	if restErr == nil {
@@ -252,6 +306,7 @@ func ForceStopManagedServer(ctx context.Context) error {
 func StopServerForMaintenance(ctx context.Context, seconds int, message string) (MaintenanceStopResult, error) {
 	serverControlMu.Lock()
 	defer serverControlMu.Unlock()
+	defer markServerControlBusy()()
 
 	if seconds <= 0 {
 		seconds = 10
