@@ -35,7 +35,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { queryKeys } from "@/hooks/use-server-data";
+import { queryKeys, scopedQueryFn } from "@/hooks/use-server-data";
 import { api, getApiErrorCode, getApiErrorMessage } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
@@ -102,7 +102,7 @@ export function SteamCMDPanel() {
 
   const statusQuery = useQuery({
     queryKey: queryKeys.steamcmd,
-    queryFn: api.getSteamCMDStatus,
+    queryFn: scopedQueryFn(api.getSteamCMDStatus),
     refetchInterval: 15_000,
   });
   const plan = statusQuery.data?.plan;
@@ -150,7 +150,7 @@ export function SteamCMDPanel() {
         queryClient.invalidateQueries({ queryKey: queryKeys.steamcmd }),
         queryClient.invalidateQueries({ queryKey: queryKeys.control }),
         queryClient.invalidateQueries({ queryKey: queryKeys.automationStatus }),
-        queryClient.invalidateQueries({ queryKey: ["backups"] }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.backupsRoot }),
       ]);
     },
     onError: async (error) => {

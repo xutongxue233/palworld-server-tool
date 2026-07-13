@@ -197,7 +197,7 @@ export function SaveMigrationPanel() {
         queryClient.invalidateQueries({ queryKey: queryKeys.settings }),
         queryClient.invalidateQueries({ queryKey: queryKeys.snapshot }),
         queryClient.invalidateQueries({ queryKey: queryKeys.nativeBackups }),
-        queryClient.invalidateQueries({ queryKey: ["backups"] }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.backupsRoot }),
         queryClient.invalidateQueries({ queryKey: queryKeys.automationStatus }),
       ]);
     },

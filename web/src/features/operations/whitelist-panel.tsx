@@ -16,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { queryKeys } from "@/hooks/use-server-data";
+import { queryKeys, scopedQueryFn } from "@/hooks/use-server-data";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import type { WhitelistPlayer } from "@/types/api";
@@ -30,7 +30,7 @@ export function WhitelistPanel() {
   const queryClient = useQueryClient();
   const whitelistQuery = useQuery({
     queryKey: queryKeys.whitelist,
-    queryFn: api.getWhitelist,
+    queryFn: scopedQueryFn(api.getWhitelist),
   });
   const [draftRows, setDraftRows] = useState<WhitelistPlayer[] | null>(null);
   const rows = useMemo(

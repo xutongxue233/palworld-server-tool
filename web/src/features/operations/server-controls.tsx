@@ -48,7 +48,7 @@ import { api, getApiErrorMessage } from "@/lib/api";
 import { downloadBlob, formatCoordinate } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { queryKeys } from "@/hooks/use-server-data";
+import { queryKeys, scopedQueryFn } from "@/hooks/use-server-data";
 
 type RconPresetRisk = "normal" | "warning" | "danger";
 
@@ -169,16 +169,16 @@ export function ServerControls() {
 
   const settingsQuery = useQuery({
     queryKey: queryKeys.settings,
-    queryFn: api.getSettings,
+    queryFn: scopedQueryFn(api.getSettings),
   });
   const snapshotQuery = useQuery({
     queryKey: queryKeys.snapshot,
-    queryFn: api.getWorldSnapshot,
+    queryFn: scopedQueryFn(api.getWorldSnapshot),
     staleTime: 10_000,
   });
   const controlQuery = useQuery({
     queryKey: queryKeys.control,
-    queryFn: api.getServerControlStatus,
+    queryFn: scopedQueryFn(api.getServerControlStatus),
     refetchInterval: 10_000,
   });
 
@@ -402,9 +402,7 @@ export function ServerControls() {
         <div className="space-y-4">
           <div>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs font-medium">
-                {t("operations.rconQuick")}
-              </p>
+              <p className="text-xs font-medium">{t("operations.rconQuick")}</p>
               <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
                 <span className="flex items-center gap-1.5">
                   <span className="size-1.5 rounded-full bg-primary" />
@@ -441,8 +439,7 @@ export function ServerControls() {
                         type="button"
                         className={cn(
                           "group flex min-h-12 w-full items-center gap-2.5 rounded-sm px-2.5 py-2 text-left transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                          preset.risk === "danger" &&
-                            "hover:bg-destructive/8",
+                          preset.risk === "danger" && "hover:bg-destructive/8",
                         )}
                         onClick={() => selectRconPreset(preset.command)}
                       >
@@ -457,8 +454,7 @@ export function ServerControls() {
                           <span
                             className={cn(
                               "block text-xs font-medium",
-                              preset.risk === "danger" &&
-                                "text-destructive",
+                              preset.risk === "danger" && "text-destructive",
                             )}
                           >
                             {t(preset.labelKey)}
@@ -523,9 +519,7 @@ export function ServerControls() {
             : t("operations.controlNotConfigured")
         }
         actions={
-          <Badge
-            variant={controlQuery.data?.online ? "default" : "outline"}
-          >
+          <Badge variant={controlQuery.data?.online ? "default" : "outline"}>
             {controlQuery.data?.online
               ? t("status.online")
               : controlQuery.data?.state || t("status.offline")}
@@ -535,9 +529,7 @@ export function ServerControls() {
       >
         <button
           type="button"
-          disabled={
-            !controlQuery.data?.configured || controlQuery.data?.online
-          }
+          disabled={!controlQuery.data?.configured || controlQuery.data?.online}
           className="flex min-h-28 items-start gap-3 border-b p-4 text-left transition-colors hover:bg-emerald-500/8 disabled:cursor-not-allowed disabled:opacity-45 sm:border-r xl:border-b-0 sm:p-5"
           onClick={() => setConfirmAction("start")}
         >

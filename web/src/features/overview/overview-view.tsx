@@ -28,6 +28,7 @@ import { ErrorState, LoadingState } from "@/components/common/data-state";
 import { Panel } from "@/components/common/panel";
 import { SectionHeader } from "@/components/common/section-header";
 import { StatusDot } from "@/components/common/status-dot";
+import { FleetRail } from "@/components/fleet/fleet-rail";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -238,6 +239,8 @@ export default function OverviewView() {
           </Button>
         }
       />
+
+      <FleetRail />
 
       <div className="grid border-b sm:grid-cols-2 lg:grid-cols-4">
         <MetricCell

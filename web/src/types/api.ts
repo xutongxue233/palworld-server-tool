@@ -77,6 +77,42 @@ export interface ServerControlStatus {
   busy: boolean;
 }
 
+export interface FleetConfigIssue {
+  code: string;
+  message: string;
+  node_id?: string;
+}
+
+export interface FleetNode {
+  scope: string;
+  id: string;
+  name: string;
+  management_url?: string;
+  local: boolean;
+  reachable: boolean;
+  selectable: boolean;
+  insecure_transport: boolean;
+  latency_ms: number;
+  protocol_version?: number;
+  tool_version?: string;
+  server_online: boolean;
+  server?: ServerInfo;
+  metrics?: ServerMetrics;
+  control?: ServerControlStatus;
+  server_error?: string;
+  error_code?: string;
+  error?: string;
+  checked_at: string;
+}
+
+export interface FleetStatus {
+  protocol_version: number;
+  local_scope: string;
+  nodes: FleetNode[];
+  issues?: FleetConfigIssue[];
+  checked_at: string;
+}
+
 export interface SteamCMDPlan {
   configured: boolean;
   can_execute: boolean;

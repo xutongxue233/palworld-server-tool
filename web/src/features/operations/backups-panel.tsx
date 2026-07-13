@@ -45,7 +45,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { queryKeys } from "@/hooks/use-server-data";
+import { queryKeys, scopedQueryFn } from "@/hooks/use-server-data";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { downloadBlob, formatDateTime } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
@@ -85,11 +85,13 @@ export function BackupsPanel() {
 
   const nativeQuery = useQuery({
     queryKey: queryKeys.nativeBackups,
-    queryFn: api.getNativeBackups,
+    queryFn: scopedQueryFn(api.getNativeBackups),
   });
   const backupsQuery = useQuery({
     queryKey: queryKeys.backups(range.start, range.end),
-    queryFn: () => api.getBackups(range.start, range.end),
+    queryFn: scopedQueryFn((scope) =>
+      api.getBackups(range.start, range.end, scope),
+    ),
   });
 
   const removeMutation = useMutation({
@@ -97,7 +99,7 @@ export function BackupsPanel() {
     onSuccess: async () => {
       toast.success(t("message.deleted"));
       setDeleteId(null);
-      await queryClient.invalidateQueries({ queryKey: ["backups"] });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.backupsRoot });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
@@ -134,7 +136,7 @@ export function BackupsPanel() {
       setRestoreBackup(null);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.nativeBackups }),
-        queryClient.invalidateQueries({ queryKey: ["backups"] }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.backupsRoot }),
         queryClient.invalidateQueries({ queryKey: queryKeys.control }),
         queryClient.invalidateQueries({ queryKey: queryKeys.players }),
       ]);

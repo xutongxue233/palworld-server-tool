@@ -59,7 +59,12 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useGuilds, usePlayer, queryKeys } from "@/hooks/use-server-data";
+import {
+  queryKeys,
+  scopedQueryFn,
+  useGuilds,
+  usePlayer,
+} from "@/hooks/use-server-data";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import {
@@ -304,7 +309,7 @@ export function PlayerDetailSheet({
 
   const whitelistQuery = useQuery({
     queryKey: queryKeys.whitelist,
-    queryFn: api.getWhitelist,
+    queryFn: scopedQueryFn(api.getWhitelist),
     enabled: isAuthenticated && Boolean(playerUid),
   });
 

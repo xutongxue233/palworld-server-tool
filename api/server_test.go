@@ -65,6 +65,8 @@ func TestOfficialServerManagementRoutes(t *testing.T) {
 		method string
 		path   string
 	}{
+		{http.MethodGet, "/api/fleet/nodes"},
+		{http.MethodGet, "/api/fleet/nodes/second/proxy/server"},
 		{http.MethodGet, "/api/server/config-file"},
 		{http.MethodPut, "/api/server/config-file"},
 		{http.MethodPut, "/api/server/world-option"},

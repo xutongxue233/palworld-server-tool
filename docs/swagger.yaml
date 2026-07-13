@@ -147,6 +147,87 @@ definitions:
       error:
         type: string
     type: object
+  api.FleetNodeStatus:
+    properties:
+      checked_at:
+        type: string
+      control:
+        $ref: '#/definitions/tool.ServerControlStatus'
+      metrics:
+        $ref: '#/definitions/api.ServerMetrics'
+      node_id:
+        type: string
+      node_name:
+        type: string
+      protocol_version:
+        type: integer
+      server:
+        $ref: '#/definitions/api.ServerInfo'
+      server_error:
+        type: string
+      server_online:
+        type: boolean
+      tool_version:
+        type: string
+    type: object
+  api.FleetNodeView:
+    properties:
+      checked_at:
+        type: string
+      control:
+        $ref: '#/definitions/tool.ServerControlStatus'
+      error:
+        type: string
+      error_code:
+        type: string
+      id:
+        type: string
+      insecure_transport:
+        type: boolean
+      latency_ms:
+        type: integer
+      local:
+        type: boolean
+      management_url:
+        type: string
+      metrics:
+        $ref: '#/definitions/api.ServerMetrics'
+      name:
+        type: string
+      protocol_version:
+        type: integer
+      reachable:
+        type: boolean
+      scope:
+        type: string
+      selectable:
+        type: boolean
+      server:
+        $ref: '#/definitions/api.ServerInfo'
+      server_error:
+        type: string
+      server_online:
+        type: boolean
+      tool_version:
+        type: string
+    type: object
+  api.FleetStatusResponse:
+    properties:
+      checked_at:
+        type: string
+      issues:
+        items:
+          $ref: '#/definitions/fleet.ConfigIssue'
+        type: array
+      local_scope:
+        type: string
+      nodes:
+        items:
+          $ref: '#/definitions/api.FleetNodeView'
+        type: array
+      protocol_version:
+        type: integer
+    type: object
   api.GameConfigWriteRequest:
     properties:
       content:
@@ -955,6 +1036,15 @@ definitions:
       unused_status_points:
         type: integer
       user_id:
+        type: string
+    type: object
+  fleet.ConfigIssue:
+    properties:
+      code:
+        type: string
+      message:
+        type: string
+      node_id:
         type: string
     type: object
   task.ActionParameters:
@@ -2312,6 +2402,307 @@ paths:
       summary: Download Backup
       tags:
       - backup
+  /api/fleet/node/status:
+    get:
+      description: Return the isolated PST node identity, Palworld summary, metrics,
+        and control status for a trusted controller
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.FleetNodeStatus'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - FleetNodeAuth: []
+      summary: Get this PST fleet-node status
+      tags:
+      - Fleet
+  /api/fleet/nodes:
+    get:
+      description: Aggregate the local PST node and configured remote PST nodes without
+        sharing their config, database, save directory, scheduler, or maintenance
+        lock
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.FleetStatusResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: List isolated Palworld server nodes
+      tags:
+      - Fleet
+  /api/fleet/nodes/{node_id}/proxy/{path}:
+    delete:
+      consumes:
+      - application/json
+      description: Forward only known PST API methods and paths to a configured node
+        using its fleet token; login, fleet recursion, arbitrary URLs, redirects,
+        and unknown routes are rejected
+      parameters:
+      - description: Configured fleet node ID
+        in: path
+        name: node_id
+        required: true
+        type: string
+      - description: Allowlisted PST API path without the /api prefix
+        in: path
+        name: path
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "502":
+          description: Bad Gateway
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Proxy an allowlisted PST API route to a fleet node
+      tags:
+      - Fleet
+    get:
+      consumes:
+      - application/json
+      description: Forward only known PST API methods and paths to a configured node
+        using its fleet token; login, fleet recursion, arbitrary URLs, redirects,
+        and unknown routes are rejected
+      parameters:
+      - description: Configured fleet node ID
+        in: path
+        name: node_id
+        required: true
+        type: string
+      - description: Allowlisted PST API path without the /api prefix
+        in: path
+        name: path
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "502":
+          description: Bad Gateway
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Proxy an allowlisted PST API route to a fleet node
+      tags:
+      - Fleet
+    patch:
+      consumes:
+      - application/json
+      description: Forward only known PST API methods and paths to a configured node
+        using its fleet token; login, fleet recursion, arbitrary URLs, redirects,
+        and unknown routes are rejected
+      parameters:
+      - description: Configured fleet node ID
+        in: path
+        name: node_id
+        required: true
+        type: string
+      - description: Allowlisted PST API path without the /api prefix
+        in: path
+        name: path
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "502":
+          description: Bad Gateway
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Proxy an allowlisted PST API route to a fleet node
+      tags:
+      - Fleet
+    post:
+      consumes:
+      - application/json
+      description: Forward only known PST API methods and paths to a configured node
+        using its fleet token; login, fleet recursion, arbitrary URLs, redirects,
+        and unknown routes are rejected
+      parameters:
+      - description: Configured fleet node ID
+        in: path
+        name: node_id
+        required: true
+        type: string
+      - description: Allowlisted PST API path without the /api prefix
+        in: path
+        name: path
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "502":
+          description: Bad Gateway
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Proxy an allowlisted PST API route to a fleet node
+      tags:
+      - Fleet
+    put:
+      consumes:
+      - application/json
+      description: Forward only known PST API methods and paths to a configured node
+        using its fleet token; login, fleet recursion, arbitrary URLs, redirects,
+        and unknown routes are rejected
+      parameters:
+      - description: Configured fleet node ID
+        in: path
+        name: node_id
+        required: true
+        type: string
+      - description: Allowlisted PST API path without the /api prefix
+        in: path
+        name: path
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "502":
+          description: Bad Gateway
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Proxy an allowlisted PST API route to a fleet node
+      tags:
+      - Fleet
   /api/guild:
     get:
       consumes:
@@ -4080,5 +4471,9 @@ securityDefinitions:
   ApiKeyAuth:
     in: header
     name: Authorization
+    type: apiKey
+  FleetNodeAuth:
+    in: header
+    name: X-PST-Fleet-Token
     type: apiKey
 swagger: "2.0"

@@ -42,7 +42,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { queryKeys } from "@/hooks/use-server-data";
+import { queryKeys, scopedQueryFn } from "@/hooks/use-server-data";
 import { api, getApiErrorCode, getApiErrorMessage } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
@@ -373,12 +373,12 @@ export function OfficialModsPanel() {
 
   const statusQuery = useQuery({
     queryKey: queryKeys.officialMods,
-    queryFn: api.getOfficialMods,
+    queryFn: scopedQueryFn(api.getOfficialMods),
     refetchInterval: 15_000,
   });
   const controlQuery = useQuery({
     queryKey: queryKeys.control,
-    queryFn: api.getServerControlStatus,
+    queryFn: scopedQueryFn(api.getServerControlStatus),
     refetchInterval: 10_000,
   });
   const status = statusQuery.data;
@@ -560,7 +560,7 @@ export function OfficialModsPanel() {
         queryClient.invalidateQueries({ queryKey: queryKeys.officialMods }),
         queryClient.invalidateQueries({ queryKey: queryKeys.control }),
         queryClient.invalidateQueries({ queryKey: queryKeys.automationStatus }),
-        queryClient.invalidateQueries({ queryKey: ["backups"] }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.backupsRoot }),
       ]);
     },
     onError: async (error) => {

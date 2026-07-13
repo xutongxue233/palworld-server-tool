@@ -9,6 +9,7 @@ import type {
   EditPlayerProfileResult,
   EditPlayerStatPointsResult,
   EditPlayerTechnologyPointsResult,
+  FleetStatus,
   Guild,
   GameConfigFile,
   GameConfigWriteResult,
@@ -46,6 +47,23 @@ import type {
 } from "@/types/api";
 
 export const TOKEN_KEY = "palworld_token";
+export const LOCAL_SERVER_SCOPE = "local";
+
+let currentServerScope = LOCAL_SERVER_SCOPE;
+
+export function getServerScope() {
+  return currentServerScope;
+}
+
+export function setServerScope(scope: string) {
+  currentServerScope = normalizeServerScope(scope);
+}
+
+function normalizeServerScope(scope: string) {
+  return /^[a-z0-9](?:[a-z0-9_-]{0,46}[a-z0-9])?$/.test(scope)
+    ? scope
+    : LOCAL_SERVER_SCOPE;
+}
 
 export class ApiError extends Error {
   status: number;
@@ -71,6 +89,8 @@ interface RequestOptions extends Omit<RequestInit, "body"> {
   body?: unknown;
   auth?: boolean;
   responseType?: "json" | "blob" | "text";
+  scope?: "current" | "local";
+  serverScope?: string;
 }
 
 function buildQuery(values: Record<string, unknown> = {}) {
@@ -88,6 +108,8 @@ async function request<T>(path: string, options: RequestOptions = {}) {
   const {
     auth = true,
     responseType = "json",
+    scope: requestScope = "current",
+    serverScope,
     body,
     headers: suppliedHeaders,
     ...requestOptions
@@ -95,7 +117,15 @@ async function request<T>(path: string, options: RequestOptions = {}) {
   const headers = new Headers(suppliedHeaders);
   const token = localStorage.getItem(TOKEN_KEY);
 
-  if (auth && token) {
+  const scope =
+    requestScope === "local"
+      ? LOCAL_SERVER_SCOPE
+      : normalizeServerScope(serverScope ?? currentServerScope);
+  const remote = scope !== LOCAL_SERVER_SCOPE;
+  const requestPath = remote ? fleetProxyPath(scope, path) : path;
+  const requiresCentralAuth = auth || remote;
+
+  if (requiresCentralAuth && token) {
     headers.set("Authorization", `Bearer ${token}`);
   }
 
@@ -107,13 +137,13 @@ async function request<T>(path: string, options: RequestOptions = {}) {
     requestBody = JSON.stringify(body);
   }
 
-  const response = await fetch(path, {
+  const response = await fetch(requestPath, {
     ...requestOptions,
     headers,
     body: requestBody,
   });
 
-  if (response.status === 401 && auth) {
+  if (response.status === 401 && requiresCentralAuth) {
     localStorage.removeItem(TOKEN_KEY);
     window.dispatchEvent(new CustomEvent("palworld:auth-expired"));
   }
@@ -143,21 +173,44 @@ async function request<T>(path: string, options: RequestOptions = {}) {
   return payload as T;
 }
 
+function fleetProxyPath(scope: string, path: string) {
+  const queryIndex = path.indexOf("?");
+  const pathname = queryIndex >= 0 ? path.slice(0, queryIndex) : path;
+  const query = queryIndex >= 0 ? path.slice(queryIndex) : "";
+  if (!pathname.startsWith("/api/")) {
+    throw new Error("Fleet proxy only accepts /api paths");
+  }
+  return `/api/fleet/nodes/${encodeURIComponent(scope)}/proxy${pathname.slice(4)}${query}`;
+}
+
 export const api = {
   login: (password: string) =>
     request<{ token: string }>("/api/login", {
       method: "POST",
       body: { password },
       auth: false,
+      scope: "local",
     }),
-  getServer: () => request<ServerInfo>("/api/server", { auth: false }),
-  getServerTool: () =>
-    request<ServerToolInfo>("/api/server/tool", { auth: false }),
-  getMetrics: () =>
-    request<ServerMetrics>("/api/server/metrics", { auth: false }),
-  getSettings: () => request<Record<string, unknown>>("/api/server/settings"),
-  getWorldSnapshot: () => request<WorldSnapshot>("/api/server/game-data"),
-  getGameConfigFile: () => request<GameConfigFile>("/api/server/config-file"),
+  getFleetNodes: () =>
+    request<FleetStatus>("/api/fleet/nodes", { scope: "local" }),
+  getServer: (serverScope?: string) =>
+    request<ServerInfo>("/api/server", { auth: false, serverScope }),
+  getServerTool: (serverScope?: string) =>
+    request<ServerToolInfo>("/api/server/tool", {
+      auth: false,
+      serverScope,
+    }),
+  getMetrics: (serverScope?: string) =>
+    request<ServerMetrics>("/api/server/metrics", {
+      auth: false,
+      serverScope,
+    }),
+  getSettings: (serverScope?: string) =>
+    request<Record<string, unknown>>("/api/server/settings", { serverScope }),
+  getWorldSnapshot: (serverScope?: string) =>
+    request<WorldSnapshot>("/api/server/game-data", { serverScope }),
+  getGameConfigFile: (serverScope?: string) =>
+    request<GameConfigFile>("/api/server/config-file", { serverScope }),
   putGameConfigFile: (content: string, expectedSha256: string) =>
     request<GameConfigWriteResult>("/api/server/config-file", {
       method: "PUT",
@@ -173,15 +226,19 @@ export const api = {
         shutdown_seconds: 10,
       },
     }),
-  getServerControlStatus: () =>
-    request<ServerControlStatus>("/api/server/control/status"),
-  getSteamCMDStatus: () => request<SteamCMDStatus>("/api/server/steamcmd"),
+  getServerControlStatus: (serverScope?: string) =>
+    request<ServerControlStatus>("/api/server/control/status", {
+      serverScope,
+    }),
+  getSteamCMDStatus: (serverScope?: string) =>
+    request<SteamCMDStatus>("/api/server/steamcmd", { serverScope }),
   updateServerWithSteamCMD: (update: SteamCMDUpdateRequest) =>
     request<SteamCMDUpdateResult>("/api/server/steamcmd/update", {
       method: "POST",
       body: update,
     }),
-  getOfficialMods: () => request<OfficialModStatus>("/api/server/mods"),
+  getOfficialMods: (serverScope?: string) =>
+    request<OfficialModStatus>("/api/server/mods", { serverScope }),
   preflightOfficialMods: (settings: OfficialModSettings) =>
     request<OfficialModPreflightResult>("/api/server/mods/preflight", {
       method: "POST",
@@ -226,7 +283,8 @@ export const api = {
       method: "POST",
       body: { seconds, message },
     }),
-  getAutomationTasks: () => request<ScheduledTask[]>("/api/automation/tasks"),
+  getAutomationTasks: (serverScope?: string) =>
+    request<ScheduledTask[]>("/api/automation/tasks", { serverScope }),
   createAutomationTask: (task: ScheduledTaskInput) =>
     request<ScheduledTask>("/api/automation/tasks", {
       method: "POST",
@@ -249,19 +307,20 @@ export const api = {
       `/api/automation/tasks/${encodeURIComponent(taskId)}/run`,
       { method: "POST" },
     ),
-  getAutomationRuns: (taskId = "", limit = 50) =>
+  getAutomationRuns: (taskId = "", limit = 50, serverScope?: string) =>
     request<TaskRun[]>(
       `/api/automation/runs${buildQuery({ task_id: taskId, limit })}`,
+      { serverScope },
     ),
-  getAutomationSettings: () =>
-    request<AutomationSettings>("/api/automation/settings"),
+  getAutomationSettings: (serverScope?: string) =>
+    request<AutomationSettings>("/api/automation/settings", { serverScope }),
   updateAutomationSettings: (settings: AutomationSettingsUpdate) =>
     request<AutomationSettings>("/api/automation/settings", {
       method: "PUT",
       body: settings,
     }),
-  getAutomationStatus: () =>
-    request<AutomationStatus>("/api/automation/status"),
+  getAutomationStatus: (serverScope?: string) =>
+    request<AutomationStatus>("/api/automation/status", { serverScope }),
   testAutomationNotification: () =>
     request<ApiSuccess>("/api/automation/notifications/test", {
       method: "POST",
@@ -270,11 +329,16 @@ export const api = {
     request<ApiSuccess>("/api/automation/watchdog/reset", {
       method: "POST",
     }),
-  getPlayers: (params: Record<string, unknown> = {}) =>
-    request<PlayerSummary[]>(`/api/player${buildQuery(params)}`),
-  getOnlinePlayers: () => request<PlayerSummary[]>("/api/online_player"),
-  getPlayer: (playerUid: string) =>
-    request<Player>(`/api/player/${encodeURIComponent(playerUid)}`),
+  getPlayers: (params: Record<string, unknown> = {}, serverScope?: string) =>
+    request<PlayerSummary[]>(`/api/player${buildQuery(params)}`, {
+      serverScope,
+    }),
+  getOnlinePlayers: (serverScope?: string) =>
+    request<PlayerSummary[]>("/api/online_player", { serverScope }),
+  getPlayer: (playerUid: string, serverScope?: string) =>
+    request<Player>(`/api/player/${encodeURIComponent(playerUid)}`, {
+      serverScope,
+    }),
   playerAction: (
     playerUid: string,
     action: "kick" | "ban" | "unban",
@@ -461,12 +525,15 @@ export const api = {
         },
       },
     ),
-  getGuilds: () => request<Guild[]>("/api/guild", { auth: false }),
-  getGuild: (adminPlayerUid: string) =>
+  getGuilds: (serverScope?: string) =>
+    request<Guild[]>("/api/guild", { auth: false, serverScope }),
+  getGuild: (adminPlayerUid: string, serverScope?: string) =>
     request<Guild>(`/api/guild/${encodeURIComponent(adminPlayerUid)}`, {
       auth: false,
+      serverScope,
     }),
-  getWhitelist: () => request<WhitelistPlayer[]>("/api/whitelist"),
+  getWhitelist: (serverScope?: string) =>
+    request<WhitelistPlayer[]>("/api/whitelist", { serverScope }),
   addWhitelist: (player: WhitelistPlayer) =>
     request<ApiSuccess>("/api/whitelist", {
       method: "POST",
@@ -482,10 +549,14 @@ export const api = {
       method: "PUT",
       body: players,
     }),
-  getBackups: (startTime?: number, endTime?: number) =>
-    request<Backup[]>(`/api/backup${buildQuery({ startTime, endTime })}`),
-  getNativeBackups: () =>
-    request<NativeBackupListResult>("/api/server/backups/native"),
+  getBackups: (startTime?: number, endTime?: number, serverScope?: string) =>
+    request<Backup[]>(`/api/backup${buildQuery({ startTime, endTime })}`, {
+      serverScope,
+    }),
+  getNativeBackups: (serverScope?: string) =>
+    request<NativeBackupListResult>("/api/server/backups/native", {
+      serverScope,
+    }),
   restoreNativeBackup: (
     backupId: string,
     expectedDigest: string,
