@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -61,13 +62,25 @@ class WorldOptionEditorTest(unittest.TestCase):
             hashlib.sha256(template).hexdigest(),
         )
 
-    def test_metadata_checksum_is_enforced(self) -> None:
+    def test_metadata_checksum_is_semantic_and_enforced(self) -> None:
         source = Path(__file__).with_name("world_option_metadata.json")
         with tempfile.TemporaryDirectory() as temporary_directory:
-            tampered = Path(temporary_directory) / source.name
-            tampered.write_bytes(source.read_bytes() + b"\n")
+            normalized = source.read_bytes().replace(b"\r\n", b"\n")
+            crlf = Path(temporary_directory) / "crlf.json"
+            crlf.write_bytes(normalized.replace(b"\n", b"\r\n"))
+            self.assertEqual(self.metadata, load_world_option_metadata(crlf))
+
+            payload = json.loads(normalized.decode("utf-8"))
+            payload["game_version"] = "9.9.9"
+            tampered = Path(temporary_directory) / "tampered.json"
+            tampered.write_text(json.dumps(payload), encoding="utf-8")
             with self.assertRaisesRegex(WorldOptionEditError, "checksum"):
                 load_world_option_metadata(tampered)
+
+            invalid = Path(temporary_directory) / "invalid.json"
+            invalid.write_bytes(b"\xff")
+            with self.assertRaisesRegex(WorldOptionEditError, "Unable to load"):
+                load_world_option_metadata(invalid)
 
     def test_parser_handles_strings_arrays_booleans_and_numbers(self) -> None:
         settings = parse_palworld_settings(

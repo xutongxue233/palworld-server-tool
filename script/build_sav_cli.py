@@ -40,7 +40,7 @@ PLAYER_MAP_AREA_COUNT = 123
 PLAYER_MAP_WORLD_FLAGS = ("MainMap", "Tree")
 PAL_CONF_COMMIT = "a0f75513a99684922b0ad58692304f8ddfcc06d3"
 WORLD_OPTION_METADATA_SHA256 = (
-    "81bb88b68cc6427ed94ea9e29fafa51b443202db514e627eb7163d0674222f34"
+    "c9434f064a8e360edeea67d88e3712c55f7e8761f380aabec5b8443d46e960cd"
 )
 WORLD_OPTION_METADATA_ENTRIES = 109
 
@@ -503,12 +503,20 @@ def copy_player_exp_table(source_root: Path, staging: Path) -> Path:
 
 def copy_world_option_metadata(repo_root: Path, staging: Path) -> Path:
     source = repo_root / "sav_cli" / "world_option_metadata.json"
-    if not source.is_file() or sha256(source) != WORLD_OPTION_METADATA_SHA256:
-        raise RuntimeError("Pinned Palworld 1.0.0 WorldOption metadata checksum mismatch")
+    if not source.is_file():
+        raise RuntimeError("Pinned Palworld 1.0.0 WorldOption metadata is missing")
     try:
         payload = json.loads(source.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise RuntimeError("Unable to read WorldOption metadata") from exc
+    canonical = json.dumps(
+        payload,
+        ensure_ascii=True,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    if hashlib.sha256(canonical).hexdigest() != WORLD_OPTION_METADATA_SHA256:
+        raise RuntimeError("Pinned Palworld 1.0.0 WorldOption metadata checksum mismatch")
     if (
         payload.get("schema") != 1
         or payload.get("game_version") != "1.0.0"

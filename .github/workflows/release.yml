@@ -76,6 +76,8 @@ jobs:
       - name: Build Windows package
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
           $tag = "${{ github.ref_name }}"
           $packageDir = "release/windows_x86_64"
           New-Item -ItemType Directory -Force -Path $packageDir | Out-Null
@@ -87,7 +89,33 @@ jobs:
           Copy-Item example/config.yaml "$packageDir/config.yaml"
           Copy-Item script/start.bat "$packageDir/start.bat"
           Copy-Item THIRD_PARTY_NOTICES.md "$packageDir/THIRD_PARTY_NOTICES.md"
-          Compress-Archive -Path "$packageDir/*" -DestinationPath "release/pst_${tag}_windows_x86_64.zip" -CompressionLevel Optimal
+          $requiredFiles = @(
+            "pst.exe",
+            "sav_cli.exe",
+            "sav_cli-GPL-3.0.txt",
+            "THIRD_PARTY_NOTICES.md",
+            "config.yaml",
+            "start.bat"
+          )
+          foreach ($requiredFile in $requiredFiles) {
+            if (-not (Test-Path -LiteralPath "$packageDir/$requiredFile" -PathType Leaf)) {
+              throw "Windows release package is missing $requiredFile"
+            }
+          }
+          $archivePath = "release/pst_${tag}_windows_x86_64.zip"
+          Compress-Archive -Path "$packageDir/*" -DestinationPath $archivePath -CompressionLevel Optimal
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $archive = [System.IO.Compression.ZipFile]::OpenRead($archivePath)
+          try {
+            $entries = @($archive.Entries | ForEach-Object { $_.FullName })
+            foreach ($requiredFile in $requiredFiles) {
+              if ($entries -notcontains $requiredFile) {
+                throw "Windows release archive is missing $requiredFile"
+              }
+            }
+          } finally {
+            $archive.Dispose()
+          }
       - uses: actions/upload-artifact@v4
         with:
           name: release-windows-x86-64
@@ -149,7 +177,18 @@ jobs:
           cp script/start.sh "${package_dir}/start.sh"
           cp THIRD_PARTY_NOTICES.md "${package_dir}/THIRD_PARTY_NOTICES.md"
           chmod +x "${package_dir}/pst" "${package_dir}/sav_cli" "${package_dir}/start.sh" "release/pst-agent_${RELEASE_TAG}_linux_${RELEASE_ARCH}"
-          tar -C "${package_dir}" -czf "release/pst_${RELEASE_TAG}_linux_${RELEASE_ARCH}.tar.gz" .
+          required_files=(pst sav_cli sav_cli-GPL-3.0.txt THIRD_PARTY_NOTICES.md config.yaml start.sh)
+          for required_file in "${required_files[@]}"; do
+            test -f "${package_dir}/${required_file}"
+          done
+          archive_path="release/pst_${RELEASE_TAG}_linux_${RELEASE_ARCH}.tar.gz"
+          tar -C "${package_dir}" -czf "${archive_path}" .
+          entries_path="${archive_path}.entries"
+          tar -tzf "${archive_path}" > "${entries_path}"
+          for required_file in "${required_files[@]}"; do
+            grep -Fxq "./${required_file}" "${entries_path}"
+          done
+          rm -f "${entries_path}"
       - uses: actions/upload-artifact@v4
         with:
           name: release-linux-${{ matrix.release_arch }}

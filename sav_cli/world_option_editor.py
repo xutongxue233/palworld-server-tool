@@ -16,7 +16,7 @@ PAL_CONF_COMMIT = "a0f75513a99684922b0ad58692304f8ddfcc06d3"
 WORLD_OPTION_CLASS = "/Script/Pal.PalWorldOptionSaveGame"
 WORLD_OPTION_METADATA_ENTRIES = 109
 WORLD_OPTION_METADATA_SHA256 = (
-    "81bb88b68cc6427ed94ea9e29fafa51b443202db514e627eb7163d0674222f34"
+    "c9434f064a8e360edeea67d88e3712c55f7e8761f380aabec5b8443d46e960cd"
 )
 WORLD_OPTION_TEMPLATE_SHA256 = (
     "61306e3043cba19cbda1be0a11c37c7a8a0270a69762ae223c6bfa50ab18068e"
@@ -105,12 +105,17 @@ def default_world_option_template() -> bytes:
 
 def load_world_option_metadata(path: str | Path) -> dict[str, dict[str, str]]:
     try:
-        content = Path(path).read_bytes()
-        if hashlib.sha256(content).hexdigest() != WORLD_OPTION_METADATA_SHA256:
-            raise WorldOptionEditError("WorldOption metadata checksum mismatch")
-        payload = json.loads(content.decode("utf-8"))
+        payload = json.loads(Path(path).read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise WorldOptionEditError(f"Unable to load WorldOption metadata: {exc}") from exc
+    canonical = json.dumps(
+        payload,
+        ensure_ascii=True,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    if hashlib.sha256(canonical).hexdigest() != WORLD_OPTION_METADATA_SHA256:
+        raise WorldOptionEditError("WorldOption metadata checksum mismatch")
     if (
         not isinstance(payload, dict)
         or payload.get("schema") != 1

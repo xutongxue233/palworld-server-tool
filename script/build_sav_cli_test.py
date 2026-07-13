@@ -159,7 +159,18 @@ class ItemCatalogGenerationTest(unittest.TestCase):
         self.assertEqual(set(web_item_ids), {"Wood", "AssaultRifle_Default1"})
 
     def test_world_option_metadata_is_pinned_to_palworld_1_0_0(self) -> None:
-        repo_root = Path(__file__).resolve().parent.parent
+        source = (
+            Path(__file__).resolve().parent.parent
+            / "sav_cli"
+            / "world_option_metadata.json"
+        )
+        repo_root = self.root / "metadata-repo"
+        metadata_dir = repo_root / "sav_cli"
+        metadata_dir.mkdir(parents=True)
+        normalized = source.read_bytes().replace(b"\r\n", b"\n")
+        (metadata_dir / source.name).write_bytes(
+            normalized.replace(b"\n", b"\r\n")
+        )
         staging = self.root / "world-option-staging"
         staging.mkdir()
         destination = build_sav_cli.copy_world_option_metadata(repo_root, staging)
@@ -170,6 +181,10 @@ class ItemCatalogGenerationTest(unittest.TestCase):
             build_sav_cli.WORLD_OPTION_METADATA_ENTRIES,
             len(payload["settings"]),
         )
+
+        (metadata_dir / source.name).write_bytes(b"\xff")
+        with self.assertRaisesRegex(RuntimeError, "Unable to read"):
+            build_sav_cli.copy_world_option_metadata(repo_root, staging)
 
     def test_check_rejects_a_stale_generated_catalog(self) -> None:
         destination = build_sav_cli.build_web_item_catalog(

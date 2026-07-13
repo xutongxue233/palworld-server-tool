@@ -4,6 +4,13 @@
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-07-13
+
+### 修复
+
+- WorldOption 固定元数据改为校验规范化 JSON 语义摘要，不再因 Windows 检出时使用 CRLF 而误判校验失败。
+- Windows 发布任务现在会传播 Python、Go 等原生命令的非零退出码，并在压缩前和 ZIP 中逐项确认 `sav_cli.exe`、许可证及其余必需文件，避免不完整包被发布为成功版本。
+
 ## [1.3.0] - 2026-07-13
 
 ### 新增
@@ -133,7 +140,8 @@
 - 替换程序前应停止 PST 和 Palworld 服务端，并备份 `config.yaml`、数据库与整个世界存档目录。
 - 不要将 JSON 重建后的存档直接覆盖正在运行的 `Level.sav`。
 
-[Unreleased]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.3.1...HEAD
+[1.3.1]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.0.0...v1.1.0
