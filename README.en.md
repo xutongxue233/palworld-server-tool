@@ -56,6 +56,7 @@ Additional features provided by the tool:
 - [x] JWT-protected RCON terminal with all 13 Palworld 1.0.0 official command templates
 - [x] Typed scheduled tasks, an intentional-stop-aware watchdog, and generic/Discord webhook notifications
 - [x] SteamCMD install, update, file validation, and optional restart for fixed app ID 2394010
+- [x] Same-platform dedicated-server save migration with read-only preflight, a mandatory restore point, atomic replacement, and rollback
 - [x] Automatic PST safety restore points before dangerous save operations
 
 This tool stores synchronized REST API and Level.sav data in a single bbolt database and exposes it through the management interface.
@@ -158,6 +159,18 @@ Before every run, PST revalidates the SteamCMD hash, install directory, `appmani
 
 See the [official Palworld 1.0.0 SteamCMD deployment guide](https://docs.palworldgame.com/getting-started/deploy-dedicated-server).
 
+## Safe save migration
+
+In Web management mode, open **Operations → Save migration** and enter an absolute local path from the old server. The path may point to `Level.sav`, a specific world directory, `Saved`, or a PalServer install root. If more than one world is found, select a world directory explicitly. Preflight is read-only: it hashes the critical files and uses the bundled `sav_cli` to verify the Palworld 1.0.0 save class of `Level.sav`, `LevelMeta.sav`, every player save, and optional `WorldOption.sav`.
+
+Automatic migration is intentionally limited to a **same-platform dedicated server → current dedicated server**. These cases are blocked instead of invoking experimental conversion:
+
+- co-op/single-player sources, or a detected host save named `00000000000000000000000000000001.sav`;
+- Windows-to-Linux or Linux-to-Windows migration that would require changing player identities/GUIDs;
+- remote URLs, Docker/Kubernetes sources, symbolic links, identical source and destination directories, or invalid save structure/classes.
+
+Execution acquires the maintenance lock, pauses the watchdog, saves and stops the server, and creates a mandatory PST restore point for the current world. The source is copied into a transaction directory on the destination filesystem. Only after source and destination digests remain stable and staged saves validate again does PST atomically replace `Level.sav`, `LevelMeta.sav`, `Players/`, and optional `WorldOption.sav`. The current world's game-managed `backup/` tree and unknown top-level entries are preserved; the source `backup/` tree is not imported. If the source has no `WorldOption.sav`, an existing destination copy is removed. Failed post-install validation rolls back automatically. If rollback itself fails, recovery files remain in `.pst-save-migration-*` and the error reports that path. A configured `palworld.control` driver can restart the server; otherwise confirm the manual stop and start it manually afterward.
+
 
 ## Installation and Deployment
 
@@ -192,7 +205,7 @@ Download the latest executable files at:
 
 ```bash
 # Download pst_{version}_{platform}_{arch}.tar.gz and extract to the pst directory
-mkdir -p pst && tar -xzf pst_v1.5.0_linux_x86_64.tar.gz -C pst
+mkdir -p pst && tar -xzf pst_v1.6.0_linux_x86_64.tar.gz -C pst
 ```
 
 ##### Configuration
@@ -330,7 +343,7 @@ Access at http://{Server IP}:8080 after opening firewall and security group in c
 
 ##### Download and Extract
 
-Extract `pst_v1.5.0_windows_x86_64.zip` to any directory (recommend naming the folder `pst`).
+Extract `pst_v1.6.0_windows_x86_64.zip` to any directory (recommend naming the folder `pst`).
 
 ##### Configuration
 

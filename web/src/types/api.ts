@@ -136,6 +136,78 @@ export interface SteamCMDUpdateResult {
   restart_error?: string;
 }
 
+export type SaveMigrationPlatform = "current" | "windows" | "linux";
+export type SaveMigrationKind = "dedicated" | "coop";
+
+export interface SaveMigrationNotice {
+  code: string;
+  message: string;
+}
+
+export interface SaveMigrationPlan {
+  configured: boolean;
+  can_migrate: boolean;
+  game_version: string;
+  destination_platform: string;
+  source_input: string;
+  source_path?: string;
+  source_world_id?: string;
+  source_platform: string;
+  source_kind: string;
+  source_digest?: string;
+  source_size_bytes: number;
+  source_file_count: number;
+  source_player_files: number;
+  source_has_world_option: boolean;
+  source_has_native_backups: boolean;
+  source_ignored_entries?: string[];
+  coop_host_detected: boolean;
+  validation_passed: boolean;
+  destination_path?: string;
+  destination_world_id?: string;
+  destination_digest?: string;
+  destination_size_bytes: number;
+  destination_file_count: number;
+  destination_player_files: number;
+  destination_has_world_option: boolean;
+  issues?: SaveMigrationNotice[];
+  warnings?: SaveMigrationNotice[];
+  plan_digest: string;
+}
+
+export interface SaveMigrationPreflightRequest {
+  source_path: string;
+  source_platform: SaveMigrationPlatform;
+  source_kind: SaveMigrationKind;
+}
+
+export interface SaveMigrationPreflightResult {
+  plan: SaveMigrationPlan;
+  server_control: ServerControlStatus;
+}
+
+export interface SaveMigrationApplyRequest extends SaveMigrationPreflightRequest {
+  expected_plan_digest: string;
+  confirm_migration: boolean;
+  confirm_server_stopped: boolean;
+  restart_after: boolean;
+  shutdown_seconds: number;
+  shutdown_message?: string;
+}
+
+export interface SaveMigrationExecution {
+  plan: SaveMigrationPlan;
+  safety_backup: Backup;
+}
+
+export interface SaveMigrationApplyResult {
+  migration: SaveMigrationExecution;
+  maintenance: MaintenanceStopResult;
+  sync_error?: string;
+  restarted: boolean;
+  restart_error?: string;
+}
+
 export type AutomationAction =
   | "save_world"
   | "broadcast"

@@ -1,50 +1,52 @@
-# Palworld Server Tool v1.5.0
+# Palworld Server Tool v1.6.0
 
-此版本继续严格面向 Palworld 1.0.0，新增新手可直接使用的 SteamCMD 安装与更新工作区。应用 ID 固定为官方 Palworld Dedicated Server `2394010`，整个流程与服务器启停、看门狗和存档安全恢复点共享受限维护边界。
+此版本继续严格面向 Palworld 1.0.0，新增面向新手的本地存档迁移向导。它只自动处理同平台专用服务器存档，并把停服、强制恢复点、逐文件验证、原子替换和失败回滚纳入同一个受限维护事务。
 
 ## 主要更新
 
-- 在“运维 → 部署更新”中完成 SteamCMD 首次安装、现有安装更新与文件校验，不需要输入命令。
-- 预检会显示 SteamCMD 路径、安装目录、App manifest、当前构建 ID、平台启动文件、世界数量、恢复点状态和服务控制状态。
-- 执行过程固定为复核计划、保存并停服、创建恢复点、安装/更新 App 2394010、校验并按需重启五个步骤。
-- 读取 `steamapps/appmanifest_2394010.acf` 展示更新前后构建 ID，并在 SteamCMD 成功退出后再次确认 manifest 与 `PalServer.exe`/`PalServer.sh` 有效。
-- 已配置 `palworld.control` 时可以安全停止正在运行的服务器，并选择完成后自动启动；没有控制驱动时必须先手动完全停服并明确确认。
-- 新增中、英、日三语部署界面、JWT 保护的预检/执行 API 和对应 Swagger 文档。
+- 在“运维 → 存档迁移”中填写旧服务器的本机绝对路径即可完成只读预检，不需要手工复制或输入命令。
+- 支持从 `Level.sav`、具体世界目录、`Saved` 目录或 PalServer 安装目录发现世界；多个世界时要求明确选择。
+- 预检展示源世界与当前世界、平台、玩家档数量、关键文件数量、数据大小、`WorldOption.sav` 行为、忽略项目和计划摘要。
+- 使用发行包内置 `sav_cli` 验证 Level、LevelMeta、全部玩家档和可选 WorldOption 的 Palworld 1.0.0 GVAS 类别。
+- 新增中、英、日三语迁移界面、JWT 保护的预检/执行 API 和对应 Swagger 文档。
 
-## 存档保护
+## 安全迁移事务
 
-- 安装目录中只要存在世界数据，`save.path` 就必须指向该安装目录内的本地世界。
-- SteamCMD 启动前强制创建完整 PST 恢复点；备份失败、路径不匹配或服务器仍在运行时会直接中止。
-- 停服确认会在备份后、真正运行 SteamCMD 前再次执行，缩小外部进程意外重新启动造成的竞态窗口。
-- 更新失败时会使用独立恢复上下文尝试重新启动更新前正在运行的托管服务器，并恢复看门狗目标状态。
-- Palworld 1.0.0 的日常恢复仍优先使用游戏自带 `backup/world`；PST 压缩备份继续用于危险维护前的强制恢复点。
+- 执行前重新校验计划，独占服务器维护锁并暂停看门狗。
+- 保存并停止服务器后，为当前世界强制创建完整 PST 恢复点；备份失败不会继续。
+- 把源世界复制到目标同一文件系统的事务目录，再复核源、目标和暂存数据摘要。
+- 只原子替换 `Level.sav`、`LevelMeta.sav`、`Players/` 和可选 `WorldOption.sav`。
+- 当前世界的游戏内置 `backup/` 及未知顶层文件保持不变；源世界的 `backup/` 不会导入。
+- 安装后再次执行结构和 `sav_cli` 验证，失败自动把旧世界文件回滚。
+- 原子替换或回滚自身失败时保留 `.pst-save-migration-*` 恢复目录，并在错误中返回路径，不会清理仅存的旧文件。
+- 完成后同步解析数据；配置了 `palworld.control` 时可选择自动重启，失败时会尝试恢复迁移前正在运行的服务器。
 
-## 安全边界
+## 明确阻止的情况
 
-- App ID 永远固定为 `2394010`，不接受自定义 Depot、测试分支、Shell 文本或任意 SteamCMD 参数。
-- SteamCMD 可执行文件和安装目录必须是绝对路径；拒绝符号链接、文件系统根目录、Windows 非 `.exe` 文件以及 Linux 缺少执行权限的程序/启动脚本。
-- 执行前再次校验计划摘要、SteamCMD SHA-256、manifest 摘要、启动文件大小/时间和备份条件，计划变化会安全中止。
-- 更新决策不依赖第三方“最新版本”服务，只信任本地 Steam manifest 与 SteamCMD 执行结果。
-- SteamCMD 使用直接参数启动而不是 Shell，运行最长 60-7200 秒，输出只保留有界末尾。
-- SteamCMD 维护持有全局服务器操作锁并暂停看门狗，避免与存档编辑、原生备份恢复、配置写入、RCON 或定时任务重叠。
+- 合作主机/单人存档，以及主机玩家档 `00000000000000000000000000000001.sav`。
+- Windows 与 Linux 之间需要改变玩家身份/GUID 的跨平台自动迁移。
+- 远程 URL、Docker/Kubernetes 地址、相对路径、符号链接、源与目标为同一目录。
+- 缺少 Level、LevelMeta 或 Players，玩家文件名异常，存档为空、损坏或 GVAS 类别不匹配。
+
+PST 不集成实验性合作主机 GUID 转换工具。已有方案仍公开报告公会、帕鲁、展示笼和容器等兼容问题，因此 v1.6.0 选择检测并阻止，而不是冒险改写真实存档。
 
 ## 下载文件
 
-- `pst_v1.5.0_windows_x86_64.zip`
-- `pst_v1.5.0_linux_x86_64.tar.gz`
-- `pst_v1.5.0_linux_aarch64.tar.gz`
+- `pst_v1.6.0_windows_x86_64.zip`
+- `pst_v1.6.0_linux_x86_64.tar.gz`
+- `pst_v1.6.0_linux_aarch64.tar.gz`
 - 对应平台的 `pst-agent` 独立程序
 - `SHA256SUMS.txt`
 
 完整包包含主程序、对应平台的 `sav_cli`、GPL 与第三方许可证、示例配置和启动脚本。
 
-## 升级与配置
+## 升级与使用
 
 1. 停止旧版 PST，并备份现有 `config.yaml`、`pst.db` 和世界存档目录；不要用发布包中的示例配置覆盖现有文件。
-2. 旧配置可直接升级。只有需要使用 SteamCMD 时，才新增 `steamcmd.executable`、`steamcmd.install_dir` 和可选 `steamcmd.timeout`。
-3. `steamcmd.executable` 与 `steamcmd.install_dir` 必须是 PST 主机或容器内可访问的绝对路径；远程 agent 路径不能用于本机 SteamCMD。
-4. 若安装目录中已有世界，请确认 `save.path` 指向其中的活动世界；页面必须显示“存档恢复点”已就绪。
-5. 推荐配置 `palworld.control`，这样更新时可以保存、停服并选择自动启动。否则先在宿主系统中完全停止 PalServer。
-6. 默认开启 `validate`。大型安装或较慢磁盘可在 `steamcmd.timeout` 中把上限调整到 7200 秒以内。
+2. 旧配置可直接升级，存档迁移不增加必填配置；当前服务器必须使用 PST 本机可访问的 `save.path`。
+3. 在“存档迁移”中保留默认“与当前服务器相同（推荐）”，除非你需要查看跨平台阻止原因。
+4. 专用服务器源存档可先只读预检；页面显示“可以安全迁移”后再核对源、目标与 `WorldOption.sav` 行为。
+5. 推荐配置 `palworld.control`，以便自动停服和按需重启；未配置时必须确认 PalServer 已完全停止，或由可用的官方 REST/RCON 平滑关服后手动启动。
+6. 日常回档仍优先使用游戏自带 `backup/world`；迁移前创建的 PST 压缩包用于本次危险维护的额外恢复点。
 
 详细变更见 [`CHANGELOG.md`](https://github.com/xutongxue233/palworld-server-tool/blob/main/CHANGELOG.md)。

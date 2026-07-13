@@ -312,6 +312,93 @@ definitions:
       sync_error:
         type: string
     type: object
+  api.SaveMigrationApplyRequest:
+    properties:
+      confirm_migration:
+        type: boolean
+      confirm_server_stopped:
+        type: boolean
+      expected_plan_digest:
+        type: string
+      restart_after:
+        type: boolean
+      shutdown_message:
+        maxLength: 256
+        type: string
+      shutdown_seconds:
+        maximum: 300
+        minimum: 0
+        type: integer
+      source_kind:
+        enum:
+        - dedicated
+        - coop
+        type: string
+      source_path:
+        maxLength: 4096
+        type: string
+      source_platform:
+        enum:
+        - current
+        - windows
+        - linux
+        type: string
+    required:
+    - expected_plan_digest
+    - source_kind
+    - source_path
+    - source_platform
+    type: object
+  api.SaveMigrationApplyResponse:
+    properties:
+      maintenance:
+        $ref: '#/definitions/tool.MaintenanceStopResult'
+      migration:
+        $ref: '#/definitions/tool.SaveMigrationResult'
+      restart_error:
+        type: string
+      restarted:
+        type: boolean
+      sync_error:
+        type: string
+    type: object
+  api.SaveMigrationErrorResponse:
+    properties:
+      code:
+        type: string
+      error:
+        type: string
+      result:
+        $ref: '#/definitions/api.SaveMigrationApplyResponse'
+    type: object
+  api.SaveMigrationPreflightRequest:
+    properties:
+      source_kind:
+        enum:
+        - dedicated
+        - coop
+        type: string
+      source_path:
+        maxLength: 4096
+        type: string
+      source_platform:
+        enum:
+        - current
+        - windows
+        - linux
+        type: string
+    required:
+    - source_kind
+    - source_path
+    - source_platform
+    type: object
+  api.SaveMigrationPreflightResponse:
+    properties:
+      plan:
+        $ref: '#/definitions/tool.SaveMigrationPlan'
+      server_control:
+        $ref: '#/definitions/tool.ServerControlStatus'
+    type: object
   api.ServerInfo:
     properties:
       description:
@@ -1348,6 +1435,85 @@ definitions:
         type: integer
       technology_before:
         type: integer
+    type: object
+  tool.SaveMigrationNotice:
+    properties:
+      code:
+        type: string
+      message:
+        type: string
+    type: object
+  tool.SaveMigrationPlan:
+    properties:
+      can_migrate:
+        type: boolean
+      configured:
+        type: boolean
+      coop_host_detected:
+        type: boolean
+      destination_digest:
+        type: string
+      destination_file_count:
+        type: integer
+      destination_has_world_option:
+        type: boolean
+      destination_path:
+        type: string
+      destination_platform:
+        type: string
+      destination_player_files:
+        type: integer
+      destination_size_bytes:
+        type: integer
+      destination_world_id:
+        type: string
+      game_version:
+        type: string
+      issues:
+        items:
+          $ref: '#/definitions/tool.SaveMigrationNotice'
+        type: array
+      plan_digest:
+        type: string
+      source_digest:
+        type: string
+      source_file_count:
+        type: integer
+      source_has_native_backups:
+        type: boolean
+      source_has_world_option:
+        type: boolean
+      source_ignored_entries:
+        items:
+          type: string
+        type: array
+      source_input:
+        type: string
+      source_kind:
+        type: string
+      source_path:
+        type: string
+      source_platform:
+        type: string
+      source_player_files:
+        type: integer
+      source_size_bytes:
+        type: integer
+      source_world_id:
+        type: string
+      validation_passed:
+        type: boolean
+      warnings:
+        items:
+          $ref: '#/definitions/tool.SaveMigrationNotice'
+        type: array
+    type: object
+  tool.SaveMigrationResult:
+    properties:
+      plan:
+        $ref: '#/definitions/tool.SaveMigrationPlan'
+      safety_backup:
+        $ref: '#/definitions/database.Backup'
     type: object
   tool.ServerControlStatus:
     properties:
@@ -2988,6 +3154,83 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       summary: Get Server Metrics
+      tags:
+      - Server
+  /api/server/migration/apply:
+    post:
+      consumes:
+      - application/json
+      description: Revalidate the Palworld 1.0.0 plan, stop the server, create a mandatory
+        PST safety backup, stage and validate the source, atomically replace only
+        Level.sav, LevelMeta.sav, Players, and optional WorldOption.sav, synchronize
+        decoded data, and optionally restart.
+      parameters:
+      - description: Confirmed local save migration
+        in: body
+        name: migration
+        required: true
+        schema:
+          $ref: '#/definitions/api.SaveMigrationApplyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SaveMigrationApplyResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.SaveMigrationErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/api.SaveMigrationErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/api.SaveMigrationErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Safely migrate a local Palworld dedicated-server world
+      tags:
+      - Server
+  /api/server/migration/preflight:
+    post:
+      consumes:
+      - application/json
+      description: Resolve and validate a same-platform Palworld 1.0.0 dedicated-server
+        world without modifying either source or destination. Co-op host GUID conversion
+        and cross-platform identity conversion are intentionally blocked.
+      parameters:
+      - description: Local migration source
+        in: body
+        name: preflight
+        required: true
+        schema:
+          $ref: '#/definitions/api.SaveMigrationPreflightRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SaveMigrationPreflightResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Preflight a local Palworld dedicated-server save migration
       tags:
       - Server
   /api/server/restart:

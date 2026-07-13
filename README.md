@@ -60,6 +60,7 @@
 - [x] 受 Web 管理认证保护的 RCON 命令终端和全部 13 条 1.0.0 官方命令模板
 - [x] 类型化定时任务、不会干扰人工停服的服务器看门狗，以及通用/Discord Webhook 通知
 - [x] 固定 App ID 2394010 的 SteamCMD 安装、更新、文件校验和可选自动重启
+- [x] 带只读预检、强制恢复点、原子替换和失败回滚的同平台专用服务器存档迁移
 - [x] 危险存档操作前自动创建 PST 安全恢复点
 
 ### 存档校验与离线编辑
@@ -186,6 +187,18 @@ steamcmd:
 
 参考：[Palworld 1.0.0 官方 SteamCMD 部署说明](https://docs.palworldgame.com/getting-started/deploy-dedicated-server)。
 
+## 安全存档迁移
+
+登录 Web 管理模式后，打开“运维 → 存档迁移”，填写旧服务器的本机绝对路径。路径可以指向 `Level.sav`、具体世界目录、`Saved` 目录或 PalServer 安装目录；若找到多个世界，必须明确选择一个世界目录。预检完全只读，会计算关键文件摘要，并使用内置 `sav_cli` 验证 `Level.sav`、`LevelMeta.sav`、全部玩家档和可选 `WorldOption.sav` 的 Palworld 1.0.0 存档类别。
+
+自动迁移只支持**同平台专用服务器 → 当前专用服务器**。以下情况会明确阻止，不会执行实验性转换：
+
+- 合作主机/单人存档，或检测到主机玩家档 `00000000000000000000000000000001.sav`；
+- Windows 与 Linux 之间需要改变玩家身份/GUID 的跨平台迁移；
+- 远程 URL、Docker/Kubernetes 地址、符号链接、源与目标为同一目录，或存档结构/类别校验失败。
+
+执行时 PST 会独占维护锁、暂停看门狗、保存并停止服务器、为当前世界创建强制 PST 恢复点，再把源存档复制到目标同一文件系统的事务目录。只有源和目标摘要持续一致且暂存文件再次验证通过时，才原子替换 `Level.sav`、`LevelMeta.sav`、`Players/` 和可选 `WorldOption.sav`。当前世界的游戏内置 `backup/` 及未知顶层文件会保留，源世界的 `backup/` 不会导入；源没有 `WorldOption.sav` 时，目标现有文件会被移除。安装后验证失败会自动回滚；若回滚本身失败，恢复文件会保留在 `.pst-save-migration-*` 目录并把位置写入错误信息。配置了 `palworld.control` 时可按需自动重启，否则需要手动确认停服并在完成后手动启动。
+
 
 ## 安装部署
 
@@ -231,7 +244,7 @@ steamcmd:
 
 ```bash
 # 下载 pst_{version}_{platform}_{arch}.tar.gz 文件并解压到 pst 目录
-mkdir -p pst && tar -xzf pst_v1.5.0_linux_x86_64.tar.gz -C pst
+mkdir -p pst && tar -xzf pst_v1.6.0_linux_x86_64.tar.gz -C pst
 ```
 
 ##### 配置
@@ -370,7 +383,7 @@ kill $(ps aux | grep 'pst' | awk '{print $2}') | head -n 1
 
 ##### 下载解压
 
-解压 `pst_v1.5.0_windows_x86_64.zip` 到任意目录（推荐命名文件夹目录名称为 `pst`）
+解压 `pst_v1.6.0_windows_x86_64.zip` 到任意目录（推荐命名文件夹目录名称为 `pst`）
 
 ##### 配置
 

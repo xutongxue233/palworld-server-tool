@@ -71,6 +71,8 @@ func TestOfficialServerManagementRoutes(t *testing.T) {
 		{http.MethodGet, "/api/server/control/status"},
 		{http.MethodGet, "/api/server/steamcmd"},
 		{http.MethodPost, "/api/server/steamcmd/update"},
+		{http.MethodPost, "/api/server/migration/preflight"},
+		{http.MethodPost, "/api/server/migration/apply"},
 		{http.MethodGet, "/api/server/backups/native"},
 		{http.MethodPost, "/api/server/backups/native/2026.07.13-10.00.00/restore"},
 		{http.MethodPost, "/api/server/start"},
