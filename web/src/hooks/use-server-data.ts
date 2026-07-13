@@ -12,6 +12,7 @@ export const queryKeys = {
   guilds: ["guilds"] as const,
   settings: ["server", "settings"] as const,
   snapshot: ["server", "snapshot"] as const,
+  control: ["server", "control"] as const,
   whitelist: ["whitelist"] as const,
   backups: (startTime?: number, endTime?: number) =>
     ["backups", startTime, endTime] as const,

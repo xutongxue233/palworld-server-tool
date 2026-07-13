@@ -120,7 +120,7 @@ https://github.com/zaigie/palworld-server-tool/assets/17232619/afdf485c-4b34-491
 
 ```bash
 # pst_{version}_{platform}_{arch}.tar.gz ファイルをダウンロードしてpstディレクトリに解凍します
-mkdir -p pst && tar -xzf pst_v1.1.0_linux_x86_64.tar.gz -C pst
+mkdir -p pst && tar -xzf pst_v1.2.0_linux_x86_64.tar.gz -C pst
 ```
 
 ##### 設定
@@ -137,6 +137,18 @@ mkdir -p pst && tar -xzf pst_v1.1.0_linux_x86_64.tar.gz -C pst
    `decode_path`については、通常は pst ディレクトリに`sav_cli`を追加するだけです。空にすることができ、デフォルトで現在のディレクトリを取得します。
 
    ```yaml
+   # Palworld の設定ファイルと起動制御（ゲームバージョン 1.0.0）
+   palworld:
+     # Web UI から直接編集する PalWorldSettings.ini のローカルパス
+     config_path: "/path/to/PalServer/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini"
+     control:
+       # disabled / process / docker / systemd / windows_service
+       mode: "systemd"
+       target: "palworld.service"
+       arguments: []
+       working_directory: ""
+       timeout: 120
+
    # WebUI設定
    web:
      # WebUI管理者パスワード
@@ -183,7 +195,7 @@ mkdir -p pst && tar -xzf pst_v1.1.0_linux_x86_64.tar.gz -C pst
      # Sav Decode Interval Sec 存档からデータを取得する間隔、秒単位、>= 120を推奨
      sync_interval: 120
      # Sav Backup Interval Sec アーカイブ自動バックアップ間隔です、秒単位
-     backup_interval: 14400
+     backup_interval: 0
      # Sav Backup Keep Days アーカイブ自動バックアップを保持する日数です、日単位
      backup_keep_days: 7
 
@@ -192,6 +204,11 @@ mkdir -p pst && tar -xzf pst_v1.1.0_linux_x86_64.tar.gz -C pst
      # プレイヤーがホワイトリストにない場合に自動的にキックするかどうか
      kick_non_whitelist: false
    ```
+
+> [!NOTE]
+> Palworld 1.0.0 には標準のワールドバックアップがあるため、通常の復元にはゲーム側のバックアップを使い、PST の `save.backup_interval` は既定で `0` になりました。プレイヤーまたはパルのセーブ編集前に作成する必須の安全バックアップは引き続き有効です。
+>
+> `palworld.config_path` は PST からローカルに参照できる `PalWorldSettings.ini` を指定します。Web 書き込みではダイジェスト確認、旧ファイルのバックアップ、原子的置換を行います。`palworld.control` は任意のシェルを実行せず、`process`、`docker`、`systemd`、`windows_service` の制限されたドライバーだけをサポートします。
 
 ##### 実行
 
@@ -236,7 +253,7 @@ kill $(ps aux | grep 'pst' | awk '{print $2}') | head -n 1
 
 ##### ダウンロードと解凍
 
-`pst_v1.1.0_windows_x86_64.zip`を任意のディレクトリに解凍します（`pst`というディレクトリ名を推奨）。
+`pst_v1.2.0_windows_x86_64.zip`を任意のディレクトリに解凍します（`pst`というディレクトリ名を推奨）。
 
 ##### 設定
 
@@ -252,6 +269,16 @@ kill $(ps aux | grep 'pst' | awk '{print $2}') | head -n 1
 > また重要なのは、`config.yaml`ファイルが**ANSI エンコーディング**であることを確認してください。他のエンコーディング形式はパスエラーなどの問題を引き起こす可能性があります！！
 
 ```yaml
+# Palworld の設定ファイルと起動制御（ゲームバージョン 1.0.0）
+palworld:
+  config_path: "C:\\path\\to\\PalServer\\Pal\\Saved\\Config\\WindowsServer\\PalWorldSettings.ini"
+  control:
+    mode: "process"
+    target: "C:\\path\\to\\PalServer.exe"
+    arguments: []
+    working_directory: "C:\\path\\to"
+    timeout: 120
+
 # WebUI設定
 web:
   # WebUI管理者パスワード
@@ -298,7 +325,7 @@ save:
   # Sav Decode Interval Sec 存档からデータを取得する間隔、秒単位、>= 120を推奨
   sync_interval: 120
   # Sav Backup Interval Sec アーカイブ自動バックアップ間隔です、秒単位
-  backup_interval: 14400
+  backup_interval: 0
   # Sav Backup Keep Days アーカイブ自動バックアップを保持する日数です、日単位
   backup_keep_days: 7
 

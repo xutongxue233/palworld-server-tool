@@ -8,6 +8,16 @@ import (
 )
 
 type Config struct {
+	Palworld struct {
+		ConfigPath string `mapstructure:"config_path"`
+		Control    struct {
+			Mode             string   `mapstructure:"mode"`
+			Target           string   `mapstructure:"target"`
+			Arguments        []string `mapstructure:"arguments"`
+			WorkingDirectory string   `mapstructure:"working_directory"`
+			Timeout          int      `mapstructure:"timeout"`
+		} `mapstructure:"control"`
+	} `mapstructure:"palworld"`
 	Web struct {
 		Password  string `mapstructure:"password"`
 		Port      int    `mapstructure:"port"`
@@ -77,8 +87,11 @@ func Init(cfgFile string, conf *Config) {
 	viper.SetDefault("rest.timeout", 5)
 
 	viper.SetDefault("save.sync_interval", 600)
-	viper.SetDefault("save.backup_interval", 14400)
+	viper.SetDefault("save.backup_interval", 0)
 	viper.SetDefault("save.backup_keep_days", 7)
+
+	viper.SetDefault("palworld.control.mode", "disabled")
+	viper.SetDefault("palworld.control.timeout", 120)
 
 	viper.SetEnvPrefix("")
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "__"))

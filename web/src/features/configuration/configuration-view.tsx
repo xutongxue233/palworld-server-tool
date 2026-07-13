@@ -8,11 +8,14 @@ import {
   ExternalLink,
   FileInput,
   FileText,
+  HardDriveDownload,
+  LoaderCircle,
   RefreshCw,
   RotateCcw,
   Search,
   ServerCog,
   SlidersHorizontal,
+  Upload,
 } from "lucide-react";
 import { useOutletContext } from "react-router-dom";
 import { toast } from "sonner";
@@ -74,7 +77,12 @@ import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { Locale } from "@/types/api";
 
-type ConfigSource = "defaults" | "file" | "paste" | "server";
+type ConfigSource =
+  | "defaults"
+  | "file"
+  | "paste"
+  | "server"
+  | "server-file";
 type GroupFilter = "all" | SettingGroup;
 
 function ListTextInput({
@@ -350,6 +358,14 @@ export default function ConfigurationView() {
   const [pasteContent, setPasteContent] = useState("");
   const [previewOpen, setPreviewOpen] = useState(false);
   const [loadingServer, setLoadingServer] = useState(false);
+  const [loadingServerFile, setLoadingServerFile] = useState(false);
+  const [writingServerFile, setWritingServerFile] = useState(false);
+  const [serverFile, setServerFile] = useState<{
+    path: string;
+    sha256: string;
+  } | null>(null);
+  const [serverFileBaseline, setServerFileBaseline] = useState("");
+  const [restartRequired, setRestartRequired] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const issues = useMemo(() => validateServerSettings(values), [values]);
@@ -371,6 +387,9 @@ export default function ConfigurationView() {
         ).map((definition) => definition.key),
       ),
     [values],
+  );
+  const serverFileDirty = Boolean(
+    serverFile && serverFileBaseline && serialized !== serverFileBaseline,
   );
 
   const visibleDefinitions = useMemo(() => {
@@ -397,24 +416,36 @@ export default function ConfigurationView() {
     setValues(getDefaultSettings());
     setUnknown({});
     setSource("defaults");
+    setServerFile(null);
+    setServerFileBaseline("");
+    setRestartRequired(false);
     toast.success(t("config.resetDone"));
   };
 
-  const applyImportedContent = (content: string, nextSource: ConfigSource) => {
+  const applyImportedContent = (
+    content: string,
+    nextSource: ConfigSource,
+    notify = true,
+  ) => {
     try {
       const parsed = parsePalWorldSettings(content);
-      setValues({ ...getDefaultSettings(), ...parsed.values });
+      const nextValues = { ...getDefaultSettings(), ...parsed.values };
+      setValues(nextValues);
       setUnknown(parsed.unknown);
       setSource(nextSource);
-      toast.success(t("config.imported"), {
-        description: t("config.importedCount", {
-          count: parsed.loadedKeys.length,
-        }),
-      });
+      if (notify) {
+        toast.success(t("config.imported"), {
+          description: t("config.importedCount", {
+            count: parsed.loadedKeys.length,
+          }),
+        });
+      }
+      return serializePalWorldSettings(nextValues, parsed.unknown);
     } catch (error) {
       toast.error(t("config.invalid"), {
         description: getApiErrorMessage(error),
       });
+      return null;
     }
   };
 
@@ -422,6 +453,9 @@ export default function ConfigurationView() {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
+    setServerFile(null);
+    setServerFileBaseline("");
+    setRestartRequired(false);
     applyImportedContent(await file.text(), "file");
   };
 
@@ -436,6 +470,9 @@ export default function ConfigurationView() {
       setValues({ ...getDefaultSettings(), ...result.values });
       setUnknown(result.unknown);
       setSource("server");
+      setServerFile(null);
+      setServerFileBaseline("");
+      setRestartRequired(false);
       toast.success(t("config.serverLoaded"));
     } catch (error) {
       toast.error(t("message.error"), {
@@ -443,6 +480,70 @@ export default function ConfigurationView() {
       });
     } finally {
       setLoadingServer(false);
+    }
+  };
+
+  const loadServerFile = async () => {
+    if (!isAuthenticated) {
+      openLogin();
+      return;
+    }
+    setLoadingServerFile(true);
+    try {
+      const result = await api.getGameConfigFile();
+      if (!result.configured) {
+        toast.error(t("config.serverFileNotConfigured"));
+        return;
+      }
+      if (!result.content || !result.sha256 || !result.path) {
+        throw new Error(t("config.serverFileIncomplete"));
+      }
+      const normalized = applyImportedContent(
+        result.content,
+        "server-file",
+        false,
+      );
+      if (normalized) {
+        setServerFile({ path: result.path, sha256: result.sha256 });
+        setServerFileBaseline(normalized);
+        setRestartRequired(false);
+        toast.success(t("config.serverFileLoaded"), {
+          description: result.path,
+        });
+      }
+    } catch (error) {
+      toast.error(t("message.error"), {
+        description: getApiErrorMessage(error),
+      });
+    } finally {
+      setLoadingServerFile(false);
+    }
+  };
+
+  const writeServerFile = async () => {
+    if (!serverFile || errors.length) return;
+    setWritingServerFile(true);
+    try {
+      const result = await api.putGameConfigFile(
+        serialized,
+        serverFile.sha256,
+      );
+      setServerFile((current) =>
+        current ? { ...current, sha256: result.sha256 } : current,
+      );
+      setServerFileBaseline(serialized);
+      setRestartRequired(result.restart_required);
+      toast.success(t("config.serverFileWritten"), {
+        description: t("config.serverFileBackup", {
+          path: result.backup_path,
+        }),
+      });
+    } catch (error) {
+      toast.error(t("config.serverFileWriteFailed"), {
+        description: getApiErrorMessage(error),
+      });
+    } finally {
+      setWritingServerFile(false);
     }
   };
 
@@ -518,6 +619,52 @@ export default function ConfigurationView() {
         />
       </div>
 
+      <div className="grid border-b bg-muted/20 sm:grid-cols-3">
+        {[
+          {
+            label: t("config.stateRead"),
+            active: Boolean(serverFile),
+            detail: serverFile?.path || t("config.stateReadHint"),
+          },
+          {
+            label: t("config.stateWritten"),
+            active: restartRequired && !serverFileDirty,
+            detail: serverFileDirty
+              ? t("config.stateUnsaved")
+              : t("config.stateWrittenHint"),
+          },
+          {
+            label: t("config.stateRestart"),
+            active: restartRequired,
+            detail: restartRequired
+              ? t("config.stateRestartRequired")
+              : t("config.stateRestartHint"),
+          },
+        ].map((item, index) => (
+          <div
+            key={item.label}
+            className="flex min-w-0 items-start gap-3 border-b px-4 py-3 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0 sm:px-6"
+          >
+            <span
+              className={cn(
+                "font-data flex size-6 shrink-0 items-center justify-center rounded-full border text-[10px]",
+                item.active
+                  ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                  : "text-muted-foreground",
+              )}
+            >
+              {index + 1}
+            </span>
+            <span className="min-w-0">
+              <span className="block text-xs font-medium">{item.label}</span>
+              <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+                {item.detail}
+              </span>
+            </span>
+          </div>
+        ))}
+      </div>
+
       <div className="flex flex-wrap items-center gap-2 border-b px-4 py-3 sm:px-6 lg:px-8">
         <input
           ref={fileInputRef}
@@ -547,6 +694,53 @@ export default function ConfigurationView() {
           <RefreshCw className={cn(loadingServer && "animate-spin")} />
           {t("config.loadServer")}
         </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => void loadServerFile()}
+          disabled={loadingServerFile}
+        >
+          <HardDriveDownload
+            className={cn(loadingServerFile && "animate-pulse")}
+          />
+          {t("config.loadServerFile")}
+        </Button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              size="sm"
+              disabled={
+                !serverFile ||
+                !serverFileDirty ||
+                errors.length > 0 ||
+                writingServerFile
+              }
+            >
+              {writingServerFile ? (
+                <LoaderCircle className="animate-spin" />
+              ) : (
+                <Upload />
+              )}
+              {t("config.writeServerFile")}
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {t("config.writeServerFile")}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {t("config.writeServerFileConfirm")}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{t("action.cancel")}</AlertDialogCancel>
+              <AlertDialogAction onClick={() => void writeServerFile()}>
+                {t("action.confirm")}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         <Button
           variant="outline"
           size="sm"
@@ -736,6 +930,9 @@ export default function ConfigurationView() {
             </Button>
             <Button
               onClick={() => {
+                setServerFile(null);
+                setServerFileBaseline("");
+                setRestartRequired(false);
                 applyImportedContent(pasteContent, "paste");
                 setPasteOpen(false);
               }}

@@ -1,12 +1,15 @@
 import { useMemo, useState } from "react";
 import {
   BellRing,
+  CircleOff,
   DatabaseBackup,
   Download,
   ExternalLink,
   LoaderCircle,
+  Play,
   Power,
   RefreshCw,
+  RotateCw,
   Save,
   Send,
   ServerCog,
@@ -29,6 +32,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -45,6 +49,12 @@ import { downloadBlob, formatCoordinate } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import { queryKeys } from "@/hooks/use-server-data";
 
+const RCON_PRESETS = [
+  { command: "Info", labelKey: "operations.rconPresetInfo" },
+  { command: "ShowPlayers", labelKey: "operations.rconPresetPlayers" },
+  { command: "Save", labelKey: "operations.rconPresetSave" },
+] as const;
+
 export function ServerControls() {
   const { t } = useI18n();
   const queryClient = useQueryClient();
@@ -53,9 +63,9 @@ export function ServerControls() {
   const [rconResponse, setRconResponse] = useState("");
   const [shutdownSeconds, setShutdownSeconds] = useState(60);
   const [shutdownMessage, setShutdownMessage] = useState("");
-  const [confirmAction, setConfirmAction] = useState<"save" | "stop" | null>(
-    null,
-  );
+  const [confirmAction, setConfirmAction] = useState<
+    "start" | "save" | "restart" | "stop" | null
+  >(null);
 
   const settingsQuery = useQuery({
     queryKey: queryKeys.settings,
@@ -65,6 +75,11 @@ export function ServerControls() {
     queryKey: queryKeys.snapshot,
     queryFn: api.getWorldSnapshot,
     staleTime: 10_000,
+  });
+  const controlQuery = useQuery({
+    queryKey: queryKeys.control,
+    queryFn: api.getServerControlStatus,
+    refetchInterval: 10_000,
   });
 
   const settingsRows = useMemo(
@@ -83,6 +98,7 @@ export function ServerControls() {
     [settingsQuery.data],
   );
   const actors = snapshotQuery.data?.ActorData ?? [];
+  const snapshotUnavailable = snapshotQuery.data?.Available === false;
 
   const saveMutation = useMutation({
     mutationFn: api.saveWorld,
@@ -91,7 +107,10 @@ export function ServerControls() {
   });
   const stopMutation = useMutation({
     mutationFn: api.stopServer,
-    onSuccess: () => toast.success(t("message.stopSent")),
+    onSuccess: () => {
+      toast.success(t("message.stopSent"));
+      void queryClient.invalidateQueries({ queryKey: queryKeys.control });
+    },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
   const broadcastMutation = useMutation({
@@ -116,6 +135,26 @@ export function ServerControls() {
     onSuccess: () => toast.success(t("message.shutdownSent")),
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
+  const startMutation = useMutation({
+    mutationFn: api.startServer,
+    onSuccess: () => {
+      toast.success(t("message.startCompleted"));
+      void queryClient.invalidateQueries({ queryKey: queryKeys.control });
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
+  const restartMutation = useMutation({
+    mutationFn: () =>
+      api.restartServer(
+        Math.max(1, shutdownSeconds),
+        shutdownMessage.trim() || t("operations.restartDefaultMessage"),
+      ),
+    onSuccess: () => {
+      toast.success(t("message.restartCompleted"));
+      void queryClient.invalidateQueries({ queryKey: queryKeys.control });
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
 
   const refreshDiagnostics = async () => {
     await Promise.all([
@@ -125,7 +164,7 @@ export function ServerControls() {
   };
 
   const downloadSnapshot = () => {
-    if (!snapshotQuery.data) return;
+    if (!snapshotQuery.data || snapshotUnavailable) return;
     const date = new Date().toISOString().replaceAll(":", "-");
     downloadBlob(
       new Blob([JSON.stringify(snapshotQuery.data, null, 2)], {
@@ -244,46 +283,102 @@ export function ServerControls() {
         description={t("operations.rconDescription")}
         contentClassName="p-4 sm:p-5"
       >
-        <form
-          className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(280px,0.75fr)]"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const command = rconCommand.trim();
-            if (command) rconMutation.mutate(command);
-          }}
-        >
-          <div className="space-y-3">
-            <Textarea
-              value={rconCommand}
-              onChange={(event) => setRconCommand(event.target.value)}
-              placeholder={t("operations.rconPlaceholder")}
-              className="font-data min-h-24"
-              maxLength={4096}
-            />
-            <div className="flex justify-end">
-              <Button
-                type="submit"
-                disabled={!rconCommand.trim() || rconMutation.isPending}
-              >
-                {rconMutation.isPending ? (
-                  <LoaderCircle className="animate-spin" />
-                ) : (
-                  <Terminal />
-                )}
-                {t("action.execute")}
-              </Button>
+        <div className="space-y-4">
+          <div>
+            <p className="text-xs font-medium">{t("operations.rconQuick")}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {RCON_PRESETS.map((preset) => (
+                <Button
+                  key={preset.command}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setRconCommand(preset.command)}
+                >
+                  {t(preset.labelKey)}
+                </Button>
+              ))}
             </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {t("operations.rconQuickHint")}
+            </p>
           </div>
-          <pre className="font-data min-h-24 overflow-auto whitespace-pre-wrap break-words rounded-md border bg-muted/35 p-3 text-xs text-muted-foreground">
-            {rconResponse || t("operations.rconEmpty")}
-          </pre>
-        </form>
+          <form
+            className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(280px,0.75fr)]"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const command = rconCommand.trim();
+              if (command) rconMutation.mutate(command);
+            }}
+          >
+            <div className="space-y-3">
+              <Textarea
+                value={rconCommand}
+                onChange={(event) => setRconCommand(event.target.value)}
+                placeholder={t("operations.rconPlaceholder")}
+                className="font-data min-h-24"
+                maxLength={4096}
+              />
+              <div className="flex justify-end">
+                <Button
+                  type="submit"
+                  disabled={!rconCommand.trim() || rconMutation.isPending}
+                >
+                  {rconMutation.isPending ? (
+                    <LoaderCircle className="animate-spin" />
+                  ) : (
+                    <Terminal />
+                  )}
+                  {t("action.execute")}
+                </Button>
+              </div>
+            </div>
+            <pre className="font-data min-h-24 overflow-auto whitespace-pre-wrap break-words rounded-md border bg-muted/35 p-3 text-xs text-muted-foreground">
+              {rconResponse || t("operations.rconEmpty")}
+            </pre>
+          </form>
+        </div>
       </Panel>
 
-      <Panel contentClassName="grid sm:grid-cols-3">
+      <Panel
+        title={t("operations.managedControl")}
+        description={
+          controlQuery.data?.configured
+            ? `${controlQuery.data.mode} · ${controlQuery.data.target || "--"}`
+            : t("operations.controlNotConfigured")
+        }
+        actions={
+          <Badge
+            variant={controlQuery.data?.online ? "default" : "outline"}
+          >
+            {controlQuery.data?.online
+              ? t("status.online")
+              : controlQuery.data?.state || t("status.offline")}
+          </Badge>
+        }
+        contentClassName="grid sm:grid-cols-2 xl:grid-cols-5"
+      >
         <button
           type="button"
-          className="flex min-h-28 items-start gap-3 border-b p-4 text-left transition-colors hover:bg-muted/55 sm:border-b-0 sm:border-r sm:p-5"
+          disabled={
+            !controlQuery.data?.configured || controlQuery.data?.online
+          }
+          className="flex min-h-28 items-start gap-3 border-b p-4 text-left transition-colors hover:bg-emerald-500/8 disabled:cursor-not-allowed disabled:opacity-45 sm:border-r xl:border-b-0 sm:p-5"
+          onClick={() => setConfirmAction("start")}
+        >
+          <Play className="mt-0.5 size-5 text-emerald-600 dark:text-emerald-400" />
+          <span>
+            <span className="block text-sm font-semibold">
+              {t("operations.start")}
+            </span>
+            <span className="mt-1 block text-xs text-muted-foreground">
+              {t("operations.startHint")}
+            </span>
+          </span>
+        </button>
+        <button
+          type="button"
+          className="flex min-h-28 items-start gap-3 border-b p-4 text-left transition-colors hover:bg-muted/55 xl:border-b-0 xl:border-r sm:p-5"
           onClick={() => setConfirmAction("save")}
         >
           <Save className="mt-0.5 size-5 text-primary" />
@@ -298,7 +393,23 @@ export function ServerControls() {
         </button>
         <button
           type="button"
-          className="flex min-h-28 items-start gap-3 border-b p-4 text-left transition-colors hover:bg-muted/55 sm:border-b-0 sm:border-r sm:p-5"
+          disabled={!controlQuery.data?.configured}
+          className="flex min-h-28 items-start gap-3 border-b p-4 text-left transition-colors hover:bg-amber-500/8 disabled:cursor-not-allowed disabled:opacity-45 sm:border-r xl:border-b-0 sm:p-5"
+          onClick={() => setConfirmAction("restart")}
+        >
+          <RotateCw className="mt-0.5 size-5 text-amber-600 dark:text-amber-400" />
+          <span>
+            <span className="block text-sm font-semibold">
+              {t("operations.restart")}
+            </span>
+            <span className="mt-1 block text-xs text-muted-foreground">
+              {t("operations.restartHint")}
+            </span>
+          </span>
+        </button>
+        <button
+          type="button"
+          className="flex min-h-28 items-start gap-3 border-b p-4 text-left transition-colors hover:bg-muted/55 xl:border-b-0 xl:border-r sm:p-5"
           onClick={() =>
             window.open("/#/configuration", "_blank", "noopener,noreferrer")
           }
@@ -381,14 +492,18 @@ export function ServerControls() {
 
         <Panel
           title={t("operations.snapshot")}
-          description={snapshotQuery.data?.Time || "--"}
+          description={
+            snapshotUnavailable
+              ? t("operations.snapshotUnavailableTitle")
+              : snapshotQuery.data?.Time || "--"
+          }
           actions={
             <div className="flex gap-1">
               <Button
                 variant="ghost"
                 size="icon-sm"
                 onClick={downloadSnapshot}
-                disabled={!snapshotQuery.data}
+                disabled={!snapshotQuery.data || snapshotUnavailable}
               >
                 <Download />
                 <span className="sr-only">
@@ -413,6 +528,16 @@ export function ServerControls() {
               error={snapshotQuery.error}
               retry={() => void snapshotQuery.refetch()}
             />
+          ) : snapshotUnavailable ? (
+            <div className="flex min-h-64 flex-col items-center justify-center px-6 text-center">
+              <CircleOff className="size-8 text-muted-foreground" />
+              <p className="mt-3 text-sm font-medium">
+                {t("operations.snapshotUnavailableTitle")}
+              </p>
+              <p className="mt-1 max-w-md text-xs leading-5 text-muted-foreground">
+                {t("operations.snapshotUnavailable")}
+              </p>
+            </div>
           ) : (
             <>
               <div className="grid grid-cols-3 border-b">
@@ -506,17 +631,32 @@ export function ServerControls() {
             <AlertDialogTitle>
               {confirmAction === "save"
                 ? t("operations.save")
-                : t("operations.stop")}
+                : confirmAction === "start"
+                  ? t("operations.start")
+                  : confirmAction === "restart"
+                    ? t("operations.restart")
+                    : t("operations.stop")}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {confirmAction === "save" ? t("confirm.save") : t("confirm.stop")}
+              {confirmAction === "save"
+                ? t("confirm.save")
+                : confirmAction === "start"
+                  ? t("confirm.start")
+                  : confirmAction === "restart"
+                    ? t("confirm.restart")
+                    : t("confirm.stop")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("action.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               variant={confirmAction === "stop" ? "destructive" : "default"}
-              disabled={saveMutation.isPending || stopMutation.isPending}
+              disabled={
+                saveMutation.isPending ||
+                stopMutation.isPending ||
+                startMutation.isPending ||
+                restartMutation.isPending
+              }
               onClick={(event) => {
                 event.preventDefault();
                 if (confirmAction === "save") {
@@ -527,10 +667,21 @@ export function ServerControls() {
                   stopMutation.mutate(undefined, {
                     onSuccess: () => setConfirmAction(null),
                   });
+                } else if (confirmAction === "start") {
+                  startMutation.mutate(undefined, {
+                    onSuccess: () => setConfirmAction(null),
+                  });
+                } else if (confirmAction === "restart") {
+                  restartMutation.mutate(undefined, {
+                    onSuccess: () => setConfirmAction(null),
+                  });
                 }
               }}
             >
-              {saveMutation.isPending || stopMutation.isPending ? (
+              {saveMutation.isPending ||
+              stopMutation.isPending ||
+              startMutation.isPending ||
+              restartMutation.isPending ? (
                 <LoaderCircle className="animate-spin" />
               ) : null}
               {t("action.confirm")}

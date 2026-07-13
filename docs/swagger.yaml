@@ -147,6 +147,13 @@ definitions:
       error:
         type: string
     type: object
+  api.GameConfigWriteRequest:
+    properties:
+      content:
+        type: string
+      expected_sha256:
+        type: string
+    type: object
   api.GiveItemRequest:
     properties:
       confirm_server_stopped:
@@ -663,6 +670,30 @@ definitions:
       user_id:
         type: string
     type: object
+  tool.GameConfigFile:
+    properties:
+      configured:
+        type: boolean
+      content:
+        type: string
+      modified_at:
+        type: string
+      path:
+        type: string
+      sha256:
+        type: string
+    type: object
+  tool.GameConfigWriteResult:
+    properties:
+      backup_path:
+        type: string
+      modified_at:
+        type: string
+      restart_required:
+        type: boolean
+      sha256:
+        type: string
+    type: object
   tool.InventoryMutation:
     properties:
       after:
@@ -863,6 +894,23 @@ definitions:
         type: integer
       technology_before:
         type: integer
+    type: object
+  tool.ServerControlStatus:
+    properties:
+      configured:
+        type: boolean
+      detail:
+        type: string
+      mode:
+        type: string
+      online:
+        type: boolean
+      running:
+        type: boolean
+      state:
+        type: string
+      target:
+        type: string
     type: object
 info:
   contact: {}
@@ -1904,9 +1952,89 @@ paths:
       summary: Publish Broadcast
       tags:
       - Server
+  /api/server/config-file:
+    get:
+      description: Read the configured PalWorldSettings.ini with a concurrency digest
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/tool.GameConfigFile'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Read PalWorldSettings.ini
+      tags:
+      - Server
+    put:
+      consumes:
+      - application/json
+      description: Validate and atomically replace PalWorldSettings.ini after creating
+        a safety backup
+      parameters:
+      - description: Configuration
+        in: body
+        name: config
+        required: true
+        schema:
+          $ref: '#/definitions/api.GameConfigWriteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/tool.GameConfigWriteResult'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Write PalWorldSettings.ini
+      tags:
+      - Server
+  /api/server/control/status:
+    get:
+      description: Get the configured process, Docker, systemd, or Windows service
+        control status
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/tool.ServerControlStatus'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get managed server control status
+      tags:
+      - Server
   /api/server/game-data:
     get:
-      description: Get the current world actor snapshot from the Palworld server
+      description: Get the current world actor snapshot, or an Available=false response
+        when the optional PalGameDataBridge API is disabled
       produces:
       - application/json
       responses:
@@ -1945,6 +2073,39 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       summary: Get Server Metrics
+      tags:
+      - Server
+  /api/server/restart:
+    post:
+      consumes:
+      - application/json
+      description: Save the world, gracefully shut down the server, start it through
+        the configured control driver, and wait for REST API readiness
+      parameters:
+      - description: Restart
+        in: body
+        name: restart
+        required: true
+        schema:
+          $ref: '#/definitions/api.ShutdownRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Restart managed Palworld server
       tags:
       - Server
   /api/server/save:
@@ -2024,6 +2185,30 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Shutdown Server
+      tags:
+      - Server
+  /api/server/start:
+    post:
+      description: Start the configured process, Docker container, systemd unit, or
+        Windows service and wait for REST API readiness
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Start managed Palworld server
       tags:
       - Server
   /api/server/stop:

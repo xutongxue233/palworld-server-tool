@@ -89,7 +89,7 @@ export function BackupsPanel() {
   return (
     <Panel
       title={t("operations.backups")}
-      description={t("backup.range")}
+      description={t("backup.description")}
       actions={
         <Button
           variant="ghost"
