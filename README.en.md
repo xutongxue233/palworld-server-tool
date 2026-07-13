@@ -140,7 +140,7 @@ Download the latest executable files at:
 
 ```bash
 # Download pst_{version}_{platform}_{arch}.tar.gz and extract to the pst directory
-mkdir -p pst && tar -xzf pst_v1.3.0_linux_x86_64.tar.gz -C pst
+mkdir -p pst && tar -xzf pst_v1.3.1_linux_x86_64.tar.gz -C pst
 ```
 
 ##### Configuration
@@ -278,7 +278,7 @@ Access at http://{Server IP}:8080 after opening firewall and security group in c
 
 ##### Download and Extract
 
-Extract `pst_v1.3.0_windows_x86_64.zip` to any directory (recommend naming the folder `pst`).
+Extract `pst_v1.3.1_windows_x86_64.zip` to any directory (recommend naming the folder `pst`).
 
 ##### Configuration
 

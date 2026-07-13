@@ -1,6 +1,6 @@
-# Palworld Server Tool v1.3.0
+# Palworld Server Tool v1.3.1
 
-此版本继续面向 Palworld 1.0.0，重点补齐游戏原生备份恢复、`WorldOption.sav` 覆盖处理和完整 RCON 命令模板。所有存档写入流程都先校验、停服并创建恢复点，再进行原子替换。
+此版本继续面向 Palworld 1.0.0，重点补齐游戏原生备份恢复、`WorldOption.sav` 覆盖处理和完整 RCON 命令模板。v1.3.1 同时修复 v1.3.0 Windows 发布包缺少 `sav_cli.exe` 的打包问题；所有平台包现已执行必需文件与 SHA-256 校验。
 
 ## 主要更新
 
@@ -10,6 +10,7 @@
 - `sav_cli` 新增 `sync-world-option` 模式，支持布尔、整数、浮点、字符串、枚举和枚举数组，写入后执行 GVAS 无损往返与目标字段校验。
 - RCON 终端收录 Palworld 1.0.0 官方命令表全部 13 条模板，按用途与风险分组；带参数模板会自动选中首个占位符，快捷按钮只填充、不自动执行。
 - 使用用户提供的 9,449 字节真实玩家存档完成技术点编辑、重压缩和校验回归，不再复现 `Player save does not contain SaveData`。
+- Windows 发布任务会传播构建失败，并在 ZIP 创建前后确认 `sav_cli.exe`、GPL/第三方许可证、主程序和启动配置全部存在。
 
 ## 安全约束
 
@@ -21,9 +22,9 @@
 
 ## 下载文件
 
-- `pst_v1.3.0_windows_x86_64.zip`
-- `pst_v1.3.0_linux_x86_64.tar.gz`
-- `pst_v1.3.0_linux_aarch64.tar.gz`
+- `pst_v1.3.1_windows_x86_64.zip`
+- `pst_v1.3.1_linux_x86_64.tar.gz`
+- `pst_v1.3.1_linux_aarch64.tar.gz`
 - 对应平台的 `pst-agent` 独立程序
 - `SHA256SUMS.txt`
 

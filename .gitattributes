@@ -1,2 +1,3 @@
 *.vue linguist-vendored
 # module/* linguist-vendored
+sav_cli/world_option_metadata.json text eol=lf
