@@ -300,7 +300,167 @@ const zh: Messages = {
   "operations.backups": "备份",
   "operations.deployment": "部署更新",
   "operations.migration": "存档迁移",
+  "operations.mods": "MOD 管理",
   "operations.diagnostics": "诊断",
+  "mods.title": "官方 MOD 管理",
+  "mods.description": "Palworld 1.0.0 官方 Loader 的本地清单、依赖与部署状态",
+  "mods.statusUnavailable": "暂时无法读取官方 MOD 状态",
+  "mods.officialGuide": "打开官方 MOD 安装指南",
+  "mods.officialLoaderFlow":
+    "Info.json 只读发现 → ActiveModList 明确选择 → 重启后由游戏生成 InstallManifest",
+  "mods.stageDiscovered": "发现的包",
+  "mods.stageSelected": "已选择",
+  "mods.stageDeployed": "已部署",
+  "mods.windowsOnlyTitle": "官方服务端 MOD 仅支持 Windows 专服",
+  "mods.windowsOnlyHint":
+    "Pocketpair 的 Palworld 1.0.0 文档当前仅支持 Windows dedicated server；当前平台为 {platform}，PST 不会尝试第三方兼容注入。",
+  "mods.notConfigured": "尚未配置 PalServer 安装目录",
+  "mods.configHint":
+    "在 config.yaml 设置 mods.install_dir；留空时会使用 steamcmd.install_dir。目录必须包含 PalServer.exe。",
+  "mods.noModsTitle": "启动参数正在强制禁用全部 MOD",
+  "mods.noModsHint":
+    "检测到 -NoMods。可以整理选择清单，但移除此参数前任何 MOD 都不会生效。",
+  "mods.settingsTitle": "Loader 设置",
+  "mods.settingsDescription":
+    "只管理 PalModSettings.ini 的官方字段，不执行任意脚本",
+  "mods.globalEnabled": "全局启用官方 MOD",
+  "mods.globalEnabledHint":
+    "对应 bGlobalEnableMod；单个包仍需加入 ActiveModList。",
+  "mods.workshopRoot": "Workshop 包目录",
+  "mods.workshopRootHint":
+    "留空使用 PalServer/Mods/Workshop；也可填写官方支持的本机绝对路径。",
+  "mods.workshopLaunchOverride":
+    "启动参数 -workshopdir 当前覆盖此字段：{path}。移除该参数后才能从这里修改。",
+  "mods.settingsFile": "设置文件",
+  "mods.workshopSource": "目录来源",
+  "mods.safetyTitle": "受限管理边界",
+  "mods.serverRules": "服务端兼容",
+  "mods.serverRulesValue":
+    "只允许含 IsServer=True 且类型受 1.0.0 文档支持的规则",
+  "mods.downloadPolicy": "内容来源",
+  "mods.downloadPolicyValue":
+    "只读扫描本机 Info.json；PST 不下载、不解压、不执行 MOD 内容",
+  "mods.saveRecovery": "世界恢复点",
+  "mods.backupReady": "发现 {count} 个世界，写入前强制创建完整 PST 备份",
+  "mods.backupMissing": "发现 {count} 个世界，但当前 save.path 无法创建恢复点",
+  "mods.backupNotRequired": "安装目录中尚未发现世界数据",
+  "mods.catalogTitle": "官方包清单",
+  "mods.catalogDescription": "{compatible} / {total} 个包可用于 Windows 专服",
+  "mods.resetDraft": "放弃草稿",
+  "mods.search": "搜索 MOD、PackageName、作者或标签",
+  "mods.unknownActive": "清单中存在找不到的 PackageName",
+  "mods.unknownActiveHint":
+    "这些名称不在当前 Workshop 目录中。点击标签可从草稿移除。",
+  "mods.workshopMissingTitle": "Workshop 目录尚不可用",
+  "mods.workshopMissingHint":
+    "把带 Info.json 的官方包目录放到 {path}，或填写另一个本机绝对路径后预检。",
+  "mods.noSearchResults": "没有符合搜索条件的包",
+  "mods.noPackages": "当前目录中没有发现直接包含 Info.json 的包",
+  "mods.packageInvalid": "元数据无效",
+  "mods.clientOnly": "不支持专服",
+  "mods.deployed": "已部署",
+  "mods.pendingRestart": "等待重启部署",
+  "mods.pendingRemoval": "等待重启移除",
+  "mods.selectedInactive": "已列入但未生效",
+  "mods.available": "可选",
+  "mods.dependencies": "依赖",
+  "mods.openWorkshop": "Steam Workshop",
+  "mods.togglePackage": "切换 {name}",
+  "mods.preflightTitle": "变更预检",
+  "mods.preflightDescription": "复核包摘要、依赖、停服与恢复点条件",
+  "mods.preflightNeeded": "草稿尚未验证",
+  "mods.noChanges": "当前没有未保存的选择",
+  "mods.preflightHint":
+    "预检只读取文件并生成计划摘要；真正写入前会完整重算一次。",
+  "mods.preflightReady": "预检通过，可以安全写入",
+  "mods.preflightChanged": "变更将进入停服、备份、原子写入与按需重启流程",
+  "mods.preflightUnchanged": "草稿与当前 PalModSettings.ini 一致",
+  "mods.preflightBlocked": "预检已阻止此变更",
+  "mods.planUnavailable": "MOD 变更计划不可用，请重新预检",
+  "mods.blockers": "必须先解决",
+  "mods.warnings": "执行前确认",
+  "mods.draftChanged": "草稿包含未验证的变化",
+  "mods.draftCurrent": "草稿与当前设置一致",
+  "mods.preflightAction": "只读预检",
+  "mods.preflighting": "正在验证",
+  "mods.serverState": "停服与重启",
+  "mods.serverStateDescription": "MOD 只会在下一次 PalServer 启动时部署",
+  "mods.managedState": "已配置控制驱动；当前状态：{state}",
+  "mods.managedStateHint": "PST 会保存世界、停止服务，并在选择后等待重新就绪。",
+  "mods.manualState": "未配置受限控制驱动",
+  "mods.manualStateHint": "请在主机侧完全停止 PalServer，写入后再手动启动。",
+  "mods.manualOnlineBlocked": "仍探测到服务器在线，必须先手动停止并刷新。",
+  "mods.restartAfter": "写入后启动服务器",
+  "mods.restartAfterHint": "启动失败时自动恢复旧设置，并尝试以原清单重新启动。",
+  "mods.manualStopConfirm": "我已手动停止 PalServer",
+  "mods.manualStopHint": "只有进程或容器完全停止后才能确认。",
+  "mods.applyAction": "应用 MOD 清单",
+  "mods.applying": "正在安全写入",
+  "mods.preflightFirst": "先完成可执行的预检计划",
+  "mods.stopManuallyFirst": "先手动停止在线服务器并刷新状态",
+  "mods.confirmManualStopFirst": "请确认 PalServer 已完全停止",
+  "mods.serverBusy": "另一项维护操作正在运行",
+  "mods.shutdownMessage": "服务器将停止以应用官方 MOD 清单，请稍后重新连接。",
+  "mods.applySuccess": "官方 MOD 清单已安全写入",
+  "mods.applySuccessRestarted": "服务器已按新清单重新启动并通过就绪检查",
+  "mods.applySuccessStopped": "设置已写入；请手动启动 PalServer 完成部署",
+  "mods.runtimeRejected": "新 MOD 清单未能通过启动验证",
+  "mods.runtimeRejectedHint":
+    "PST 已恢复旧 PalModSettings.ini，并以原清单重新启动服务器。",
+  "mods.lastResult": "最近一次 MOD 设置结果",
+  "mods.settingsApplied": "设置已写入",
+  "mods.serverRestarted": "服务器已重启",
+  "mods.settingsCreated": "已创建设置文件",
+  "mods.recoveryPath": "设置恢复点",
+  "mods.safetyBackup": "世界恢复点",
+  "mods.notRequired": "当前不需要",
+  "mods.confirmTitle": "确认应用官方 MOD 清单？",
+  "mods.confirmDescription":
+    "PST 会停止服务器、为已有世界创建强制恢复点、备份 PalModSettings.ini 并原子写入。",
+  "mods.selectedPackages": "选择的包",
+  "mods.mandatory": "强制创建",
+  "mods.confirmWarning":
+    "官方文档明确提示 MOD 可能导致崩溃或存档损坏。PST 能恢复设置与写入前世界，但无法保证第三方 MOD 的行为。",
+  "mods.riskConfirm": "我已核对所选包并接受第三方 MOD 风险",
+  "mods.riskConfirmHint":
+    "只选择可信来源、明确支持专服和当前游戏版本的包；不要在操作期间改动 Workshop 目录。",
+  "mods.confirmRun": "确认并应用",
+  "mods.notice.platform_unsupported":
+    "官方服务端 MOD 当前仅支持 Windows 专服。",
+  "mods.notice.install_dir_not_configured": "尚未配置 PalServer 安装目录。",
+  "mods.notice.install_dir_invalid": "PalServer 安装目录无效或不安全。",
+  "mods.notice.settings_invalid": "PalModSettings.ini 无法安全解析。",
+  "mods.notice.settings_missing": "设置文件尚不存在，将在确认变更时创建。",
+  "mods.notice.mods_forced_disabled": "-NoMods 正在强制禁用全部 MOD。",
+  "mods.notice.workshop_root_missing": "Workshop 目录尚不存在。",
+  "mods.notice.workshop_root_unsafe":
+    "Workshop 目录不能是符号链接或非真实目录。",
+  "mods.notice.workshop_root_overridden":
+    "-workshopdir 正在覆盖设置文件中的目录。",
+  "mods.notice.info_missing": "包目录下缺少直接放置的 Info.json。",
+  "mods.notice.info_invalid": "Info.json 无法安全读取或不是有效 JSON。",
+  "mods.notice.metadata_invalid":
+    "Info.json 的字段、路径或长度不符合安全约束。",
+  "mods.notice.package_unsafe": "包目录是符号链接或不可安全读取。",
+  "mods.notice.duplicate_package_name":
+    "多个包使用同一 PackageName，官方 Loader 的选择顺序不确定。",
+  "mods.notice.server_rule_missing":
+    "{package} 没有 IsServer=True 的官方安装规则。",
+  "mods.notice.install_type_unknown":
+    "安装类型不在 Palworld 1.0.0 官方五种类型中。",
+  "mods.notice.debug_mode_enabled": "DebugMode 会在每次启动时重新部署此包。",
+  "mods.notice.dependency_missing": "{package} 缺少依赖 {dependency}。",
+  "mods.notice.dependency_disabled":
+    "{package} 的依赖 {dependency} 也必须加入清单。",
+  "mods.notice.dependency_ambiguous":
+    "依赖 {dependency} 存在重复 PackageName。",
+  "mods.notice.active_package_missing":
+    "清单中的 {package} 不在当前 Workshop 目录。",
+  "mods.notice.active_package_invalid": "{package} 的元数据无效，不能启用。",
+  "mods.notice.save_backup_required":
+    "已有世界必须先配置可用的本地 save.path。",
+  "mods.notice.mods_can_damage_saves":
+    "第三方 MOD 可能导致服务器崩溃或存档损坏。",
   "steamcmd.title": "SteamCMD 部署与更新",
   "steamcmd.description": "固定应用 2394010 的安全安装、更新与文件校验流程",
   "steamcmd.planUnavailable": "暂时无法读取 SteamCMD 执行计划",
@@ -1147,7 +1307,194 @@ const en: Messages = {
   "operations.backups": "Backups",
   "operations.deployment": "Deployment",
   "operations.migration": "Save migration",
+  "operations.mods": "Mods",
   "operations.diagnostics": "Diagnostics",
+  "mods.title": "Official mod management",
+  "mods.description":
+    "Local inventory, dependency, and deployment state for the Palworld 1.0.0 official loader",
+  "mods.statusUnavailable": "Official mod status is unavailable",
+  "mods.officialGuide": "Open the official server mod guide",
+  "mods.officialLoaderFlow":
+    "Read Info.json → select PackageName entries → let PalServer create InstallManifest on restart",
+  "mods.stageDiscovered": "Discovered packages",
+  "mods.stageSelected": "Selected",
+  "mods.stageDeployed": "Deployed",
+  "mods.windowsOnlyTitle":
+    "Official server mods require Windows Dedicated Server",
+  "mods.windowsOnlyHint":
+    "Pocketpair documents server-side mods only for Windows Dedicated Server in Palworld 1.0.0. This host is {platform}; PST will not inject an unofficial compatibility layer.",
+  "mods.notConfigured": "PalServer install directory is not configured",
+  "mods.configHint":
+    "Set mods.install_dir in config.yaml. When empty, steamcmd.install_dir is used. The directory must contain PalServer.exe.",
+  "mods.noModsTitle": "A launch argument is forcing every mod off",
+  "mods.noModsHint":
+    "-NoMods is configured. You can prepare the selection, but no mod becomes effective until that argument is removed.",
+  "mods.settingsTitle": "Loader settings",
+  "mods.settingsDescription":
+    "Manage only documented PalModSettings.ini fields; arbitrary scripts are never executed",
+  "mods.globalEnabled": "Enable official mods globally",
+  "mods.globalEnabledHint":
+    "Controls bGlobalEnableMod. Each package must also appear in ActiveModList.",
+  "mods.workshopRoot": "Workshop package directory",
+  "mods.workshopRootHint":
+    "Leave empty for PalServer/Mods/Workshop, or enter another local absolute path supported by the official loader.",
+  "mods.workshopLaunchOverride":
+    "The -workshopdir launch argument currently overrides this field: {path}. Remove the argument before editing here.",
+  "mods.settingsFile": "Settings file",
+  "mods.workshopSource": "Directory source",
+  "mods.safetyTitle": "Restricted management boundary",
+  "mods.serverRules": "Server compatibility",
+  "mods.serverRulesValue":
+    "Only IsServer=True rules using a Palworld 1.0.0 documented install type",
+  "mods.downloadPolicy": "Content policy",
+  "mods.downloadPolicyValue":
+    "PST only scans local Info.json files; it never downloads, extracts, or executes mod content",
+  "mods.saveRecovery": "World restore point",
+  "mods.backupReady":
+    "Found {count} world(s); a full PST backup is mandatory before writing",
+  "mods.backupMissing":
+    "Found {count} world(s), but the current save.path cannot create a restore point",
+  "mods.backupNotRequired": "No world data was found in this installation",
+  "mods.catalogTitle": "Official package catalog",
+  "mods.catalogDescription":
+    "{compatible} of {total} package(s) are eligible for Windows Dedicated Server",
+  "mods.resetDraft": "Discard draft",
+  "mods.search": "Search mod, PackageName, author, or tag",
+  "mods.unknownActive": "ActiveModList contains unknown PackageName entries",
+  "mods.unknownActiveHint":
+    "These names are absent from the selected Workshop directory. Select a chip to remove it from the draft.",
+  "mods.workshopMissingTitle": "Workshop directory is not available yet",
+  "mods.workshopMissingHint":
+    "Place package folders containing Info.json under {path}, or enter another local absolute path and run preflight.",
+  "mods.noSearchResults": "No packages match this search",
+  "mods.noPackages": "No package with a directly nested Info.json was found",
+  "mods.packageInvalid": "Invalid metadata",
+  "mods.clientOnly": "Not server compatible",
+  "mods.deployed": "Deployed",
+  "mods.pendingRestart": "Restart to deploy",
+  "mods.pendingRemoval": "Restart to remove",
+  "mods.selectedInactive": "Listed but inactive",
+  "mods.available": "Available",
+  "mods.dependencies": "Dependencies",
+  "mods.openWorkshop": "Steam Workshop",
+  "mods.togglePackage": "Toggle {name}",
+  "mods.preflightTitle": "Change preflight",
+  "mods.preflightDescription":
+    "Recheck package digests, dependencies, shutdown, and restore-point readiness",
+  "mods.preflightNeeded": "This draft has not been verified",
+  "mods.noChanges": "There are no unsaved selections",
+  "mods.preflightHint":
+    "Preflight is read-only and creates a plan digest. Every input is recomputed again immediately before writing.",
+  "mods.preflightReady": "Preflight passed; safe to write",
+  "mods.preflightChanged":
+    "The change will stop the server, back up data, write atomically, and optionally restart",
+  "mods.preflightUnchanged": "The draft matches PalModSettings.ini",
+  "mods.preflightBlocked": "Preflight blocked this change",
+  "mods.planUnavailable":
+    "The mod change plan is unavailable; run preflight again",
+  "mods.blockers": "Resolve first",
+  "mods.warnings": "Review before execution",
+  "mods.draftChanged": "The draft contains unverified changes",
+  "mods.draftCurrent": "The draft matches current settings",
+  "mods.preflightAction": "Run read-only preflight",
+  "mods.preflighting": "Validating",
+  "mods.serverState": "Shutdown and restart",
+  "mods.serverStateDescription":
+    "Mods are deployed only on the next PalServer start",
+  "mods.managedState": "Control driver configured; current state: {state}",
+  "mods.managedStateHint":
+    "PST saves the world, stops the server, and can wait for readiness after the change.",
+  "mods.manualState": "Restricted server control is not configured",
+  "mods.manualStateHint":
+    "Stop PalServer completely on the host, then start it manually after writing.",
+  "mods.manualOnlineBlocked":
+    "The server still appears online. Stop it manually and refresh.",
+  "mods.restartAfter": "Start server after writing",
+  "mods.restartAfterHint":
+    "If startup fails, restore the old settings and attempt to start with the previous selection.",
+  "mods.manualStopConfirm": "I have manually stopped PalServer",
+  "mods.manualStopHint":
+    "Confirm only after the process or container has fully stopped.",
+  "mods.applyAction": "Apply mod selection",
+  "mods.applying": "Writing safely",
+  "mods.preflightFirst": "Create an executable preflight plan first",
+  "mods.stopManuallyFirst": "Stop the online server manually, then refresh",
+  "mods.confirmManualStopFirst": "Confirm PalServer is fully stopped",
+  "mods.serverBusy": "Another maintenance operation is running",
+  "mods.shutdownMessage":
+    "The server is stopping to apply the official mod selection. Please reconnect shortly.",
+  "mods.applySuccess": "Official mod selection written safely",
+  "mods.applySuccessRestarted":
+    "The server restarted with the new selection and passed readiness checks",
+  "mods.applySuccessStopped":
+    "Settings were written; start PalServer manually to deploy the selection",
+  "mods.runtimeRejected": "The new mod selection failed startup verification",
+  "mods.runtimeRejectedHint":
+    "PST restored the previous PalModSettings.ini and restarted with the old selection.",
+  "mods.lastResult": "Latest mod settings result",
+  "mods.settingsApplied": "Settings written",
+  "mods.serverRestarted": "Server restarted",
+  "mods.settingsCreated": "Settings file created",
+  "mods.recoveryPath": "Settings recovery point",
+  "mods.safetyBackup": "World restore point",
+  "mods.notRequired": "Not currently required",
+  "mods.confirmTitle": "Apply the official mod selection?",
+  "mods.confirmDescription":
+    "PST stops the server, creates a mandatory restore point for existing worlds, backs up PalModSettings.ini, and writes atomically.",
+  "mods.selectedPackages": "Selected packages",
+  "mods.mandatory": "Mandatory",
+  "mods.confirmWarning":
+    "The official guide warns that mods can crash the server or corrupt saves. PST can restore settings and the pre-change world, but cannot guarantee third-party mod behavior.",
+  "mods.riskConfirm":
+    "I reviewed these packages and accept third-party mod risk",
+  "mods.riskConfirmHint":
+    "Use trusted sources and packages that explicitly support servers and this game version. Do not change the Workshop directory while this runs.",
+  "mods.confirmRun": "Confirm and apply",
+  "mods.notice.platform_unsupported":
+    "Official server-side mods currently require Windows Dedicated Server.",
+  "mods.notice.install_dir_not_configured":
+    "The PalServer install directory is not configured.",
+  "mods.notice.install_dir_invalid":
+    "The PalServer install directory is invalid or unsafe.",
+  "mods.notice.settings_invalid": "PalModSettings.ini cannot be parsed safely.",
+  "mods.notice.settings_missing":
+    "The settings file is absent and will be created by a confirmed change.",
+  "mods.notice.mods_forced_disabled": "-NoMods is forcing every mod off.",
+  "mods.notice.workshop_root_missing":
+    "The Workshop directory does not exist yet.",
+  "mods.notice.workshop_root_unsafe":
+    "The Workshop directory cannot be a symlink or non-directory.",
+  "mods.notice.workshop_root_overridden":
+    "-workshopdir overrides the directory in PalModSettings.ini.",
+  "mods.notice.info_missing":
+    "Info.json is not directly present in the package folder.",
+  "mods.notice.info_invalid": "Info.json is unreadable or not valid JSON.",
+  "mods.notice.metadata_invalid":
+    "Info.json fields, paths, or lengths failed safety validation.",
+  "mods.notice.package_unsafe":
+    "The package folder is a symlink or cannot be read safely.",
+  "mods.notice.duplicate_package_name":
+    "Multiple packages use the same PackageName; loader selection order is undefined.",
+  "mods.notice.server_rule_missing":
+    "{package} has no documented InstallRule with IsServer=True.",
+  "mods.notice.install_type_unknown":
+    "The install type is not one of the five types documented for Palworld 1.0.0.",
+  "mods.notice.debug_mode_enabled":
+    "DebugMode redeploys this package on every start.",
+  "mods.notice.dependency_missing":
+    "{package} is missing dependency {dependency}.",
+  "mods.notice.dependency_disabled":
+    "{package} also requires {dependency} in ActiveModList.",
+  "mods.notice.dependency_ambiguous":
+    "Dependency {dependency} has a duplicate PackageName.",
+  "mods.notice.active_package_missing":
+    "{package} is absent from the selected Workshop directory.",
+  "mods.notice.active_package_invalid":
+    "{package} has invalid metadata and cannot be enabled.",
+  "mods.notice.save_backup_required":
+    "Existing worlds require a usable local save.path first.",
+  "mods.notice.mods_can_damage_saves":
+    "Third-party mods can crash the server or corrupt save data.",
   "steamcmd.title": "SteamCMD deployment and updates",
   "steamcmd.description":
     "Safe install, update, and validation for fixed app 2394010",
@@ -1773,6 +2120,189 @@ const ja: Messages = {
   "operations.backups": "バックアップ",
   "operations.deployment": "導入・更新",
   "operations.migration": "セーブ移行",
+  "operations.mods": "MOD 管理",
+  "mods.title": "公式 MOD 管理",
+  "mods.description":
+    "Palworld 1.0.0 公式 Loader のローカル一覧、依存関係、導入状態",
+  "mods.statusUnavailable": "公式 MOD の状態を取得できません",
+  "mods.officialGuide": "公式サーバー MOD ガイドを開く",
+  "mods.officialLoaderFlow":
+    "Info.json を読み取り → PackageName を選択 → 再起動時に PalServer が InstallManifest を生成",
+  "mods.stageDiscovered": "検出パッケージ",
+  "mods.stageSelected": "選択済み",
+  "mods.stageDeployed": "導入済み",
+  "mods.windowsOnlyTitle":
+    "公式サーバー MOD は Windows Dedicated Server 専用です",
+  "mods.windowsOnlyHint":
+    "Palworld 1.0.0 の Pocketpair 文書では Windows 専用サーバーのみ対応しています。現在は {platform} のため、PST は非公式な互換注入を行いません。",
+  "mods.notConfigured": "PalServer の導入先が未設定です",
+  "mods.configHint":
+    "config.yaml の mods.install_dir を設定してください。空の場合は steamcmd.install_dir を使用します。PalServer.exe が必要です。",
+  "mods.noModsTitle": "起動引数で全 MOD が強制無効です",
+  "mods.noModsHint":
+    "-NoMods を検出しました。選択は整理できますが、この引数を外すまで MOD は有効になりません。",
+  "mods.settingsTitle": "Loader 設定",
+  "mods.settingsDescription":
+    "PalModSettings.ini の公式項目だけを管理し、任意スクリプトは実行しません",
+  "mods.globalEnabled": "公式 MOD を全体で有効化",
+  "mods.globalEnabledHint":
+    "bGlobalEnableMod に対応します。各パッケージは ActiveModList にも必要です。",
+  "mods.workshopRoot": "Workshop パッケージディレクトリ",
+  "mods.workshopRootHint":
+    "空欄なら PalServer/Mods/Workshop。公式対応の別ローカル絶対パスも指定できます。",
+  "mods.workshopLaunchOverride":
+    "起動引数 -workshopdir がこの項目を上書きしています: {path}。編集するには引数を外してください。",
+  "mods.settingsFile": "設定ファイル",
+  "mods.workshopSource": "ディレクトリ指定元",
+  "mods.safetyTitle": "制限付き管理範囲",
+  "mods.serverRules": "サーバー互換性",
+  "mods.serverRulesValue":
+    "IsServer=True かつ 1.0.0 公式タイプのルールだけを許可",
+  "mods.downloadPolicy": "コンテンツ方針",
+  "mods.downloadPolicyValue":
+    "ローカル Info.json の読み取りのみ。PST は MOD をダウンロード、展開、実行しません",
+  "mods.saveRecovery": "ワールド復元点",
+  "mods.backupReady":
+    "{count} ワールドを検出。書き込み前に完全な PST バックアップを必ず作成します",
+  "mods.backupMissing":
+    "{count} ワールドを検出しましたが、現在の save.path では復元点を作成できません",
+  "mods.backupNotRequired": "この導入先にはワールドデータがありません",
+  "mods.catalogTitle": "公式パッケージ一覧",
+  "mods.catalogDescription":
+    "{total} 件中 {compatible} 件が Windows 専用サーバーで利用可能",
+  "mods.resetDraft": "下書きを破棄",
+  "mods.search": "MOD、PackageName、作者、タグを検索",
+  "mods.unknownActive": "ActiveModList に不明な PackageName があります",
+  "mods.unknownActiveHint":
+    "現在の Workshop に存在しません。チップを押すと下書きから削除します。",
+  "mods.workshopMissingTitle": "Workshop ディレクトリを利用できません",
+  "mods.workshopMissingHint":
+    "Info.json を含むパッケージを {path} に置くか、別のローカル絶対パスを指定して事前確認してください。",
+  "mods.noSearchResults": "検索条件に一致するパッケージはありません",
+  "mods.noPackages": "直下に Info.json を持つパッケージが見つかりません",
+  "mods.packageInvalid": "メタデータ無効",
+  "mods.clientOnly": "サーバー非対応",
+  "mods.deployed": "導入済み",
+  "mods.pendingRestart": "再起動で導入",
+  "mods.pendingRemoval": "再起動で削除",
+  "mods.selectedInactive": "一覧入り・未有効",
+  "mods.available": "利用可能",
+  "mods.dependencies": "依存関係",
+  "mods.openWorkshop": "Steam Workshop",
+  "mods.togglePackage": "{name} を切り替え",
+  "mods.preflightTitle": "変更の事前確認",
+  "mods.preflightDescription":
+    "パッケージハッシュ、依存関係、停止、復元点を再確認",
+  "mods.preflightNeeded": "この下書きは未検証です",
+  "mods.noChanges": "未保存の選択はありません",
+  "mods.preflightHint":
+    "事前確認は読み取り専用でプランハッシュを作成します。書き込み直前にすべて再計算します。",
+  "mods.preflightReady": "事前確認 OK。安全に書き込めます",
+  "mods.preflightChanged":
+    "停止、バックアップ、原子書き込み、必要時の再起動を行います",
+  "mods.preflightUnchanged": "下書きは PalModSettings.ini と同じです",
+  "mods.preflightBlocked": "事前確認で変更を停止しました",
+  "mods.planUnavailable": "MOD 変更プランがありません。再確認してください",
+  "mods.blockers": "先に解決が必要です",
+  "mods.warnings": "実行前の確認事項",
+  "mods.draftChanged": "下書きに未検証の変更があります",
+  "mods.draftCurrent": "下書きは現在の設定と同じです",
+  "mods.preflightAction": "読み取り専用チェック",
+  "mods.preflighting": "検証中",
+  "mods.serverState": "停止と再起動",
+  "mods.serverStateDescription": "MOD は次回 PalServer 起動時に導入されます",
+  "mods.managedState": "制御ドライバー設定済み。現在: {state}",
+  "mods.managedStateHint":
+    "PST が保存・停止し、変更後の準備完了まで確認できます。",
+  "mods.manualState": "制限付きサーバー制御が未設定です",
+  "mods.manualStateHint":
+    "ホスト側で完全停止し、書き込み後に手動起動してください。",
+  "mods.manualOnlineBlocked":
+    "サーバーがオンラインです。手動停止して更新してください。",
+  "mods.restartAfter": "書き込み後にサーバーを起動",
+  "mods.restartAfterHint":
+    "起動失敗時は旧設定へ戻し、以前の選択で再起動を試みます。",
+  "mods.manualStopConfirm": "PalServer を手動で停止しました",
+  "mods.manualStopHint":
+    "プロセスまたはコンテナの完全停止後のみ確認してください。",
+  "mods.applyAction": "MOD 選択を適用",
+  "mods.applying": "安全に書き込み中",
+  "mods.preflightFirst": "実行可能な事前確認プランを作成してください",
+  "mods.stopManuallyFirst": "オンラインサーバーを手動停止して更新してください",
+  "mods.confirmManualStopFirst": "PalServer の完全停止を確認してください",
+  "mods.serverBusy": "別のメンテナンス処理が実行中です",
+  "mods.shutdownMessage":
+    "公式 MOD 選択を適用するためサーバーを停止します。しばらくしてから再接続してください。",
+  "mods.applySuccess": "公式 MOD 選択を安全に書き込みました",
+  "mods.applySuccessRestarted": "新しい選択で再起動し、準備完了を確認しました",
+  "mods.applySuccessStopped":
+    "設定を書き込みました。手動起動して導入を完了してください",
+  "mods.runtimeRejected": "新しい MOD 選択で起動確認に失敗しました",
+  "mods.runtimeRejectedHint":
+    "旧 PalModSettings.ini を復元し、以前の選択でサーバーを再起動しました。",
+  "mods.lastResult": "直近の MOD 設定結果",
+  "mods.settingsApplied": "設定書き込み済み",
+  "mods.serverRestarted": "サーバー再起動済み",
+  "mods.settingsCreated": "設定ファイル作成済み",
+  "mods.recoveryPath": "設定復元点",
+  "mods.safetyBackup": "ワールド復元点",
+  "mods.notRequired": "現在は不要",
+  "mods.confirmTitle": "公式 MOD 選択を適用しますか？",
+  "mods.confirmDescription":
+    "サーバー停止、既存ワールドの必須復元点、PalModSettings.ini のバックアップ、原子書き込みを行います。",
+  "mods.selectedPackages": "選択パッケージ",
+  "mods.mandatory": "必須",
+  "mods.confirmWarning":
+    "公式ガイドも MOD によるクラッシュやセーブ破損を警告しています。PST は設定と変更前ワールドを復元できますが、外部 MOD の動作は保証できません。",
+  "mods.riskConfirm": "選択内容を確認し、外部 MOD のリスクを了承します",
+  "mods.riskConfirmHint":
+    "信頼でき、サーバーと現在のゲーム版を明記したパッケージだけを選んでください。実行中は Workshop を変更しないでください。",
+  "mods.confirmRun": "確認して適用",
+  "mods.notice.platform_unsupported":
+    "公式サーバー MOD は現在 Windows 専用サーバーのみ対応です。",
+  "mods.notice.install_dir_not_configured": "PalServer の導入先が未設定です。",
+  "mods.notice.install_dir_invalid":
+    "PalServer の導入先が無効または安全ではありません。",
+  "mods.notice.settings_invalid": "PalModSettings.ini を安全に解析できません。",
+  "mods.notice.settings_missing":
+    "設定ファイルは未作成で、確認済み変更時に作成します。",
+  "mods.notice.mods_forced_disabled":
+    "-NoMods が全 MOD を強制無効にしています。",
+  "mods.notice.workshop_root_missing":
+    "Workshop ディレクトリがまだ存在しません。",
+  "mods.notice.workshop_root_unsafe":
+    "Workshop はシンボリックリンクや非ディレクトリにできません。",
+  "mods.notice.workshop_root_overridden":
+    "-workshopdir が PalModSettings.ini の指定を上書きしています。",
+  "mods.notice.info_missing": "パッケージ直下に Info.json がありません。",
+  "mods.notice.info_invalid":
+    "Info.json を読めないか、有効な JSON ではありません。",
+  "mods.notice.metadata_invalid":
+    "Info.json の項目、パス、長さが安全条件を満たしません。",
+  "mods.notice.package_unsafe":
+    "パッケージがシンボリックリンクか、安全に読めません。",
+  "mods.notice.duplicate_package_name":
+    "同じ PackageName が複数あり、Loader の選択順は不定です。",
+  "mods.notice.server_rule_missing":
+    "{package} に IsServer=True の公式ルールがありません。",
+  "mods.notice.install_type_unknown":
+    "導入タイプが Palworld 1.0.0 公式 5 種に含まれません。",
+  "mods.notice.debug_mode_enabled":
+    "DebugMode により毎回起動時に再導入されます。",
+  "mods.notice.dependency_missing":
+    "{package} の依存 {dependency} がありません。",
+  "mods.notice.dependency_disabled":
+    "{package} には {dependency} も ActiveModList に必要です。",
+  "mods.notice.dependency_ambiguous":
+    "依存 {dependency} の PackageName が重複しています。",
+  "mods.notice.active_package_missing":
+    "{package} は選択した Workshop にありません。",
+  "mods.notice.active_package_invalid":
+    "{package} のメタデータが無効で、有効化できません。",
+  "mods.notice.save_backup_required":
+    "既存ワールドには利用可能なローカル save.path が必要です。",
+  "mods.notice.mods_can_damage_saves":
+    "外部 MOD はクラッシュやセーブ破損を起こす可能性があります。",
   "steamcmd.title": "SteamCMD 導入・更新",
   "steamcmd.description":
     "固定 App 2394010 の安全なインストール、更新、ファイル検証",

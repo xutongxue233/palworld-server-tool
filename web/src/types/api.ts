@@ -136,6 +136,137 @@ export interface SteamCMDUpdateResult {
   restart_error?: string;
 }
 
+export interface OfficialModDiagnostic {
+  code: string;
+  message: string;
+  folder_name?: string;
+  package_name?: string;
+  dependency?: string;
+}
+
+export interface OfficialModSettings {
+  global_enabled: boolean;
+  workshop_root_dir?: string;
+  active_mod_list: string[];
+}
+
+export interface OfficialModPackage {
+  folder_name: string;
+  path: string;
+  workshop_item_id?: string;
+  info_path?: string;
+  info_sha256?: string;
+  mod_name?: string;
+  package_name?: string;
+  version?: string;
+  author?: string;
+  thumbnail?: string;
+  min_revision?: number;
+  debug_mode: boolean;
+  dependencies?: string[];
+  tags?: string[];
+  install_types?: string[];
+  server_install_types?: string[];
+  valid: boolean;
+  server_compatible: boolean;
+  listed: boolean;
+  effective_enabled: boolean;
+  deployed: boolean;
+  pending_restart: boolean;
+  pending_removal: boolean;
+  issues?: OfficialModDiagnostic[];
+  warnings?: OfficialModDiagnostic[];
+}
+
+export interface OfficialModInventory {
+  workshop_root: string;
+  workshop_source: string;
+  workshop_available: boolean;
+  packages: OfficialModPackage[];
+  unknown_active_mods?: string[];
+  issues?: OfficialModDiagnostic[];
+  warnings?: OfficialModDiagnostic[];
+}
+
+export interface OfficialModStatus {
+  game_version: string;
+  platform: string;
+  supported: boolean;
+  configured: boolean;
+  manageable: boolean;
+  install_dir?: string;
+  install_dir_source?: string;
+  launcher_path?: string;
+  settings_path?: string;
+  settings_exists: boolean;
+  settings_sha256?: string;
+  settings: OfficialModSettings;
+  forced_disabled: boolean;
+  launch_workshop_root?: string;
+  inventory: OfficialModInventory;
+  existing_worlds: number;
+  safety_backup_ready: boolean;
+  save_path?: string;
+  status_digest: string;
+  issues?: OfficialModDiagnostic[];
+  warnings?: OfficialModDiagnostic[];
+}
+
+export interface OfficialModChangePlan {
+  status: OfficialModStatus;
+  desired_settings: OfficialModSettings;
+  target_inventory: OfficialModInventory;
+  changed: boolean;
+  changes?: string[];
+  safety_backup_required: boolean;
+  safety_backup_ready: boolean;
+  can_apply: boolean;
+  issues?: OfficialModDiagnostic[];
+  warnings?: OfficialModDiagnostic[];
+  plan_digest: string;
+}
+
+export interface OfficialModPreflightResult {
+  plan: OfficialModChangePlan;
+  server_control: ServerControlStatus;
+}
+
+export interface OfficialModApplyRequest extends OfficialModSettings {
+  expected_plan_digest: string;
+  confirm_apply: boolean;
+  confirm_mod_risk: boolean;
+  confirm_server_stopped: boolean;
+  restart_after: boolean;
+  shutdown_seconds: number;
+  shutdown_message?: string;
+}
+
+export interface OfficialModApplyExecution {
+  plan: OfficialModChangePlan;
+  status: OfficialModStatus;
+  changed: boolean;
+  created: boolean;
+  recovery_path?: string;
+  previous_exists: boolean;
+  previous_sha256?: string;
+  settings_sha256?: string;
+  restart_required: boolean;
+  applied_at?: string;
+  rolled_back: boolean;
+  rollback_at?: string;
+}
+
+export interface OfficialModApplyResult {
+  apply: OfficialModApplyExecution;
+  safety_backup?: Backup;
+  maintenance: MaintenanceStopResult;
+  restarted: boolean;
+  restart_error?: string;
+  recovery_restarted: boolean;
+  recovery_restart_error?: string;
+  rollback_error?: string;
+}
+
 export type SaveMigrationPlatform = "current" | "windows" | "linux";
 export type SaveMigrationKind = "dedicated" | "coop";
 

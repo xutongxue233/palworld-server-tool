@@ -234,6 +234,84 @@ definitions:
       sync_error:
         type: string
     type: object
+  api.OfficialModApplyErrorResponse:
+    properties:
+      code:
+        type: string
+      error:
+        type: string
+      result:
+        $ref: '#/definitions/api.OfficialModApplyResponse'
+    type: object
+  api.OfficialModApplyRequest:
+    properties:
+      active_mod_list:
+        items:
+          type: string
+        type: array
+      confirm_apply:
+        type: boolean
+      confirm_mod_risk:
+        type: boolean
+      confirm_server_stopped:
+        type: boolean
+      expected_plan_digest:
+        type: string
+      global_enabled:
+        type: boolean
+      restart_after:
+        type: boolean
+      shutdown_message:
+        maxLength: 256
+        type: string
+      shutdown_seconds:
+        maximum: 300
+        minimum: 0
+        type: integer
+      workshop_root_dir:
+        maxLength: 4096
+        type: string
+    required:
+    - expected_plan_digest
+    type: object
+  api.OfficialModApplyResponse:
+    properties:
+      apply:
+        $ref: '#/definitions/tool.OfficialModApplyResult'
+      maintenance:
+        $ref: '#/definitions/tool.MaintenanceStopResult'
+      recovery_restart_error:
+        type: string
+      recovery_restarted:
+        type: boolean
+      restart_error:
+        type: string
+      restarted:
+        type: boolean
+      rollback_error:
+        type: string
+      safety_backup:
+        $ref: '#/definitions/database.Backup'
+    type: object
+  api.OfficialModPreflightResponse:
+    properties:
+      plan:
+        $ref: '#/definitions/tool.OfficialModChangePlan'
+      server_control:
+        $ref: '#/definitions/tool.ServerControlStatus'
+    type: object
+  api.OfficialModSettingsRequest:
+    properties:
+      active_mod_list:
+        items:
+          type: string
+        type: array
+      global_enabled:
+        type: boolean
+      workshop_root_dir:
+        maxLength: 4096
+        type: string
+    type: object
   api.PlayerActionRequest:
     properties:
       message:
@@ -1280,6 +1358,227 @@ definitions:
         type: boolean
       world_id:
         type: string
+    type: object
+  tool.OfficialModApplyResult:
+    properties:
+      applied_at:
+        type: string
+      changed:
+        type: boolean
+      created:
+        type: boolean
+      plan:
+        $ref: '#/definitions/tool.OfficialModChangePlan'
+      previous_exists:
+        type: boolean
+      previous_sha256:
+        type: string
+      recovery_path:
+        type: string
+      restart_required:
+        type: boolean
+      rollback_at:
+        type: string
+      rolled_back:
+        type: boolean
+      settings_sha256:
+        type: string
+      status:
+        $ref: '#/definitions/tool.OfficialModStatus'
+    type: object
+  tool.OfficialModChangePlan:
+    properties:
+      can_apply:
+        type: boolean
+      changed:
+        type: boolean
+      changes:
+        items:
+          type: string
+        type: array
+      desired_settings:
+        $ref: '#/definitions/tool.OfficialModSettings'
+      issues:
+        items:
+          $ref: '#/definitions/tool.OfficialModDiagnostic'
+        type: array
+      plan_digest:
+        type: string
+      safety_backup_ready:
+        type: boolean
+      safety_backup_required:
+        type: boolean
+      status:
+        $ref: '#/definitions/tool.OfficialModStatus'
+      target_inventory:
+        $ref: '#/definitions/tool.OfficialModInventory'
+      warnings:
+        items:
+          $ref: '#/definitions/tool.OfficialModDiagnostic'
+        type: array
+    type: object
+  tool.OfficialModDiagnostic:
+    properties:
+      code:
+        type: string
+      dependency:
+        type: string
+      folder_name:
+        type: string
+      message:
+        type: string
+      package_name:
+        type: string
+    type: object
+  tool.OfficialModInventory:
+    properties:
+      issues:
+        items:
+          $ref: '#/definitions/tool.OfficialModDiagnostic'
+        type: array
+      packages:
+        items:
+          $ref: '#/definitions/tool.OfficialModPackage'
+        type: array
+      unknown_active_mods:
+        items:
+          type: string
+        type: array
+      warnings:
+        items:
+          $ref: '#/definitions/tool.OfficialModDiagnostic'
+        type: array
+      workshop_available:
+        type: boolean
+      workshop_root:
+        type: string
+      workshop_source:
+        type: string
+    type: object
+  tool.OfficialModPackage:
+    properties:
+      author:
+        type: string
+      debug_mode:
+        type: boolean
+      dependencies:
+        items:
+          type: string
+        type: array
+      deployed:
+        type: boolean
+      effective_enabled:
+        type: boolean
+      folder_name:
+        type: string
+      info_path:
+        type: string
+      info_sha256:
+        type: string
+      install_types:
+        items:
+          type: string
+        type: array
+      issues:
+        items:
+          $ref: '#/definitions/tool.OfficialModDiagnostic'
+        type: array
+      listed:
+        type: boolean
+      min_revision:
+        type: integer
+      mod_name:
+        type: string
+      package_name:
+        type: string
+      path:
+        type: string
+      pending_removal:
+        type: boolean
+      pending_restart:
+        type: boolean
+      server_compatible:
+        type: boolean
+      server_install_types:
+        items:
+          type: string
+        type: array
+      tags:
+        items:
+          type: string
+        type: array
+      thumbnail:
+        type: string
+      valid:
+        type: boolean
+      version:
+        type: string
+      warnings:
+        items:
+          $ref: '#/definitions/tool.OfficialModDiagnostic'
+        type: array
+      workshop_item_id:
+        type: string
+    type: object
+  tool.OfficialModSettings:
+    properties:
+      active_mod_list:
+        items:
+          type: string
+        type: array
+      global_enabled:
+        type: boolean
+      workshop_root_dir:
+        type: string
+    type: object
+  tool.OfficialModStatus:
+    properties:
+      configured:
+        type: boolean
+      existing_worlds:
+        type: integer
+      forced_disabled:
+        type: boolean
+      game_version:
+        type: string
+      install_dir:
+        type: string
+      install_dir_source:
+        type: string
+      inventory:
+        $ref: '#/definitions/tool.OfficialModInventory'
+      issues:
+        items:
+          $ref: '#/definitions/tool.OfficialModDiagnostic'
+        type: array
+      launch_workshop_root:
+        type: string
+      launcher_path:
+        type: string
+      manageable:
+        type: boolean
+      platform:
+        type: string
+      safety_backup_ready:
+        type: boolean
+      save_path:
+        type: string
+      settings:
+        $ref: '#/definitions/tool.OfficialModSettings'
+      settings_exists:
+        type: boolean
+      settings_path:
+        type: string
+      settings_sha256:
+        type: string
+      status_digest:
+        type: string
+      supported:
+        type: boolean
+      warnings:
+        items:
+          $ref: '#/definitions/tool.OfficialModDiagnostic'
+        type: array
     type: object
   tool.PalHealthMutation:
     properties:
@@ -3231,6 +3530,108 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Preflight a local Palworld dedicated-server save migration
+      tags:
+      - Server
+  /api/server/mods:
+    get:
+      description: Read Mods/PalModSettings.ini, scan local Workshop Info.json packages,
+        validate IsServer rules and dependencies, and report deployment state without
+        downloading or executing mod content
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/tool.OfficialModStatus'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Inspect Palworld 1.0.0 official server mods
+      tags:
+      - Server
+  /api/server/mods/apply:
+    post:
+      consumes:
+      - application/json
+      description: Revalidate the fixed plan, stop the server, create a mandatory
+        world restore point when saves exist, back up PalModSettings.ini, atomically
+        replace it, optionally restart, and roll back settings if the managed restart
+        fails
+      parameters:
+      - description: Confirmed official mod settings change
+        in: body
+        name: settings
+        required: true
+        schema:
+          $ref: '#/definitions/api.OfficialModApplyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.OfficialModApplyResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.OfficialModApplyErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/api.OfficialModApplyErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/api.OfficialModApplyErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.OfficialModApplyErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Apply official Palworld mod settings safely
+      tags:
+      - Server
+  /api/server/mods/preflight:
+    post:
+      consumes:
+      - application/json
+      description: Validate the proposed Workshop root, active PackageName list, server
+        InstallRules, dependencies, current settings digest, save recovery readiness,
+        and server control state without changing files
+      parameters:
+      - description: Desired official mod settings
+        in: body
+        name: settings
+        required: true
+        schema:
+          $ref: '#/definitions/api.OfficialModSettingsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.OfficialModPreflightResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Preflight an official Palworld mod selection
       tags:
       - Server
   /api/server/restart:

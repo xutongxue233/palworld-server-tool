@@ -4,6 +4,34 @@
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-07-13
+
+### 新增
+
+- 新增严格面向 Palworld 1.0.0 Windows Dedicated Server 官方加载器的 MOD 管理：扫描本机 Workshop 包的 `Info.json`，展示 PackageName、版本、作者、依赖、标签、安装类型、服务器兼容性和部署状态。
+- Web 运维页新增三语“MOD 管理”工作区，以 `Info.json → ActiveModList → InstallManifest` 流程展示包状态、依赖关系、等待重启/移除状态、启动参数覆盖和安全边界；选择 MOD 时自动补充已发现的依赖。
+- 新增受 JWT 保护的 MOD 状态、只读预检和确认执行 API，并同步生成 Swagger 文档。
+- 新增可选 `mods.install_dir`；留空时复用 `steamcmd.install_dir`，旧配置无需迁移。
+
+### 变更
+
+- `PalModSettings.ini` 编辑会保留 UTF-8 BOM、换行风格、注释、其他节和未知键，只规范化 1.0.0 官方的 `WorkshopRootDir`、`bGlobalEnableMod` 与重复 `ActiveModList`。
+- 检测 `-NoMods` 和 `-workshopdir` 启动参数；使用 `Mods/ManagedMods/<PackageName>/InstallManifest.json` 区分已部署、等待重启和等待移除。
+- 执行变更时独占维护锁、暂停看门狗、停止服务器，并在存在世界时强制创建完整 PST 恢复点；配置写入后可按需重启。
+- 托管重启失败时会停下失败运行实例、恢复旧 `PalModSettings.ini`，并尝试使用原配置重新启动服务器。
+
+### 修复
+
+- 阻止缺失 `IsServer: true`、没有安装目标、使用未知安装类型、目标越出包目录、PackageName 重复或依赖缺失/未启用/歧义的服务端 MOD 计划。
+- 预检与执行均绑定设置、包元数据哈希、Workshop 根目录、现有部署状态和恢复点条件；任何变化都会使旧计划摘要失效。
+
+### 安全
+
+- PST 只读取本机官方格式元数据并写入 `PalModSettings.ini`，不下载、解压、复制或执行任何 MOD 内容，也不接受 URL、Shell 或任意安装命令。
+- MOD 管理仅在 Windows 且配置目录包含真实非空 `PalServer.exe` 时可写；安装目录、Mods、Workshop、包目录、设置文件和安装目标均拒绝符号链接、目录穿越及不安全标识符。
+- `Info.json` 和设置文件限制为 1 MiB，包扫描、活动列表和元数据列表均有上限；写入前创建独立设置恢复点，通过同目录暂存与原子替换安装，并在回读失败时自动回滚。
+- 已有世界必须配置同一 PalServer 安装内的本机 `save.path`，完整安全备份失败时不会改动 MOD 设置。
+
 ## [1.6.0] - 2026-07-13
 
 ### 新增
@@ -207,7 +235,8 @@
 - 替换程序前应停止 PST 和 Palworld 服务端，并备份 `config.yaml`、数据库与整个世界存档目录。
 - 不要将 JSON 重建后的存档直接覆盖正在运行的 `Level.sav`。
 
-[Unreleased]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.6.0...HEAD
+[Unreleased]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.7.0...HEAD
+[1.7.0]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.3.1...v1.4.0
