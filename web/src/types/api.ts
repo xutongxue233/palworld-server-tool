@@ -22,6 +22,31 @@ export interface ServerToolInfo {
   latest: string;
 }
 
+export interface GameConfigFile {
+  configured: boolean;
+  path?: string;
+  content?: string;
+  sha256?: string;
+  modified_at?: string;
+}
+
+export interface GameConfigWriteResult {
+  sha256: string;
+  backup_path: string;
+  modified_at: string;
+  restart_required: boolean;
+}
+
+export interface ServerControlStatus {
+  configured: boolean;
+  mode: string;
+  target?: string;
+  online: boolean;
+  running: boolean;
+  state: string;
+  detail?: string;
+}
+
 export interface Pal {
   instance_id?: string;
   level: number;
@@ -322,6 +347,8 @@ export interface WorldActor {
 }
 
 export interface WorldSnapshot {
+  Available?: boolean;
+  Message?: string;
   Time?: string;
   FPS?: number;
   AverageFPS?: number;

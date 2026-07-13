@@ -90,7 +90,7 @@ Then enable the **REST API**
 
 ## Optional: enable RCON
 
-Palworld 1.0.0 still provides the official RCON interface. To use PST's RCON terminal, set `RCONEnabled=True`, confirm `RCONPort`, and configure a non-empty `AdminPassword` in `PalWorldSettings.ini`. Then add the same password to PST's `config.yaml`:
+Palworld 1.0.0 can still use RCON, but the official documentation marks it as deprecated; prefer REST API actions for routine administration. For legacy servers or plugin commands, set `RCONEnabled=True`, confirm `RCONPort`, and configure a non-empty `AdminPassword` in `PalWorldSettings.ini`. Then add the same password to PST's `config.yaml`:
 
 ```yaml
 rcon:
@@ -136,7 +136,7 @@ Download the latest executable files at:
 
 ```bash
 # Download pst_{version}_{platform}_{arch}.tar.gz and extract to the pst directory
-mkdir -p pst && tar -xzf pst_v1.1.0_linux_x86_64.tar.gz -C pst
+mkdir -p pst && tar -xzf pst_v1.2.0_linux_x86_64.tar.gz -C pst
 ```
 
 ##### Configuration
@@ -153,6 +153,18 @@ mkdir -p pst && tar -xzf pst_v1.1.0_linux_x86_64.tar.gz -C pst
    For `decode_path`, it's usually the pst directory plus `sav_cli`. Can be empty, the current directory will be obtained by default
 
    ```yaml
+   # Palworld game files and lifecycle control (game version 1.0.0)
+   palworld:
+     # Local PalWorldSettings.ini path used by direct Web UI editing
+     config_path: "/path/to/PalServer/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini"
+     control:
+       # disabled / process / docker / systemd / windows_service
+       mode: "systemd"
+       target: "palworld.service"
+       arguments: []
+       working_directory: ""
+       timeout: 120
+
    # WebUI Config
    web:
      # WebUI Admin Password
@@ -200,7 +212,7 @@ mkdir -p pst && tar -xzf pst_v1.1.0_linux_x86_64.tar.gz -C pst
      # Sav Decode Interval Sec
      sync_interval: 120
      # Save Backup Interval Sec
-     backup_interval: 14400
+     backup_interval: 0
      # Save Backup Keep Days
      backup_keep_days: 7
 
@@ -209,6 +221,11 @@ mkdir -p pst && tar -xzf pst_v1.1.0_linux_x86_64.tar.gz -C pst
      # Auto Kick non-whitelisted
      kick_non_whitelist: false
    ```
+
+> [!NOTE]
+> Palworld 1.0.0 includes built-in world backups, so routine recovery should use the game backups and PST now defaults `save.backup_interval` to `0`. Mandatory safety backups made before player or Pal save edits remain enabled.
+>
+> `palworld.config_path` must be a local `PalWorldSettings.ini` visible to PST. Web writes use digest checking, a previous-file backup, and atomic replacement. `palworld.control` never runs arbitrary shell text; it supports only the restricted `process`, `docker`, `systemd`, and `windows_service` drivers.
 
 ##### Run
 
@@ -253,7 +270,7 @@ Access at http://{Server IP}:8080 after opening firewall and security group in c
 
 ##### Download and Extract
 
-Extract `pst_v1.1.0_windows_x86_64.zip` to any directory (recommend naming the folder `pst`).
+Extract `pst_v1.2.0_windows_x86_64.zip` to any directory (recommend naming the folder `pst`).
 
 ##### Configuration
 
@@ -269,6 +286,16 @@ You can also right-click - "Properties", view the path and file name, and then c
 > It is also important to make sure that the `config.yaml` file is **ANSI encoded**, other encoding formats will cause problems such as path errors!!
 
 ```yaml
+# Palworld game files and lifecycle control (game version 1.0.0)
+palworld:
+  config_path: "C:\\path\\to\\PalServer\\Pal\\Saved\\Config\\WindowsServer\\PalWorldSettings.ini"
+  control:
+    mode: "process"
+    target: "C:\\path\\to\\PalServer.exe"
+    arguments: []
+    working_directory: "C:\\path\\to"
+    timeout: 120
+
 # WebUI Config
 web:
   # WebUI Admin Password
@@ -316,7 +343,7 @@ save:
   # Sav Decode Interval Sec
   sync_interval: 120
   # Save Backup Interval Sec
-  backup_interval: 14400
+  backup_interval: 0
   # Save Backup Keep Days
   backup_keep_days: 7
 

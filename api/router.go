@@ -85,6 +85,11 @@ func RegisterRouter(r *gin.Engine) {
 	{
 		authGroup.GET("/server/settings", getServerSettings)
 		authGroup.GET("/server/game-data", getWorldActorSnapshot)
+		authGroup.GET("/server/config-file", getGameConfigFile)
+		authGroup.PUT("/server/config-file", putGameConfigFile)
+		authGroup.GET("/server/control/status", getServerControlStatus)
+		authGroup.POST("/server/start", startServer)
+		authGroup.POST("/server/restart", restartServer)
 		authGroup.POST("/rcon", runRconCommand)
 		authGroup.POST("/server/broadcast", publishBroadcast)
 		authGroup.POST("/server/save", saveWorld)

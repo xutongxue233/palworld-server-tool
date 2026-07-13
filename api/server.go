@@ -142,7 +142,7 @@ func getServerSettings(c *gin.Context) {
 // getWorldActorSnapshot godoc
 //
 //	@Summary		Get World Actor Snapshot
-//	@Description	Get the current world actor snapshot from the Palworld server
+//	@Description	Get the current world actor snapshot, or an Available=false response when the optional PalGameDataBridge API is disabled
 //	@Tags			Server
 //	@Produce		json
 //	@Security		ApiKeyAuth
@@ -153,6 +153,14 @@ func getServerSettings(c *gin.Context) {
 func getWorldActorSnapshot(c *gin.Context) {
 	snapshot, err := tool.WorldActorSnapshot()
 	if err != nil {
+		var restErr *tool.RESTError
+		if errors.As(err, &restErr) && restErr.StatusCode == http.StatusNotFound {
+			c.JSON(http.StatusOK, gin.H{
+				"Available": false,
+				"Message":   "PalGameDataBridge GameData API is not enabled",
+			})
+			return
+		}
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -255,7 +263,70 @@ func saveWorld(c *gin.Context) {
 //	@Failure		401	{object}	ErrorResponse
 //	@Router			/api/server/stop [post]
 func stopServer(c *gin.Context) {
-	if err := tool.StopServer(); err != nil {
+	if err := tool.ForceStopManagedServer(c.Request.Context()); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+// getServerControlStatus godoc
+//
+//	@Summary		Get managed server control status
+//	@Description	Get the configured process, Docker, systemd, or Windows service control status
+//	@Tags			Server
+//	@Produce		json
+//	@Security		ApiKeyAuth
+//	@Success		200	{object}	tool.ServerControlStatus
+//	@Failure		401	{object}	ErrorResponse
+//	@Router			/api/server/control/status [get]
+func getServerControlStatus(c *gin.Context) {
+	c.JSON(http.StatusOK, tool.GetServerControlStatus(c.Request.Context()))
+}
+
+// startServer godoc
+//
+//	@Summary		Start managed Palworld server
+//	@Description	Start the configured process, Docker container, systemd unit, or Windows service and wait for REST API readiness
+//	@Tags			Server
+//	@Produce		json
+//	@Security		ApiKeyAuth
+//	@Success		200	{object}	SuccessResponse
+//	@Failure		400	{object}	ErrorResponse
+//	@Failure		401	{object}	ErrorResponse
+//	@Router			/api/server/start [post]
+func startServer(c *gin.Context) {
+	if err := tool.StartManagedServer(c.Request.Context()); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+// restartServer godoc
+//
+//	@Summary		Restart managed Palworld server
+//	@Description	Save the world, gracefully shut down the server, start it through the configured control driver, and wait for REST API readiness
+//	@Tags			Server
+//	@Accept			json
+//	@Produce		json
+//	@Security		ApiKeyAuth
+//	@Param			restart	body		ShutdownRequest	true	"Restart"
+//	@Success		200		{object}	SuccessResponse
+//	@Failure		400		{object}	ErrorResponse
+//	@Failure		401		{object}	ErrorResponse
+//	@Router			/api/server/restart [post]
+func restartServer(c *gin.Context) {
+	var req ShutdownRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if req.Seconds < 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "seconds cannot be negative"})
+		return
+	}
+	if err := tool.RestartManagedServer(c.Request.Context(), req.Seconds, req.Message); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

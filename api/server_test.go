@@ -56,6 +56,23 @@ func TestOfficialServerManagementRoutes(t *testing.T) {
 	if response.Code != http.StatusUnauthorized {
 		t.Fatalf("settings route should require authentication, got %d", response.Code)
 	}
+	for _, protected := range []struct {
+		method string
+		path   string
+	}{
+		{http.MethodGet, "/api/server/config-file"},
+		{http.MethodPut, "/api/server/config-file"},
+		{http.MethodGet, "/api/server/control/status"},
+		{http.MethodPost, "/api/server/start"},
+		{http.MethodPost, "/api/server/restart"},
+	} {
+		request = httptest.NewRequest(protected.method, protected.path, nil)
+		response = httptest.NewRecorder()
+		router.ServeHTTP(response, request)
+		if response.Code != http.StatusUnauthorized {
+			t.Fatalf("%s %s should require authentication, got %d", protected.method, protected.path, response.Code)
+		}
+	}
 
 	request = httptest.NewRequest(http.MethodPost, "/api/rcon", strings.NewReader(`{"command":"Info"}`))
 	request.Header.Set("Content-Type", "application/json")
@@ -71,6 +88,8 @@ func TestOfficialServerManagementRoutes(t *testing.T) {
 	}{
 		{http.MethodGet, "/api/server/settings"},
 		{http.MethodGet, "/api/server/game-data"},
+		{http.MethodGet, "/api/server/config-file"},
+		{http.MethodGet, "/api/server/control/status"},
 		{http.MethodPost, "/api/server/save"},
 		{http.MethodPost, "/api/server/stop"},
 	} {
@@ -101,5 +120,40 @@ func TestOfficialServerManagementRoutes(t *testing.T) {
 	}
 	if metrics.BaseCampNum != 3 {
 		t.Fatalf("base camp metric was not exposed: %#v", metrics)
+	}
+}
+
+func TestGameDataBridgeUnavailableIsOptional(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "PalGameDataBridge GameData API is not enabled", http.StatusNotFound)
+	}))
+	defer upstream.Close()
+
+	viper.Reset()
+	viper.Set("rest.address", upstream.URL)
+	viper.Set("rest.username", "admin")
+	viper.Set("rest.password", "server-secret")
+	viper.Set("rest.timeout", 5)
+	t.Cleanup(viper.Reset)
+
+	router := gin.New()
+	router.GET("/api/server/game-data", getWorldActorSnapshot)
+	request := httptest.NewRequest(http.MethodGet, "/api/server/game-data", nil)
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("optional GameData API returned %d: %s", response.Code, response.Body.String())
+	}
+	var payload struct {
+		Available bool   `json:"Available"`
+		Message   string `json:"Message"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload.Available || !strings.Contains(payload.Message, "not enabled") {
+		t.Fatalf("unexpected optional GameData response: %#v", payload)
 	}
 }

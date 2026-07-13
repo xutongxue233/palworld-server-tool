@@ -7,6 +7,8 @@ import type {
   EditPlayerStatPointsResult,
   EditPlayerTechnologyPointsResult,
   Guild,
+  GameConfigFile,
+  GameConfigWriteResult,
   GiveItemResult,
   InventoryContainer,
   Player,
@@ -16,6 +18,7 @@ import type {
   ServerInfo,
   ServerMetrics,
   ServerToolInfo,
+  ServerControlStatus,
   UnlockPlayerMapProgressResult,
   WhitelistPlayer,
   WorldSnapshot,
@@ -133,6 +136,15 @@ export const api = {
     request<ServerMetrics>("/api/server/metrics", { auth: false }),
   getSettings: () => request<Record<string, unknown>>("/api/server/settings"),
   getWorldSnapshot: () => request<WorldSnapshot>("/api/server/game-data"),
+  getGameConfigFile: () =>
+    request<GameConfigFile>("/api/server/config-file"),
+  putGameConfigFile: (content: string, expectedSha256: string) =>
+    request<GameConfigWriteResult>("/api/server/config-file", {
+      method: "PUT",
+      body: { content, expected_sha256: expectedSha256 },
+    }),
+  getServerControlStatus: () =>
+    request<ServerControlStatus>("/api/server/control/status"),
   runRcon: (command: string) =>
     request<{ message: string }>("/api/rcon", {
       method: "POST",
@@ -150,6 +162,13 @@ export const api = {
       body: { seconds, message },
     }),
   stopServer: () => request<ApiSuccess>("/api/server/stop", { method: "POST" }),
+  startServer: () =>
+    request<ApiSuccess>("/api/server/start", { method: "POST" }),
+  restartServer: (seconds: number, message: string) =>
+    request<ApiSuccess>("/api/server/restart", {
+      method: "POST",
+      body: { seconds, message },
+    }),
   getPlayers: (params: Record<string, unknown> = {}) =>
     request<PlayerSummary[]>(`/api/player${buildQuery(params)}`),
   getOnlinePlayers: () => request<PlayerSummary[]>("/api/online_player"),

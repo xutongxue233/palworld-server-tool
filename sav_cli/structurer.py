@@ -390,7 +390,7 @@ def getPlayerItems(player_uid, dir_path):
                 return
     technology_points = read_player_technology_points(player_gvas)
     map_progress = read_player_map_progress(
-        player_gvas, _load_bundled_player_map_metadata()
+        player_gvas_file, _load_bundled_player_map_metadata()
     ).to_dict()
     containers_data = {
         "CommonContainerId": [],

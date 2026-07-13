@@ -80,6 +80,7 @@ class StructurerInventoryTest(unittest.TestCase):
 
     def test_player_save_parse_returns_items_and_technology_points(self) -> None:
         player_uid = "7e516548-0000-0000-0000-000000000000"
+        map_metadata = object()
         player_gvas = SimpleNamespace(
             properties={
                 "SaveData": {
@@ -115,7 +116,7 @@ class StructurerInventoryTest(unittest.TestCase):
                     patch.object(
                         structurer,
                         "_load_bundled_player_map_metadata",
-                        return_value=object(),
+                        return_value=map_metadata,
                     ),
                     patch.object(
                         structurer,
@@ -132,7 +133,7 @@ class StructurerInventoryTest(unittest.TestCase):
                                 "game_version": "1.0.0",
                             }
                         ),
-                    ),
+                    ) as read_map_progress,
                 ):
                     result = structurer.getPlayerItems(player_uid, temp_dir)
         finally:
@@ -144,6 +145,7 @@ class StructurerInventoryTest(unittest.TestCase):
         self.assertEqual(1, result["map_progress"]["fast_travel_unlocked"])
         self.assertEqual("a" * 64, result["map_progress"]["progress_digest"])
         self.assertEqual([], result["items"]["CommonContainerId"])
+        read_map_progress.assert_called_once_with(player_gvas, map_metadata)
 
     def test_structure_player_only_exposes_points_after_player_save_parse(self) -> None:
         player_uid = "7e516548-0000-0000-0000-000000000000"

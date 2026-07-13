@@ -4,6 +4,32 @@
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-07-13
+
+### 新增
+
+- RCON 终端增加服务器信息、在线玩家和保存世界快捷命令；快捷按钮仅填充命令，仍需人工确认执行。
+- 配置页可直接读取和写入本机 `PalWorldSettings.ini`，写入前执行旧文件摘要校验、自动备份和原子替换，并明确提示需要重启生效。
+- 新增受 JWT 保护的游戏服务器启动、重启和运行状态接口，支持 `process`、`docker`、`systemd` 与 `windows_service` 四种受限控制驱动。
+- 强制停止在官方 REST API 不可用时可回退到已配置的受限控制驱动。
+
+### 变更
+
+- 面向 Palworld 1.0.0 默认使用游戏自带世界备份，PST 周期存档备份默认间隔改为 `0`；玩家与帕鲁存档编辑前的强制安全备份保持启用。
+- 备份页文案区分游戏内置日常备份与 PST 存档编辑安全备份。
+- 服务控制界面增加当前驱动、运行状态、启动和“保存并重启”操作，并将高风险强制停止独立标识。
+
+### 修复
+
+- 修复同步真实 1.0.0 玩家存档时对已解包 `SaveData` 再次查找 `SaveData`，导致整个定时存档同步失败的问题。
+- 将未启用 `PalGameDataBridge` 时的 `/game-data` 404 视为可选能力缺失，并在界面显示说明，不再作为诊断错误。
+- 更新 RCON 提示，明确官方已弃用 RCON，常用管理操作应优先使用 REST API。
+
+### 安全
+
+- 游戏配置直写接口只允许配置的 `PalWorldSettings.ini` 普通文件，拒绝符号链接、过大文件、无效 UTF-8 和不完整 `OptionSettings`。
+- 生命周期控制不接受任意 Shell 文本；进程模式要求绝对可执行文件路径，服务和容器目标均作为独立参数调用。
+
 ## [1.1.0] - 2026-07-13
 
 ### 变更
@@ -75,6 +101,7 @@
 - 替换程序前应停止 PST 和 Palworld 服务端，并备份 `config.yaml`、数据库与整个世界存档目录。
 - 不要将 JSON 重建后的存档直接覆盖正在运行的 `Level.sav`。
 
-[Unreleased]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/xutongxue233/palworld-server-tool/releases/tag/v1.0.0

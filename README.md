@@ -119,7 +119,7 @@ https://github.com/zaigie/palworld-server-tool/assets/17232619/afdf485c-4b34-491
 
 ## 可选：启用 RCON
 
-Palworld 1.0.0 仍提供官方 RCON。若需使用管理台中的 RCON 终端，请在 `PalWorldSettings.ini` 中设置 `RCONEnabled=True`、确认 `RCONPort`，并配置非空 `AdminPassword`。随后在 PST 的 `config.yaml` 中填写相同密码：
+Palworld 1.0.0 仍可使用 RCON，但官方已将其标记为弃用，常用管理建议优先使用 REST API。若需兼容旧服务器或插件命令，请在 `PalWorldSettings.ini` 中设置 `RCONEnabled=True`、确认 `RCONPort`，并配置非空 `AdminPassword`。随后在 PST 的 `config.yaml` 中填写相同密码：
 
 ```yaml
 rcon:
@@ -176,7 +176,7 @@ RCON 端口只应向 PST 所在主机或受信任网络开放。`use_base64` 仅
 
 ```bash
 # 下载 pst_{version}_{platform}_{arch}.tar.gz 文件并解压到 pst 目录
-mkdir -p pst && tar -xzf pst_v1.1.0_linux_x86_64.tar.gz -C pst
+mkdir -p pst && tar -xzf pst_v1.2.0_linux_x86_64.tar.gz -C pst
 ```
 
 ##### 配置
@@ -193,6 +193,19 @@ mkdir -p pst && tar -xzf pst_v1.1.0_linux_x86_64.tar.gz -C pst
    关于其中的 `decode_path`，一般就是解压后的 pst 目录加上 `sav_cli` ，可以为空，默认会获取当前目录
 
    ```yaml
+   # Palworld 游戏文件与进程控制（游戏版本 1.0.0）
+   palworld:
+     # PalWorldSettings.ini 的本地路径；配置后可在 Web UI 直接读写
+     config_path: "/path/to/PalServer/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini"
+     control:
+       # disabled / process / docker / systemd / windows_service
+       mode: "systemd"
+       # 进程可执行文件、容器名、systemd unit 或 Windows 服务名
+       target: "palworld.service"
+       arguments: []
+       working_directory: ""
+       timeout: 120
+
    # WebUI 设置
    web:
      # WebUI 管理员密码
@@ -240,7 +253,7 @@ mkdir -p pst && tar -xzf pst_v1.1.0_linux_x86_64.tar.gz -C pst
      # 定时从存档获取数据的间隔，单位秒，推荐 >= 120
      sync_interval: 120
      # 存档定时备份间隔，单位秒，设置为0时禁用
-     backup_interval: 14400
+     backup_interval: 0
      # 存档定时备份保留天数，默认为7天
      backup_keep_days: 7
 
@@ -249,6 +262,11 @@ mkdir -p pst && tar -xzf pst_v1.1.0_linux_x86_64.tar.gz -C pst
      # 玩家不在白名单是否自动踢出
      kick_non_whitelist: false
    ```
+
+> [!NOTE]
+> Palworld 1.0.0 已自带世界存档备份，日常恢复建议直接使用游戏备份，因此 PST 的 `save.backup_interval` 默认改为 `0`。PST 仍会在修改玩家/帕鲁存档前强制创建安全备份，不受此设置影响。
+>
+> `palworld.config_path` 仅支持 PST 本机可访问的 `PalWorldSettings.ini`。Web UI 写入时会校验文件摘要、备份旧文件并原子替换。`palworld.control` 不执行任意 Shell，只支持 `process`、`docker`、`systemd`、`windows_service` 四种受限驱动。
 
 ##### 运行
 
@@ -293,7 +311,7 @@ kill $(ps aux | grep 'pst' | awk '{print $2}') | head -n 1
 
 ##### 下载解压
 
-解压 `pst_v1.1.0_windows_x86_64.zip` 到任意目录（推荐命名文件夹目录名称为 `pst`）
+解压 `pst_v1.2.0_windows_x86_64.zip` 到任意目录（推荐命名文件夹目录名称为 `pst`）
 
 ##### 配置
 
@@ -309,6 +327,17 @@ kill $(ps aux | grep 'pst' | awk '{print $2}') | head -n 1
 > 还有比较重要的是，请确保 `config.yaml` 文件为 **ANSI 编码**，其它编码格式将会导致路径错误等问题！！
 
 ````yaml
+# Palworld 游戏文件与进程控制（游戏版本 1.0.0）
+palworld:
+  config_path: "C:\\path\\to\\PalServer\\Pal\\Saved\\Config\\WindowsServer\\PalWorldSettings.ini"
+  control:
+    # disabled / process / docker / systemd / windows_service
+    mode: "process"
+    target: "C:\\path\\to\\PalServer.exe"
+    arguments: []
+    working_directory: "C:\\path\\to"
+    timeout: 120
+
 # WebUI 设置
 web:
   # WebUI 管理员密码
@@ -356,7 +385,7 @@ save:
   # 定时从存档获取数据的间隔，单位秒，推荐 >= 120
   sync_interval: 120
   # 存档定时备份间隔，单位秒，设置为0时禁用
-  backup_interval: 14400
+  backup_interval: 0
   # 存档定时备份保留天数，默认为7天
   backup_keep_days: 7
 
