@@ -182,9 +182,19 @@ definitions:
       password:
         type: string
     type: object
+  api.MessageResponse:
+    properties:
+      message:
+        type: string
+    type: object
   api.PlayerActionRequest:
     properties:
       message:
+        type: string
+    type: object
+  api.RconCommandRequest:
+    properties:
+      command:
         type: string
     type: object
   api.RenamePalRequest:
@@ -334,6 +344,24 @@ definitions:
     properties:
       success:
         type: boolean
+    type: object
+  api.UnlockPlayerMapRequest:
+    properties:
+      confirm_server_stopped:
+        type: boolean
+      expected_progress_digest:
+        type: string
+    required:
+    - expected_progress_digest
+    type: object
+  api.UnlockPlayerMapResponse:
+    properties:
+      backup:
+        $ref: '#/definitions/database.Backup'
+      map_progress:
+        $ref: '#/definitions/tool.PlayerMapProgressMutation'
+      sync_error:
+        type: string
     type: object
   database.Backup:
     properties:
@@ -515,6 +543,8 @@ definitions:
         type: number
       location_y:
         type: number
+      map_progress:
+        $ref: '#/definitions/database.PlayerMapProgress'
       max_hp:
         type: integer
       max_status_point:
@@ -547,6 +577,25 @@ definitions:
         type: integer
       user_id:
         type: string
+    type: object
+  database.PlayerMapProgress:
+    properties:
+      areas_found:
+        type: integer
+      areas_total:
+        type: integer
+      fast_travel_total:
+        type: integer
+      fast_travel_unlocked:
+        type: integer
+      game_version:
+        type: string
+      progress_digest:
+        type: string
+      world_maps_total:
+        type: integer
+      world_maps_unlocked:
+        type: integer
     type: object
   database.PlayerW:
     properties:
@@ -583,6 +632,8 @@ definitions:
         type: number
       location_y:
         type: number
+      map_progress:
+        $ref: '#/definitions/database.PlayerMapProgress'
       max_hp:
         type: integer
       max_status_point:
@@ -730,6 +781,39 @@ definitions:
         type: string
       player_uid:
         type: string
+    type: object
+  tool.PlayerMapProgressMutation:
+    properties:
+      areas_after:
+        type: integer
+      areas_before:
+        type: integer
+      areas_total:
+        type: integer
+      created_fields:
+        items:
+          type: string
+        type: array
+      fast_travel_after:
+        type: integer
+      fast_travel_before:
+        type: integer
+      fast_travel_total:
+        type: integer
+      game_version:
+        type: string
+      player_uid:
+        type: string
+      progress_digest_after:
+        type: string
+      progress_digest_before:
+        type: string
+      world_maps_after:
+        type: integer
+      world_maps_before:
+        type: integer
+      world_maps_total:
+        type: integer
     type: object
   tool.PlayerProfileMutation:
     properties:
@@ -1305,6 +1389,63 @@ paths:
       summary: Kick Player
       tags:
       - Player
+  /api/player/{player_uid}/map-progress:
+    patch:
+      consumes:
+      - application/json
+      description: Create a full backup, verify Level.sav and the target Players/*.sav,
+        compare the complete map-progress digest, merge all bundled 1.0.0 fast-travel
+        points, areas, and world-map flags while preserving unknown entries, validate,
+        and atomically replace the player save
+      parameters:
+      - description: Player UID
+        in: path
+        name: player_uid
+        required: true
+        type: string
+      - description: Map progress unlock
+        in: body
+        name: map_progress
+        required: true
+        schema:
+          $ref: '#/definitions/api.UnlockPlayerMapRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.UnlockPlayerMapResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Unlock a player's complete 1.0.0 map and fast-travel progress through
+        an offline save transaction
+      tags:
+      - Player
   /api/player/{player_uid}/pals/{instance_id}/health:
     patch:
       consumes:
@@ -1680,6 +1821,38 @@ paths:
       summary: Unban Player
       tags:
       - Player
+  /api/rcon:
+    post:
+      consumes:
+      - application/json
+      description: Run an arbitrary command through Palworld's official RCON interface
+      parameters:
+      - description: RCON command
+        in: body
+        name: command
+        required: true
+        schema:
+          $ref: '#/definitions/api.RconCommandRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Run RCON Command
+      tags:
+      - Rcon
   /api/server:
     get:
       consumes:

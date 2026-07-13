@@ -807,6 +807,88 @@
                 }
             }
         },
+        "/api/player/{player_uid}/map-progress": {
+            "patch": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Create a full backup, verify Level.sav and the target Players/*.sav, compare the complete map-progress digest, merge all bundled 1.0.0 fast-travel points, areas, and world-map flags while preserving unknown entries, validate, and atomically replace the player save",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Player"
+                ],
+                "summary": "Unlock a player's complete 1.0.0 map and fast-travel progress through an offline save transaction",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Player UID",
+                        "name": "player_uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Map progress unlock",
+                        "name": "map_progress",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.UnlockPlayerMapRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.UnlockPlayerMapResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/player/{player_uid}/pals/{instance_id}/health": {
             "patch": {
                 "security": [
@@ -1362,6 +1444,57 @@
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/rcon": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Run an arbitrary command through Palworld's official RCON interface",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Rcon"
+                ],
+                "summary": "Run RCON Command",
+                "parameters": [
+                    {
+                        "description": "RCON command",
+                        "name": "command",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.RconCommandRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/api.ErrorResponse"
                         }
@@ -2188,10 +2321,26 @@
                 }
             }
         },
+        "api.MessageResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
         "api.PlayerActionRequest": {
             "type": "object",
             "properties": {
                 "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.RconCommandRequest": {
+            "type": "object",
+            "properties": {
+                "command": {
                     "type": "string"
                 }
             }
@@ -2407,6 +2556,34 @@
             "properties": {
                 "success": {
                     "type": "boolean"
+                }
+            }
+        },
+        "api.UnlockPlayerMapRequest": {
+            "type": "object",
+            "required": [
+                "expected_progress_digest"
+            ],
+            "properties": {
+                "confirm_server_stopped": {
+                    "type": "boolean"
+                },
+                "expected_progress_digest": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.UnlockPlayerMapResponse": {
+            "type": "object",
+            "properties": {
+                "backup": {
+                    "$ref": "#/definitions/database.Backup"
+                },
+                "map_progress": {
+                    "$ref": "#/definitions/tool.PlayerMapProgressMutation"
+                },
+                "sync_error": {
+                    "type": "string"
                 }
             }
         },
@@ -2684,6 +2861,9 @@
                 "location_y": {
                     "type": "number"
                 },
+                "map_progress": {
+                    "$ref": "#/definitions/database.PlayerMapProgress"
+                },
                 "max_hp": {
                     "type": "integer"
                 },
@@ -2731,6 +2911,35 @@
                 },
                 "user_id": {
                     "type": "string"
+                }
+            }
+        },
+        "database.PlayerMapProgress": {
+            "type": "object",
+            "properties": {
+                "areas_found": {
+                    "type": "integer"
+                },
+                "areas_total": {
+                    "type": "integer"
+                },
+                "fast_travel_total": {
+                    "type": "integer"
+                },
+                "fast_travel_unlocked": {
+                    "type": "integer"
+                },
+                "game_version": {
+                    "type": "string"
+                },
+                "progress_digest": {
+                    "type": "string"
+                },
+                "world_maps_total": {
+                    "type": "integer"
+                },
+                "world_maps_unlocked": {
+                    "type": "integer"
                 }
             }
         },
@@ -2786,6 +2995,9 @@
                 },
                 "location_y": {
                     "type": "number"
+                },
+                "map_progress": {
+                    "$ref": "#/definitions/database.PlayerMapProgress"
                 },
                 "max_hp": {
                     "type": "integer"
@@ -3009,6 +3221,56 @@
                 },
                 "player_uid": {
                     "type": "string"
+                }
+            }
+        },
+        "tool.PlayerMapProgressMutation": {
+            "type": "object",
+            "properties": {
+                "areas_after": {
+                    "type": "integer"
+                },
+                "areas_before": {
+                    "type": "integer"
+                },
+                "areas_total": {
+                    "type": "integer"
+                },
+                "created_fields": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "fast_travel_after": {
+                    "type": "integer"
+                },
+                "fast_travel_before": {
+                    "type": "integer"
+                },
+                "fast_travel_total": {
+                    "type": "integer"
+                },
+                "game_version": {
+                    "type": "string"
+                },
+                "player_uid": {
+                    "type": "string"
+                },
+                "progress_digest_after": {
+                    "type": "string"
+                },
+                "progress_digest_before": {
+                    "type": "string"
+                },
+                "world_maps_after": {
+                    "type": "integer"
+                },
+                "world_maps_before": {
+                    "type": "integer"
+                },
+                "world_maps_total": {
+                    "type": "integer"
                 }
             }
         },

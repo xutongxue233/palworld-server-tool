@@ -18,8 +18,6 @@ export interface SettingIssue {
   variables?: Record<string, string | number>;
 }
 
-const REMOVED_SETTING_KEYS = new Set(["RCONEnabled", "RCONPort"]);
-
 function splitTopLevel(value: string) {
   const parts: string[] = [];
   let start = 0;
@@ -144,7 +142,6 @@ export function parsePalWorldSettings(content: string): ParsedServerSettings {
     if (equalsIndex <= 0) return;
     const key = entry.slice(0, equalsIndex).trim();
     const rawValue = entry.slice(equalsIndex + 1).trim();
-    if (REMOVED_SETTING_KEYS.has(key)) return;
     const definition = SETTING_BY_KEY.get(key);
     if (definition) {
       values[key] = parseKnownValue(definition, rawValue);
@@ -196,9 +193,7 @@ export function serializePalWorldSettings(
     return `${definition.key}=${serializeKnownValue(definition, value)}`;
   });
   const unknownEntries = Object.entries(unknown)
-    .filter(
-      ([key]) => !SETTING_BY_KEY.has(key) && !REMOVED_SETTING_KEYS.has(key),
-    )
+    .filter(([key]) => !SETTING_BY_KEY.has(key))
     .map(([key, rawValue]) => `${key}=${rawValue}`);
   return `[/Script/Pal.PalGameWorldSettings]\nOptionSettings=(${[
     ...knownEntries,
@@ -211,7 +206,6 @@ export function normalizeApiSettings(settings: Record<string, unknown>) {
   const unknown: Record<string, string> = {};
 
   Object.entries(settings).forEach(([key, rawValue]) => {
-    if (REMOVED_SETTING_KEYS.has(key)) return;
     const definition = SETTING_BY_KEY.get(key);
     if (!definition) {
       unknown[key] =
@@ -288,7 +282,7 @@ export function validateServerSettings(values: Record<string, SettingValue>) {
   });
 
   const adminPassword = String(values.AdminPassword ?? "");
-  if (values.RESTAPIEnabled && !adminPassword.trim()) {
+  if ((values.RESTAPIEnabled || values.RCONEnabled) && !adminPassword.trim()) {
     issues.push({
       key: "AdminPassword",
       level: "warning",
@@ -296,7 +290,7 @@ export function validateServerSettings(values: Record<string, SettingValue>) {
     });
   }
 
-  const ports = ["PublicPort", "RESTAPIPort"] as const;
+  const ports = ["PublicPort", "RCONPort", "RESTAPIPort"] as const;
   ports.forEach((key, index) => {
     ports.slice(index + 1).forEach((otherKey) => {
       if (Number(values[key]) === Number(values[otherKey])) {

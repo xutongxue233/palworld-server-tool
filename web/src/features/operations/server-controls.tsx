@@ -11,6 +11,7 @@ import {
   Send,
   ServerCog,
   ShieldAlert,
+  Terminal,
 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -48,6 +49,8 @@ export function ServerControls() {
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const [broadcastMessage, setBroadcastMessage] = useState("");
+  const [rconCommand, setRconCommand] = useState("Info");
+  const [rconResponse, setRconResponse] = useState("");
   const [shutdownSeconds, setShutdownSeconds] = useState(60);
   const [shutdownMessage, setShutdownMessage] = useState("");
   const [confirmAction, setConfirmAction] = useState<"save" | "stop" | null>(
@@ -96,6 +99,14 @@ export function ServerControls() {
     onSuccess: () => {
       toast.success(t("message.broadcasted"));
       setBroadcastMessage("");
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
+  const rconMutation = useMutation({
+    mutationFn: api.runRcon,
+    onSuccess: (result) => {
+      setRconResponse(result.message || t("operations.rconEmpty"));
+      toast.success(t("message.rconExecuted"));
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
@@ -227,6 +238,47 @@ export function ServerControls() {
           </form>
         </Panel>
       </div>
+
+      <Panel
+        title={t("operations.rcon")}
+        description={t("operations.rconDescription")}
+        contentClassName="p-4 sm:p-5"
+      >
+        <form
+          className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(280px,0.75fr)]"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const command = rconCommand.trim();
+            if (command) rconMutation.mutate(command);
+          }}
+        >
+          <div className="space-y-3">
+            <Textarea
+              value={rconCommand}
+              onChange={(event) => setRconCommand(event.target.value)}
+              placeholder={t("operations.rconPlaceholder")}
+              className="font-data min-h-24"
+              maxLength={4096}
+            />
+            <div className="flex justify-end">
+              <Button
+                type="submit"
+                disabled={!rconCommand.trim() || rconMutation.isPending}
+              >
+                {rconMutation.isPending ? (
+                  <LoaderCircle className="animate-spin" />
+                ) : (
+                  <Terminal />
+                )}
+                {t("action.execute")}
+              </Button>
+            </div>
+          </div>
+          <pre className="font-data min-h-24 overflow-auto whitespace-pre-wrap break-words rounded-md border bg-muted/35 p-3 text-xs text-muted-foreground">
+            {rconResponse || t("operations.rconEmpty")}
+          </pre>
+        </form>
+      </Panel>
 
       <Panel contentClassName="grid sm:grid-cols-3">
         <button

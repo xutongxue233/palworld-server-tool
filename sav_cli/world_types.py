@@ -157,7 +157,16 @@ class Pal:
             self.is_tower = False
             self.type = "Unknow"
         self.workspeed = data["CraftSpeed"]["value"] if data.get("CraftSpeed") else 0
-        self.melee = int(scalar_property(data, "Talent_Melee", 0))
+        # Palworld 1.0 renamed the HP individual-value field from
+        # Talent_Melee to Talent_HP. Prefer the current field while retaining
+        # compatibility with pre-1.0 saves.
+        self.melee = int(
+            scalar_property(
+                data,
+                "Talent_HP" if data.get("Talent_HP") is not None else "Talent_Melee",
+                0,
+            )
+        )
         self.ranged = int(scalar_property(data, "Talent_Shot", 0))
         self.defense = int(scalar_property(data, "Talent_Defense", 0))
         self.rank = int(scalar_property(data, "Rank", 1))
