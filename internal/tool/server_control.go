@@ -43,6 +43,11 @@ type ServerControlStatus struct {
 	Detail     string `json:"detail,omitempty"`
 }
 
+type MaintenanceStopResult struct {
+	WasRunning bool `json:"was_running"`
+	CanRestart bool `json:"can_restart"`
+}
+
 type serverControlConfig struct {
 	Mode             string
 	Target           string
@@ -242,6 +247,75 @@ func ForceStopManagedServer(ctx context.Context) error {
 		return fmt.Errorf("REST stop failed: %v; managed stop failed: %w", restErr, err)
 	}
 	return nil
+}
+
+func StopServerForMaintenance(ctx context.Context, seconds int, message string) (MaintenanceStopResult, error) {
+	serverControlMu.Lock()
+	defer serverControlMu.Unlock()
+
+	if seconds <= 0 {
+		seconds = 10
+	}
+	if seconds > 300 {
+		return MaintenanceStopResult{}, errors.New("maintenance shutdown delay cannot exceed 300 seconds")
+	}
+
+	config, configErr := getServerControlConfig()
+	result := MaintenanceStopResult{CanRestart: configErr == nil}
+	var driver serverControlDriver
+	var err error
+	if configErr == nil {
+		driver, err = serverControlDriverFactory(config)
+		if err != nil {
+			return MaintenanceStopResult{}, err
+		}
+	} else if !errors.Is(configErr, ErrServerControlNotConfigured) {
+		return MaintenanceStopResult{}, configErr
+	}
+
+	if serverOnlineProbe() {
+		result.WasRunning = true
+		if err := controlSaveWorld(); err != nil {
+			return result, fmt.Errorf("save world before maintenance: %w", err)
+		}
+		if err := controlShutdown(seconds, message); err != nil {
+			return result, fmt.Errorf("request maintenance shutdown: %w", err)
+		}
+		shutdownCtx, cancel := context.WithTimeout(ctx, time.Duration(seconds+30)*time.Second)
+		shutdownErr := waitForServerState(shutdownCtx, false)
+		cancel()
+		if shutdownErr != nil {
+			if driver == nil {
+				return result, shutdownErr
+			}
+			stopCtx, stopCancel := context.WithTimeout(ctx, 30*time.Second)
+			stopErr := driver.Stop(stopCtx)
+			stopCancel()
+			if stopErr != nil {
+				return result, fmt.Errorf("wait for maintenance shutdown: %v; managed stop: %w", shutdownErr, stopErr)
+			}
+		}
+	}
+
+	if driver != nil {
+		statusCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		running, _, statusErr := driver.Status(statusCtx)
+		cancel()
+		if statusErr != nil {
+			return result, fmt.Errorf("check managed server before maintenance: %w", statusErr)
+		}
+		if running {
+			result.WasRunning = true
+			stopCtx, stopCancel := context.WithTimeout(ctx, 30*time.Second)
+			stopErr := driver.Stop(stopCtx)
+			stopCancel()
+			if stopErr != nil {
+				return result, fmt.Errorf("stop managed server for maintenance: %w", stopErr)
+			}
+		}
+	}
+
+	return result, nil
 }
 
 func waitForServerState(ctx context.Context, online bool) error {

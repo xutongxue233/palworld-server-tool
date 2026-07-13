@@ -90,3 +90,32 @@ func TestUnTarGzDirRejectsPathTraversal(t *testing.T) {
 		t.Fatalf("archive wrote outside destination: %v", err)
 	}
 }
+
+func TestCopyAndZipRejectSymbolicLinks(t *testing.T) {
+	root := t.TempDir()
+	source := filepath.Join(root, "source")
+	if err := os.MkdirAll(source, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(root, "target.txt")
+	if err := os.WriteFile(target, []byte("secret"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(source, "linked.sav")
+	if err := os.Symlink(target, link); err != nil {
+		t.Skipf("symbolic links are not available in this environment: %v", err)
+	}
+
+	if err := CopyFile(link, filepath.Join(root, "copied.sav")); err == nil {
+		t.Fatal("CopyFile followed a symbolic link")
+	}
+	if err := CopyDir(source, filepath.Join(root, "copy")); err == nil {
+		t.Fatal("CopyDir followed a symbolic link")
+	}
+	if err := ZipDir(source, filepath.Join(root, "archive.zip")); err == nil {
+		t.Fatal("ZipDir followed a symbolic link")
+	}
+	if _, err := os.Stat(filepath.Join(root, "archive.zip")); !os.IsNotExist(err) {
+		t.Fatalf("failed archive was not removed: %v", err)
+	}
+}

@@ -6,6 +6,7 @@ import {
   Copy,
   Download,
   ExternalLink,
+  FileCog,
   FileInput,
   FileText,
   HardDriveDownload,
@@ -14,6 +15,7 @@ import {
   RotateCcw,
   Search,
   ServerCog,
+  ShieldCheck,
   SlidersHorizontal,
   Upload,
 } from "lucide-react";
@@ -75,14 +77,9 @@ import { useAuth } from "@/lib/auth";
 import { copyText, downloadBlob } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import type { Locale } from "@/types/api";
+import type { Locale, WorldOptionOverrideStatus } from "@/types/api";
 
-type ConfigSource =
-  | "defaults"
-  | "file"
-  | "paste"
-  | "server"
-  | "server-file";
+type ConfigSource = "defaults" | "file" | "paste" | "server" | "server-file";
 type GroupFilter = "all" | SettingGroup;
 
 function ListTextInput({
@@ -360,12 +357,16 @@ export default function ConfigurationView() {
   const [loadingServer, setLoadingServer] = useState(false);
   const [loadingServerFile, setLoadingServerFile] = useState(false);
   const [writingServerFile, setWritingServerFile] = useState(false);
+  const [syncingWorldOption, setSyncingWorldOption] = useState(false);
+  const [worldOptionDialogOpen, setWorldOptionDialogOpen] = useState(false);
   const [serverFile, setServerFile] = useState<{
     path: string;
     sha256: string;
   } | null>(null);
   const [serverFileBaseline, setServerFileBaseline] = useState("");
   const [restartRequired, setRestartRequired] = useState(false);
+  const [worldOption, setWorldOption] =
+    useState<WorldOptionOverrideStatus | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const issues = useMemo(() => validateServerSettings(values), [values]);
@@ -419,6 +420,7 @@ export default function ConfigurationView() {
     setServerFile(null);
     setServerFileBaseline("");
     setRestartRequired(false);
+    setWorldOption(null);
     toast.success(t("config.resetDone"));
   };
 
@@ -456,6 +458,7 @@ export default function ConfigurationView() {
     setServerFile(null);
     setServerFileBaseline("");
     setRestartRequired(false);
+    setWorldOption(null);
     applyImportedContent(await file.text(), "file");
   };
 
@@ -473,6 +476,7 @@ export default function ConfigurationView() {
       setServerFile(null);
       setServerFileBaseline("");
       setRestartRequired(false);
+      setWorldOption(null);
       toast.success(t("config.serverLoaded"));
     } catch (error) {
       toast.error(t("message.error"), {
@@ -491,6 +495,7 @@ export default function ConfigurationView() {
     setLoadingServerFile(true);
     try {
       const result = await api.getGameConfigFile();
+      setWorldOption(result.world_option);
       if (!result.configured) {
         toast.error(t("config.serverFileNotConfigured"));
         return;
@@ -510,6 +515,11 @@ export default function ConfigurationView() {
         toast.success(t("config.serverFileLoaded"), {
           description: result.path,
         });
+        if (result.world_option.present) {
+          toast.warning(t("config.worldOptionOverrideTitle"), {
+            description: t("config.worldOptionOverrideToast"),
+          });
+        }
       }
     } catch (error) {
       toast.error(t("message.error"), {
@@ -524,10 +534,7 @@ export default function ConfigurationView() {
     if (!serverFile || errors.length) return;
     setWritingServerFile(true);
     try {
-      const result = await api.putGameConfigFile(
-        serialized,
-        serverFile.sha256,
-      );
+      const result = await api.putGameConfigFile(serialized, serverFile.sha256);
       setServerFile((current) =>
         current ? { ...current, sha256: result.sha256 } : current,
       );
@@ -544,6 +551,55 @@ export default function ConfigurationView() {
       });
     } finally {
       setWritingServerFile(false);
+    }
+  };
+
+  const synchronizeWorldOption = async () => {
+    if (
+      !serverFile ||
+      serverFileDirty ||
+      errors.length ||
+      !worldOption?.supported ||
+      worldOption.message
+    ) {
+      return;
+    }
+    setSyncingWorldOption(true);
+    try {
+      const result = await api.syncWorldOption(
+        serialized,
+        worldOption.sha256 ?? "",
+      );
+      toast.success(
+        result.world_option.created
+          ? t("config.worldOptionGenerated")
+          : t("config.worldOptionSynchronized"),
+        {
+          description: t("config.worldOptionSafetyBackup", {
+            path: result.safety_backup.path,
+          }),
+        },
+      );
+      if (result.world_option.skipped_keys.length) {
+        toast.warning(t("config.worldOptionSkipped"), {
+          description: result.world_option.skipped_keys.join(", "),
+        });
+      }
+      if (result.restart_error) {
+        toast.warning(t("config.worldOptionRestartFailed"), {
+          description: result.restart_error,
+        });
+      }
+      setRestartRequired(!result.restarted);
+      const refreshed = await api.getGameConfigFile();
+      setWorldOption(refreshed.world_option);
+      setWorldOptionDialogOpen(false);
+    } catch (error) {
+      toast.error(t("config.worldOptionSyncFailed"), {
+        description: getApiErrorMessage(error),
+      });
+    } finally {
+      setSyncingWorldOption(false);
     }
   };
 
@@ -665,6 +721,85 @@ export default function ConfigurationView() {
         ))}
       </div>
 
+      {serverFile && worldOption?.present ? (
+        <div className="flex flex-col gap-3 border-b border-amber-500/30 bg-amber-500/8 px-4 py-4 sm:flex-row sm:items-start sm:px-6 lg:px-8">
+          <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-600" />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-semibold">
+                {t("config.worldOptionOverrideTitle")}
+              </p>
+              <Badge
+                variant="outline"
+                className="border-amber-500/40 text-amber-700 dark:text-amber-400"
+              >
+                WorldOption.sav
+              </Badge>
+            </div>
+            <p className="mt-1 max-w-4xl text-xs leading-5 text-muted-foreground">
+              {t("config.worldOptionOverrideDescription")}
+            </p>
+            {worldOption.path ? (
+              <p className="mt-2 truncate font-data text-[10px] text-muted-foreground">
+                {worldOption.path}
+              </p>
+            ) : null}
+            {worldOption.message ? (
+              <p className="mt-2 text-xs text-destructive">
+                {worldOption.message}
+              </p>
+            ) : null}
+          </div>
+          <div className="flex shrink-0 flex-wrap gap-2">
+            <Button
+              size="sm"
+              disabled={
+                serverFileDirty ||
+                errors.length > 0 ||
+                Boolean(worldOption.message)
+              }
+              onClick={() => setWorldOptionDialogOpen(true)}
+            >
+              <FileCog />
+              {t("config.syncWorldOption")}
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <a
+                href="https://pal-conf.bluefissure.com/"
+                target="_blank"
+                rel="noreferrer"
+              >
+                <ExternalLink />
+                {t("config.openWorldOptionTool")}
+              </a>
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {serverFile && worldOption?.supported && !worldOption.present ? (
+        <div className="flex flex-col gap-3 border-b bg-muted/20 px-4 py-4 sm:flex-row sm:items-center sm:px-6 lg:px-8">
+          <FileCog className="size-5 shrink-0 text-muted-foreground" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium">
+              {t("config.worldOptionAbsentTitle")}
+            </p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              {t("config.worldOptionAbsentDescription")}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={serverFileDirty || errors.length > 0}
+            onClick={() => setWorldOptionDialogOpen(true)}
+          >
+            <FileCog />
+            {t("config.generateWorldOption")}
+          </Button>
+        </div>
+      ) : null}
+
       <div className="flex flex-wrap items-center gap-2 border-b px-4 py-3 sm:px-6 lg:px-8">
         <input
           ref={fileInputRef}
@@ -726,9 +861,7 @@ export default function ConfigurationView() {
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>
-                {t("config.writeServerFile")}
-              </AlertDialogTitle>
+              <AlertDialogTitle>{t("config.writeServerFile")}</AlertDialogTitle>
               <AlertDialogDescription>
                 {t("config.writeServerFileConfirm")}
               </AlertDialogDescription>
@@ -910,6 +1043,99 @@ export default function ConfigurationView() {
         </aside>
       </div>
 
+      <AlertDialog
+        open={worldOptionDialogOpen}
+        onOpenChange={(open) => {
+          if (!syncingWorldOption) setWorldOptionDialogOpen(open);
+        }}
+      >
+        <AlertDialogContent className="sm:max-w-xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {worldOption?.present
+                ? t("config.syncWorldOptionTitle")
+                : t("config.generateWorldOptionTitle")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("config.worldOptionSyncDescription")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="overflow-hidden rounded-md border">
+            {[
+              ["01", t("config.worldOptionStepStop")],
+              ["02", t("config.worldOptionStepBackup")],
+              ["03", t("config.worldOptionStepValidate")],
+              ["04", t("config.worldOptionStepInstall")],
+            ].map(([number, label]) => (
+              <div
+                key={number}
+                className="flex items-center gap-3 border-b px-3 py-2.5 last:border-b-0"
+              >
+                <span className="font-data flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[9px] text-primary">
+                  {number}
+                </span>
+                <span className="text-xs font-medium">{label}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex gap-3 rounded-md border border-amber-500/30 bg-amber-500/8 p-3 text-xs leading-5">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
+            <span>{t("config.worldOptionPrecedenceWarning")}</span>
+          </div>
+
+          <div className="grid gap-2 rounded-md bg-muted/35 p-3 text-xs">
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-muted-foreground">
+                {t("config.worldOptionSource")}
+              </span>
+              <span className="max-w-72 truncate font-data">
+                {serverFile?.path}
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-muted-foreground">
+                {t("config.worldOptionMode")}
+              </span>
+              <span className="font-medium">
+                {worldOption?.present
+                  ? t("config.worldOptionModeSync")
+                  : t("config.worldOptionModeGenerate")}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 border-t pt-2 text-muted-foreground">
+              <ShieldCheck className="size-3.5 text-emerald-600" />
+              {t("config.worldOptionSavedIniRequired")}
+            </div>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={syncingWorldOption}>
+              {t("action.cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={syncingWorldOption}
+              onClick={(event) => {
+                event.preventDefault();
+                void synchronizeWorldOption();
+              }}
+            >
+              {syncingWorldOption ? (
+                <LoaderCircle className="animate-spin" />
+              ) : (
+                <FileCog />
+              )}
+              {syncingWorldOption
+                ? t("config.worldOptionSyncing")
+                : worldOption?.present
+                  ? t("config.syncWorldOption")
+                  : t("config.generateWorldOption")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Dialog open={pasteOpen} onOpenChange={setPasteOpen}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
@@ -933,6 +1159,7 @@ export default function ConfigurationView() {
                 setServerFile(null);
                 setServerFileBaseline("");
                 setRestartRequired(false);
+                setWorldOption(null);
                 applyImportedContent(pasteContent, "paste");
                 setPasteOpen(false);
               }}

@@ -25,11 +25,22 @@ var (
 )
 
 type GameConfigFile struct {
-	Configured bool       `json:"configured"`
+	Configured  bool                      `json:"configured"`
+	Path        string                    `json:"path,omitempty"`
+	Content     string                    `json:"content,omitempty"`
+	SHA256      string                    `json:"sha256,omitempty"`
+	ModifiedAt  *time.Time                `json:"modified_at,omitempty"`
+	WorldOption WorldOptionOverrideStatus `json:"world_option"`
+}
+
+type WorldOptionOverrideStatus struct {
+	Supported  bool       `json:"supported"`
+	Present    bool       `json:"present"`
 	Path       string     `json:"path,omitempty"`
-	Content    string     `json:"content,omitempty"`
+	SizeBytes  int64      `json:"size_bytes,omitempty"`
 	SHA256     string     `json:"sha256,omitempty"`
 	ModifiedAt *time.Time `json:"modified_at,omitempty"`
+	Message    string     `json:"message,omitempty"`
 }
 
 type GameConfigWriteResult struct {
@@ -58,9 +69,10 @@ func ReadGameConfigFile() (GameConfigFile, error) {
 	gameConfigMu.Lock()
 	defer gameConfigMu.Unlock()
 
+	worldOption := inspectWorldOptionOverride()
 	path, err := configuredGameConfigPath()
 	if errors.Is(err, ErrGameConfigNotConfigured) {
-		return GameConfigFile{Configured: false}, nil
+		return GameConfigFile{Configured: false, WorldOption: worldOption}, nil
 	}
 	if err != nil {
 		return GameConfigFile{}, err
@@ -71,12 +83,53 @@ func ReadGameConfigFile() (GameConfigFile, error) {
 	}
 	modifiedAt := info.ModTime()
 	return GameConfigFile{
-		Configured: true,
-		Path:       path,
-		Content:    string(content),
-		SHA256:     gameConfigDigest(content),
-		ModifiedAt: &modifiedAt,
+		Configured:  true,
+		Path:        path,
+		Content:     string(content),
+		SHA256:      gameConfigDigest(content),
+		ModifiedAt:  &modifiedAt,
+		WorldOption: worldOption,
 	}, nil
+}
+
+func inspectWorldOptionOverride() WorldOptionOverrideStatus {
+	levelPath, err := localLevelSavePath(strings.TrimSpace(viper.GetString("save.path")))
+	if err != nil {
+		return WorldOptionOverrideStatus{
+			Supported: false,
+			Message:   err.Error(),
+		}
+	}
+	path := filepath.Join(filepath.Dir(levelPath), "WorldOption.sav")
+	info, err := os.Lstat(path)
+	if os.IsNotExist(err) {
+		return WorldOptionOverrideStatus{Supported: true, Path: path}
+	}
+	if err != nil {
+		return WorldOptionOverrideStatus{
+			Supported: false,
+			Path:      path,
+			Message:   err.Error(),
+		}
+	}
+	modifiedAt := info.ModTime()
+	status := WorldOptionOverrideStatus{
+		Supported:  true,
+		Present:    true,
+		Path:       path,
+		SizeBytes:  info.Size(),
+		ModifiedAt: &modifiedAt,
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		status.Message = "WorldOption.sav is a symbolic link and cannot be managed safely"
+	} else if !info.Mode().IsRegular() {
+		status.Message = "WorldOption.sav is not a regular file"
+	} else if fingerprint, fingerprintErr := fingerprintSaveFile(path); fingerprintErr != nil {
+		status.Message = fingerprintErr.Error()
+	} else {
+		status.SHA256 = hex.EncodeToString(fingerprint.SHA256[:])
+	}
+	return status
 }
 
 func WriteGameConfigFile(content, expectedSHA256 string) (GameConfigWriteResult, error) {

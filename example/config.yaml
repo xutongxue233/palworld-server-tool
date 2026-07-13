@@ -32,6 +32,8 @@ rest:
   password: ""
   timeout: 5
 save:
+  # Local Saved directory, active world directory, or Level.sav. A local path is
+  # required for native backup discovery/restore and WorldOption.sav sync.
   path: "/path/to/your/Pal/Saved"
   decode_path: ""
   sync_interval: 120

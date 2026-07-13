@@ -194,6 +194,46 @@ definitions:
       message:
         type: string
     type: object
+  api.NativeBackupListResponse:
+    properties:
+      native_backups:
+        $ref: '#/definitions/tool.NativeBackupCatalog'
+      server_control:
+        $ref: '#/definitions/tool.ServerControlStatus'
+    type: object
+  api.NativeBackupRestoreRequest:
+    properties:
+      confirm_restore:
+        type: boolean
+      expected_digest:
+        type: string
+      restart_after:
+        type: boolean
+      shutdown_message:
+        maxLength: 256
+        type: string
+      shutdown_seconds:
+        maximum: 300
+        minimum: 0
+        type: integer
+    required:
+    - expected_digest
+    type: object
+  api.NativeBackupRestoreResponse:
+    properties:
+      maintenance:
+        $ref: '#/definitions/tool.MaintenanceStopResult'
+      restart_error:
+        type: string
+      restarted:
+        type: boolean
+      restored_backup:
+        $ref: '#/definitions/tool.NativeBackup'
+      safety_backup:
+        $ref: '#/definitions/database.Backup'
+      sync_error:
+        type: string
+    type: object
   api.PlayerActionRequest:
     properties:
       message:
@@ -369,6 +409,37 @@ definitions:
         $ref: '#/definitions/tool.PlayerMapProgressMutation'
       sync_error:
         type: string
+    type: object
+  api.WorldOptionSyncRequest:
+    properties:
+      confirm_sync:
+        type: boolean
+      content:
+        type: string
+      expected_sha256:
+        type: string
+      shutdown_message:
+        maxLength: 256
+        type: string
+      shutdown_seconds:
+        maximum: 300
+        minimum: 0
+        type: integer
+    required:
+    - content
+    type: object
+  api.WorldOptionSyncResponse:
+    properties:
+      maintenance:
+        $ref: '#/definitions/tool.MaintenanceStopResult'
+      restart_error:
+        type: string
+      restarted:
+        type: boolean
+      safety_backup:
+        $ref: '#/definitions/database.Backup'
+      world_option:
+        $ref: '#/definitions/tool.WorldOptionMutation'
     type: object
   database.Backup:
     properties:
@@ -682,6 +753,8 @@ definitions:
         type: string
       sha256:
         type: string
+      world_option:
+        $ref: '#/definitions/tool.WorldOptionOverrideStatus'
     type: object
   tool.GameConfigWriteResult:
     properties:
@@ -739,6 +812,51 @@ definitions:
         type: string
       requested:
         type: integer
+    type: object
+  tool.MaintenanceStopResult:
+    properties:
+      can_restart:
+        type: boolean
+      was_running:
+        type: boolean
+    type: object
+  tool.NativeBackup:
+    properties:
+      backup_id:
+        type: string
+      created_at:
+        type: string
+      digest:
+        type: string
+      file_count:
+        type: integer
+      has_world_option:
+        type: boolean
+      issues:
+        items:
+          type: string
+        type: array
+      modified_at:
+        type: string
+      player_files:
+        type: integer
+      size_bytes:
+        type: integer
+      valid:
+        type: boolean
+    type: object
+  tool.NativeBackupCatalog:
+    properties:
+      available:
+        type: boolean
+      backups:
+        items:
+          $ref: '#/definitions/tool.NativeBackup'
+        type: array
+      configured:
+        type: boolean
+      world_id:
+        type: string
     type: object
   tool.PalHealthMutation:
     properties:
@@ -911,6 +1029,44 @@ definitions:
         type: string
       target:
         type: string
+    type: object
+  tool.WorldOptionMutation:
+    properties:
+      created:
+        type: boolean
+      game_version:
+        type: string
+      modified_at:
+        type: string
+      settings_digest:
+        type: string
+      sha256:
+        type: string
+      skipped_keys:
+        items:
+          type: string
+        type: array
+      updated_keys:
+        items:
+          type: string
+        type: array
+    type: object
+  tool.WorldOptionOverrideStatus:
+    properties:
+      message:
+        type: string
+      modified_at:
+        type: string
+      path:
+        type: string
+      present:
+        type: boolean
+      sha256:
+        type: string
+      size_bytes:
+        type: integer
+      supported:
+        type: boolean
     type: object
 info:
   contact: {}
@@ -1920,6 +2076,77 @@ paths:
       summary: Get Server Info
       tags:
       - Server
+  /api/server/backups/native:
+    get:
+      description: Discover and validate backups created by Palworld under backup/world
+        without copying them into PST storage
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.NativeBackupListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: List Palworld native world backups
+      tags:
+      - backup
+  /api/server/backups/native/{backup_id}/restore:
+    post:
+      consumes:
+      - application/json
+      description: Stop the managed server when possible, create a PST safety backup,
+        validate a selected native backup, atomically restore it, synchronize decoded
+        data, and optionally restart the server
+      parameters:
+      - description: Native backup directory ID
+        in: path
+        name: backup_id
+        required: true
+        type: string
+      - description: Restore confirmation and selected snapshot digest
+        in: body
+        name: restore
+        required: true
+        schema:
+          $ref: '#/definitions/api.NativeBackupRestoreRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.NativeBackupRestoreResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Safely restore a Palworld native world backup
+      tags:
+      - backup
   /api/server/broadcast:
     post:
       consumes:
@@ -2247,6 +2474,48 @@ paths:
           schema:
             $ref: '#/definitions/api.ServerToolResponse'
       summary: Get PalWorld Server Tool
+      tags:
+      - Server
+  /api/server/world-option:
+    put:
+      consumes:
+      - application/json
+      description: Convert validated Palworld 1.0.0 INI settings into a WorldOption.sav,
+        stop the server, create a safety backup, atomically install the validated
+        file, and restart a previously running managed server
+      parameters:
+      - description: WorldOption settings
+        in: body
+        name: settings
+        required: true
+        schema:
+          $ref: '#/definitions/api.WorldOptionSyncRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.WorldOptionSyncResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Generate or synchronize WorldOption.sav
       tags:
       - Server
   /api/sync:

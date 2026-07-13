@@ -50,7 +50,11 @@
 
 - [x] 可視化マップ管理です
 - [x] ホワイトリスト管理
-- [x] アーカイブ自動バックアップと管理です
+- [x] ゲーム標準の `backup/world` の検出、検証、安全な復元
+- [x] `PalWorldSettings.ini` の直接編集と WorldOption の検出、安全な生成・同期
+- [x] process、Docker、systemd、Windows サービスの制限付き起動・停止・再起動
+- [x] 認証付き RCON 端末と Palworld 1.0.0 公式 13 コマンドのテンプレート
+- [x] 危険なセーブ操作前の PST セーフティ復元ポイント
 
 このツールは公式 REST API と Level.sav の同期データを bbolt に保存し、管理画面から利用できます。
 
@@ -78,7 +82,7 @@ https://github.com/zaigie/palworld-server-tool/assets/17232619/afdf485c-4b34-491
 
 オンラインプレイヤーの同期とサーバー管理操作には、公式 REST API を有効にする必要があります。
 
-マニュアルがある方が良いですが、ない場合は、最初にサービス側を閉じて、 [Pal-Conf](https://pal-conf.bluefissure.com/) `PalWorldSettings.ini` ファイルや`WorldOption.sav` ファイルをパルコンフで修正して、サービス側を有効にします。
+設定ページから `PalWorldSettings.ini` を直接読み込み、検証して書き戻せます。`WorldOption.sav` がある場合は上書き関係を表示し、サーバー停止、完全バックアップ、無損失検証の後に保存済みの 1.0.0 設定を安全に同期できます。ファイルがない場合は、チェックサム固定の 1.0.0 ベースから生成できます。
 
 最初に**管理者パスワード**を設定します
 
@@ -120,7 +124,7 @@ https://github.com/zaigie/palworld-server-tool/assets/17232619/afdf485c-4b34-491
 
 ```bash
 # pst_{version}_{platform}_{arch}.tar.gz ファイルをダウンロードしてpstディレクトリに解凍します
-mkdir -p pst && tar -xzf pst_v1.2.0_linux_x86_64.tar.gz -C pst
+mkdir -p pst && tar -xzf pst_v1.3.0_linux_x86_64.tar.gz -C pst
 ```
 
 ##### 設定
@@ -209,6 +213,10 @@ mkdir -p pst && tar -xzf pst_v1.2.0_linux_x86_64.tar.gz -C pst
 > Palworld 1.0.0 には標準のワールドバックアップがあるため、通常の復元にはゲーム側のバックアップを使い、PST の `save.backup_interval` は既定で `0` になりました。プレイヤーまたはパルのセーブ編集前に作成する必須の安全バックアップは引き続き有効です。
 >
 > `palworld.config_path` は PST からローカルに参照できる `PalWorldSettings.ini` を指定します。Web 書き込みではダイジェスト確認、旧ファイルのバックアップ、原子的置換を行います。`palworld.control` は任意のシェルを実行せず、`process`、`docker`、`systemd`、`windows_service` の制限されたドライバーだけをサポートします。
+>
+> バックアップ画面は現在のワールドの `backup/world/<timestamp>` を直接読み取ります。復元時は全ファイルを再ハッシュし、サーバーを停止し、現在のワールドを含む PST 復元ポイントを作成してから、同一ファイルシステム上でロールバック可能な置換を行います。ローカルの `save.path` が必要です。
+>
+> WorldOption の生成・同期はサーバー INI に保存済みの設定だけを受け付け、固定された Palworld 1.0.0 型メタデータを使用します。停止、完全復元ポイント、無損失検証、原子的インストールが必須です。
 
 ##### 実行
 
@@ -253,7 +261,7 @@ kill $(ps aux | grep 'pst' | awk '{print $2}') | head -n 1
 
 ##### ダウンロードと解凍
 
-`pst_v1.2.0_windows_x86_64.zip`を任意のディレクトリに解凍します（`pst`というディレクトリ名を推奨）。
+`pst_v1.3.0_windows_x86_64.zip`を任意のディレクトリに解凍します（`pst`というディレクトリ名を推奨）。
 
 ##### 設定
 
@@ -432,7 +440,7 @@ touch pst.db
 |         SAVE\_\_PATH          |           ""            |    文字列    |       ゲームの存档ファイルのパス **コンテナ内のパスとして必ず記入してください**        |
 |      SAVE\_\_DECODE_PATH      |     "/app/sav_cli"      |    文字列    |              ⚠️ コンテナ内蔵、変更禁止、存档解析ツールのエラーになります               |
 |     SAVE\_\_SYNC_INTERVAL     |           600           |     数値     |                          プレイヤーの存档データを同期する間隔                          |
-|    SAVE\_\_BACKUP_INTERVAL    |          14400          |     数値     |                           アーカイブ自動バックアップ間隔です                           |
+|    SAVE\_\_BACKUP_INTERVAL    |            0            |     数値     | ゲーム標準バックアップを優先し、0 より大きい場合のみ PST 周期バックアップを追加します |
 |   SAVE\_\_BACKUP_KEEP_DAYS    |            7            |     数値     |                      アーカイブ自動バックアップを保持する日数です                      |
 | MANAGE\_\_KICK_NON_WHITELIST  |          false          | ブール値です |            プレイヤーがホワイトリストにない場合に自動的にキックするかどうか            |
 
@@ -512,7 +520,7 @@ touch pst.db
 |         SAVE\_\_PATH          |           ""            |    文字列    | pst-agent があるサービスのアドレス、形式は<br> http://{ゲームサーバー IP}:{Agent ポート}/sync |
 |      SAVE\_\_DECODE_PATH      |     "/app/sav_cli"      |    文字列    |                  ⚠️ コンテナ内蔵、変更禁止、存档解析ツールのエラーになります                  |
 |     SAVE\_\_SYNC_INTERVAL     |           600           |     数値     |                             プレイヤーの存档データを同期する間隔                              |
-|    SAVE\_\_BACKUP_INTERVAL    |          14400          |     数値     |                              アーカイブ自動バックアップ間隔です                               |
+|    SAVE\_\_BACKUP_INTERVAL    |            0            |     数値     | ゲーム標準バックアップを優先し、0 より大きい場合のみ PST 周期バックアップを追加します |
 |   SAVE\_\_BACKUP_KEEP_DAYS    |            7            |     数値     |                         アーカイブ自動バックアップを保持する日数です                          |
 | MANAGE\_\_KICK_NON_WHITELIST  |          false          | ブール値です |               プレイヤーがホワイトリストにない場合に自動的にキックするかどうか                |
 

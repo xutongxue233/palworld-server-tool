@@ -37,6 +37,9 @@ func CopyDir(srcDir, dstDir string) error {
 		if err != nil {
 			return err
 		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("refusing to copy symbolic link %q", path)
+		}
 		relPath, err := filepath.Rel(srcDir, path)
 		if err != nil {
 			return err
@@ -45,16 +48,33 @@ func CopyDir(srcDir, dstDir string) error {
 		if info.IsDir() {
 			return os.MkdirAll(dstPath, os.ModePerm)
 		}
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("refusing to copy non-regular file %q", path)
+		}
 		return CopyFile(path, dstPath)
 	})
 }
 
 func CopyFile(srcFile, destFile string) error {
+	linkInfo, err := os.Lstat(srcFile)
+	if err != nil {
+		return err
+	}
+	if linkInfo.Mode()&os.ModeSymlink != 0 || !linkInfo.Mode().IsRegular() {
+		return fmt.Errorf("source %q must be a regular file", srcFile)
+	}
 	input, err := os.Open(srcFile)
 	if err != nil {
 		return err
 	}
 	defer input.Close()
+	openedInfo, err := input.Stat()
+	if err != nil {
+		return err
+	}
+	if !openedInfo.Mode().IsRegular() || !os.SameFile(linkInfo, openedInfo) {
+		return fmt.Errorf("source %q changed while it was opened", srcFile)
+	}
 
 	output, err := os.Create(destFile)
 	if err != nil {
@@ -71,13 +91,17 @@ func ZipDir(srcDir, zipFilePath string) error {
 	if err != nil {
 		return err
 	}
-	defer zipFile.Close()
-
 	archive := zip.NewWriter(zipFile)
 
 	err = filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("refusing to archive symbolic link %q", path)
+		}
+		if !info.IsDir() && !info.Mode().IsRegular() {
+			return fmt.Errorf("refusing to archive non-regular file %q", path)
 		}
 
 		header, err := zip.FileInfoHeader(info)
@@ -112,6 +136,12 @@ func ZipDir(srcDir, zipFilePath string) error {
 	})
 	if closeErr := archive.Close(); err == nil {
 		err = closeErr
+	}
+	if closeErr := zipFile.Close(); err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		_ = os.Remove(zipFilePath)
 	}
 	return err
 }

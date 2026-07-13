@@ -3,6 +3,9 @@
 This directory contains the Palworld Server Tool adapter used to extract the
 player and guild model expected by the Go API. It also exposes explicit
 `export`, `rebuild`, `validate`, and `roundtrip` modes for offline save editing.
+It also provides a Palworld 1.0.0 `sync-world-option` mode used by the Go
+service to generate or synchronize `WorldOption.sav` without overwriting the
+source file.
 
 The save parser and writer are built from `palsav-flex` in
 `deafdudecomputers/PalworldSaveTools` commit
@@ -16,6 +19,11 @@ process.
 
 The original input save is never overwritten by the editing modes. Rebuilt
 saves are parsed again before the command succeeds.
+
+The WorldOption base template and setting type metadata are derived from
+Bluefissure/pal-conf's Palworld 1.0.0 configuration at the pinned commit listed
+in [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md). The template checksum,
+metadata checksum, game version, and entry count are verified during builds.
 
 ## Offline editing workflow
 
@@ -34,6 +42,12 @@ editing. Do not replace a live `Level.sav` while the server is running.
 
 # Verify decompression and recompression without changing the GVAS payload.
 .\sav_cli.exe --mode roundtrip --file .\Level.sav --output .\Level.roundtrip.sav
+
+# Generate a separate WorldOption.sav from a validated server INI.
+.\sav_cli.exe --mode sync-world-option `
+  --file .\missing-WorldOption.sav `
+  --settings-file .\PalWorldSettings.ini `
+  --output .\WorldOption.generated.sav
 ```
 
 The default `structure` mode is reserved for PST's scheduled synchronization

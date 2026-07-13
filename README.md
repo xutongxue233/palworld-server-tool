@@ -54,8 +54,11 @@
 
 - [x] 可视化地图管理
 - [x] 白名单管理
-- [x] 存档自动备份与管理
-- [x] 受 Web 管理认证保护的 RCON 命令终端
+- [x] 发现、校验并安全恢复游戏自带的 `backup/world` 世界备份
+- [x] 直接编辑 `PalWorldSettings.ini`，检测并安全生成/同步 `WorldOption.sav`
+- [x] 进程、Docker、systemd 与 Windows 服务的受限启停/重启
+- [x] 受 Web 管理认证保护的 RCON 命令终端和全部 13 条 1.0.0 官方命令模板
+- [x] 危险存档操作前自动创建 PST 安全恢复点
 
 ### 存档校验与离线编辑
 
@@ -109,7 +112,7 @@ https://github.com/zaigie/palworld-server-tool/assets/17232619/afdf485c-4b34-491
 
 服务端 REST API 的字段与行为以 [Pocketpair 官方服务端文档](https://docs.palworldgame.com/category/rest-api) 为准。
 
-如果你的私服教程有写更好，没有的话，请先关闭服务端，然后在 [Pal-Conf](https://pal-conf.bluefissure.com/) 修改 `PalWorldSettings.ini` 文件或者 `WorldOption.sav` 文件并放到相应位置，启用服务端。
+配置页可以直接读取、校验并写回 `PalWorldSettings.ini`。检测到 `WorldOption.sav` 时会明确提示覆盖关系，并可在停服、完整备份和无损校验后，把已经保存的 1.0.0 配置安全同步到现有文件；没有文件时也可从固定校验的 1.0.0 基准生成。
 
 先设置 **管理员密码**
 
@@ -176,7 +179,7 @@ RCON 端口只应向 PST 所在主机或受信任网络开放。`use_base64` 仅
 
 ```bash
 # 下载 pst_{version}_{platform}_{arch}.tar.gz 文件并解压到 pst 目录
-mkdir -p pst && tar -xzf pst_v1.2.0_linux_x86_64.tar.gz -C pst
+mkdir -p pst && tar -xzf pst_v1.3.0_linux_x86_64.tar.gz -C pst
 ```
 
 ##### 配置
@@ -267,6 +270,10 @@ mkdir -p pst && tar -xzf pst_v1.2.0_linux_x86_64.tar.gz -C pst
 > Palworld 1.0.0 已自带世界存档备份，日常恢复建议直接使用游戏备份，因此 PST 的 `save.backup_interval` 默认改为 `0`。PST 仍会在修改玩家/帕鲁存档前强制创建安全备份，不受此设置影响。
 >
 > `palworld.config_path` 仅支持 PST 本机可访问的 `PalWorldSettings.ini`。Web UI 写入时会校验文件摘要、备份旧文件并原子替换。`palworld.control` 不执行任意 Shell，只支持 `process`、`docker`、`systemd`、`windows_service` 四种受限驱动。
+>
+> 备份页会直接读取当前世界的 `backup/world/<时间戳>`。恢复会先复核每个文件的 SHA-256、停止服务器、创建包含当前世界的 PST 恢复点，再通过同文件系统事务替换并在失败时回滚；只支持本地 `save.path`。若服务器原本正在运行且已配置受限控制驱动，恢复完成后可自动启动。
+>
+> `WorldOption.sav` 生成/同步只接受已经写入服务器 INI 的配置，固定使用 Palworld 1.0.0 类型元数据；操作同样要求停服、完整恢复点、重建后无损校验和原子安装。世界文件不支持的服务器专用字段会保留在 INI，并在结果中列出。
 
 ##### 运行
 
@@ -311,7 +318,7 @@ kill $(ps aux | grep 'pst' | awk '{print $2}') | head -n 1
 
 ##### 下载解压
 
-解压 `pst_v1.2.0_windows_x86_64.zip` 到任意目录（推荐命名文件夹目录名称为 `pst`）
+解压 `pst_v1.3.0_windows_x86_64.zip` 到任意目录（推荐命名文件夹目录名称为 `pst`）
 
 ##### 配置
 
@@ -490,7 +497,7 @@ touch pst.db
 |         SAVE\_\_PATH          |           ""            | 文本 |    游戏存档所在路径 **请务必填写为容器内的路径**     |
 |      SAVE\_\_DECODE_PATH      |     "/app/sav_cli"      | 文本 |    ⚠️ 容器内置，禁止修改，会导致存档解析工具错误     |
 |     SAVE\_\_SYNC_INTERVAL     |           600           | 数字 |                同步玩家存档数据的间隔                |
-|    SAVE\_\_BACKUP_INTERVAL    |          14400          | 数字 |              自动备份玩家存档数据的间隔              |
+|    SAVE\_\_BACKUP_INTERVAL    |            0            | 数字 | 游戏已有日常备份；设置大于 0 才额外启用 PST 周期备份 |
 |   SAVE\_\_BACKUP_KEEP_DAYS    |            7            | 数字 |            自动备份玩家存档数据的保留天数            |
 | MANAGE\_\_KICK_NON_WHITELIST  |          false          | 布尔 |        当检测到玩家不在白名单却在线时自动踢出        |
 
@@ -575,7 +582,7 @@ touch pst.db
 |         SAVE\_\_PATH          |           ""            | 文本 | pst-agent 所在服务地址，格式为<br> http://{游戏服务器 IP}:{Agent 端口}/sync |
 |      SAVE\_\_DECODE_PATH      |     "/app/sav_cli"      | 文本 |                ⚠️ 容器内置，禁止修改，会导致存档解析工具错误                |
 |     SAVE\_\_SYNC_INTERVAL     |           600           | 数字 |                           同步玩家存档数据的间隔                            |
-|    SAVE\_\_BACKUP_INTERVAL    |          14400          | 数字 |                         自动备份玩家存档数据的间隔                          |
+|    SAVE\_\_BACKUP_INTERVAL    |            0            | 数字 |             游戏已有日常备份；设置大于 0 才额外启用 PST 周期备份             |
 |   SAVE\_\_BACKUP_KEEP_DAYS    |            7            | 数字 |                       自动备份玩家存档数据的保留天数                        |
 |                               |                         |      |                                                                             |
 | MANAGE\_\_KICK_NON_WHITELIST  |          false          | 布尔 |                   当检测到玩家不在白名单却在线时自动踢出                    |

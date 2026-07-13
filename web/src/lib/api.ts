@@ -11,6 +11,8 @@ import type {
   GameConfigWriteResult,
   GiveItemResult,
   InventoryContainer,
+  NativeBackupListResult,
+  NativeBackupRestoreResult,
   Player,
   PlayerSummary,
   RenamePalResult,
@@ -22,6 +24,7 @@ import type {
   UnlockPlayerMapProgressResult,
   WhitelistPlayer,
   WorldSnapshot,
+  WorldOptionSyncResult,
 } from "@/types/api";
 
 export const TOKEN_KEY = "palworld_token";
@@ -136,12 +139,21 @@ export const api = {
     request<ServerMetrics>("/api/server/metrics", { auth: false }),
   getSettings: () => request<Record<string, unknown>>("/api/server/settings"),
   getWorldSnapshot: () => request<WorldSnapshot>("/api/server/game-data"),
-  getGameConfigFile: () =>
-    request<GameConfigFile>("/api/server/config-file"),
+  getGameConfigFile: () => request<GameConfigFile>("/api/server/config-file"),
   putGameConfigFile: (content: string, expectedSha256: string) =>
     request<GameConfigWriteResult>("/api/server/config-file", {
       method: "PUT",
       body: { content, expected_sha256: expectedSha256 },
+    }),
+  syncWorldOption: (content: string, expectedSha256 = "") =>
+    request<WorldOptionSyncResult>("/api/server/world-option", {
+      method: "PUT",
+      body: {
+        content,
+        expected_sha256: expectedSha256,
+        confirm_sync: true,
+        shutdown_seconds: 10,
+      },
     }),
   getServerControlStatus: () =>
     request<ServerControlStatus>("/api/server/control/status"),
@@ -383,6 +395,25 @@ export const api = {
     }),
   getBackups: (startTime?: number, endTime?: number) =>
     request<Backup[]>(`/api/backup${buildQuery({ startTime, endTime })}`),
+  getNativeBackups: () =>
+    request<NativeBackupListResult>("/api/server/backups/native"),
+  restoreNativeBackup: (
+    backupId: string,
+    expectedDigest: string,
+    restartAfter: boolean,
+  ) =>
+    request<NativeBackupRestoreResult>(
+      `/api/server/backups/native/${encodeURIComponent(backupId)}/restore`,
+      {
+        method: "POST",
+        body: {
+          expected_digest: expectedDigest,
+          confirm_restore: true,
+          restart_after: restartAfter,
+          shutdown_seconds: 10,
+        },
+      },
+    ),
   downloadBackup: (backupId: string) =>
     request<Blob>(`/api/backup/${encodeURIComponent(backupId)}`, {
       responseType: "blob",

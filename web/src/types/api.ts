@@ -28,6 +28,35 @@ export interface GameConfigFile {
   content?: string;
   sha256?: string;
   modified_at?: string;
+  world_option: WorldOptionOverrideStatus;
+}
+
+export interface WorldOptionOverrideStatus {
+  supported: boolean;
+  present: boolean;
+  path?: string;
+  size_bytes?: number;
+  sha256?: string;
+  modified_at?: string;
+  message?: string;
+}
+
+export interface WorldOptionMutation {
+  created: boolean;
+  game_version: string;
+  updated_keys: string[];
+  skipped_keys: string[];
+  settings_digest: string;
+  sha256: string;
+  modified_at: string;
+}
+
+export interface WorldOptionSyncResult {
+  world_option: WorldOptionMutation;
+  safety_backup: Backup;
+  maintenance: MaintenanceStopResult;
+  restarted: boolean;
+  restart_error?: string;
 }
 
 export interface GameConfigWriteResult {
@@ -162,6 +191,45 @@ export interface Backup {
   backup_id: string;
   save_time: string;
   path: string;
+}
+
+export interface NativeBackup {
+  backup_id: string;
+  created_at: string;
+  modified_at: string;
+  size_bytes: number;
+  file_count: number;
+  player_files: number;
+  has_world_option: boolean;
+  digest: string;
+  valid: boolean;
+  issues?: string[];
+}
+
+export interface NativeBackupCatalog {
+  configured: boolean;
+  available: boolean;
+  world_id?: string;
+  backups: NativeBackup[];
+}
+
+export interface NativeBackupListResult {
+  native_backups: NativeBackupCatalog;
+  server_control: ServerControlStatus;
+}
+
+export interface MaintenanceStopResult {
+  was_running: boolean;
+  can_restart: boolean;
+}
+
+export interface NativeBackupRestoreResult {
+  restored_backup: NativeBackup;
+  safety_backup: Backup;
+  maintenance: MaintenanceStopResult;
+  sync_error?: string;
+  restarted: boolean;
+  restart_error?: string;
 }
 
 export type InventoryContainer =

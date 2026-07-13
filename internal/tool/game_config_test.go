@@ -77,6 +77,50 @@ func TestGameConfigReportsUnconfigured(t *testing.T) {
 	}
 }
 
+func TestGameConfigDetectsWorldOptionOverride(t *testing.T) {
+	tempDir := t.TempDir()
+	configPath := filepath.Join(tempDir, "PalWorldSettings.ini")
+	worldDir := filepath.Join(tempDir, "Saved", "SaveGames", "0", "WORLD")
+	if err := os.MkdirAll(worldDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(configPath, []byte(testPalWorldSettings), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(worldDir, "Level.sav"), []byte("level"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	worldOptionPath := filepath.Join(worldDir, "WorldOption.sav")
+	if err := os.WriteFile(worldOptionPath, []byte("override"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	viper.Reset()
+	t.Cleanup(viper.Reset)
+	viper.Set("palworld.config_path", configPath)
+	viper.Set("save.path", worldDir)
+
+	result, err := ReadGameConfigFile()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.WorldOption.Supported || !result.WorldOption.Present ||
+		result.WorldOption.Path != worldOptionPath || result.WorldOption.SizeBytes != int64(len("override")) ||
+		result.WorldOption.ModifiedAt == nil || len(result.WorldOption.SHA256) != 64 {
+		t.Fatalf("WorldOption.sav override was not detected: %#v", result.WorldOption)
+	}
+
+	if err := os.Remove(worldOptionPath); err != nil {
+		t.Fatal(err)
+	}
+	result, err = ReadGameConfigFile()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.WorldOption.Supported || result.WorldOption.Present || result.WorldOption.Path != worldOptionPath {
+		t.Fatalf("unexpected absent WorldOption.sav status: %#v", result.WorldOption)
+	}
+}
+
 func TestGameConfigValidationRejectsIncompleteOrEmptyOptions(t *testing.T) {
 	for _, content := range []string{
 		"[/Script/Pal.PalGameWorldSettings]\nOptionSettings=(ServerName=\"Test\"\n",

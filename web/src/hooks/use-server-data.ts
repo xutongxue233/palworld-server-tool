@@ -16,6 +16,7 @@ export const queryKeys = {
   whitelist: ["whitelist"] as const,
   backups: (startTime?: number, endTime?: number) =>
     ["backups", startTime, endTime] as const,
+  nativeBackups: ["backups", "native"] as const,
 };
 
 export function useServerInfo() {

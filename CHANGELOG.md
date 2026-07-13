@@ -4,6 +4,38 @@
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-07-13
+
+### 新增
+
+- RCON 快捷模板覆盖 Palworld 1.0.0 官方命令表全部 13 条命令，按查询、世界与消息、玩家管理、服务器和控制台会话分组。
+- 带参数的命令会自动选中首个占位符，方便直接输入 SteamID、消息或管理员密码；高风险命令仅填充且明确标色，不会一键执行。
+- 备份页直接发现并校验当前世界 `backup/world/<时间戳>` 下的游戏原生备份，显示大小、玩家档案数、`WorldOption.sav` 状态和不可恢复原因。
+- 新增原生备份安全恢复事务：停服前预检、每个文件 SHA-256、恢复前完整 PST 安全备份、同文件系统暂存、原子替换、失败回滚、可选自动启动和存档重新同步。
+- 配置页检测活动世界中的 `WorldOption.sav`、显示摘要和覆盖警告，并可从已经保存的 INI 安全生成或同步 Palworld 1.0.0 世界配置。
+- `sav_cli` 新增 `sync-world-option` 模式，支持布尔、整数、浮点、字符串、枚举和跨平台枚举数组，重建后执行 GVAS 无损往返和目标字段校验。
+
+### 变更
+
+- 日常恢复明确以游戏自带备份为主；PST 压缩备份定位为存档编辑、原生恢复和 WorldOption 写入前的强制恢复点。
+- 原本正在运行且配置了受限控制驱动的服务器，在原生恢复或 WorldOption 同步完成后自动恢复运行状态；未配置托管控制时不会在在线状态下自动执行 WorldOption 写入。
+- 发布包新增第三方声明，记录 Pal-Conf 1.0.0 基准模板和类型元数据的固定提交及 MIT 许可证。
+
+### 修复
+
+- 原生备份摘要现在覆盖快照内每个文件的内容，不再仅完整哈希 `Level.sav`；摘要不依赖不稳定的文件时间戳。
+- 原生恢复在停服前先复核所选快照，避免过期或无效选择造成不必要停机。
+- 原生恢复会比较暂存副本与所选快照的完整摘要，并强制 `Level.sav`、`LevelMeta.sav`、`Players` 与 `WorldOption.sav` 使用正确的文件类型。
+- 安全备份压缩失败时会删除残留的半成品归档。
+- 使用用户提供的 9,449 字节真实 Palworld 1.0.0 玩家存档验证技术点编辑、重压缩和无损校验，不再复现 `Player save does not contain SaveData`。
+
+### 安全
+
+- 原生备份拒绝符号链接、非普通文件、未知顶层条目和变更中的快照；恢复只处理 `Level.sav`、`LevelMeta.sav`、`Players` 与可选 `WorldOption.sav`，保留游戏的 `backup` 目录。
+- 存档安全备份与目录复制拒绝符号链接和非普通文件，避免把世界目录外的内容带入恢复包。
+- WorldOption 生成/同步固定校验 1.0.0 模板 SHA-256、元数据 SHA-256、来源提交、109 个允许字段和已知枚举值，不接受任意属性或远程 Shell。
+- WorldOption 写入要求停止服务器、验证旧文件摘要、创建完整存档恢复点，并使用原子替换或不覆盖现有目标的同文件系统硬链接安装。
+
 ## [1.2.0] - 2026-07-13
 
 ### 新增
@@ -101,7 +133,8 @@
 - 替换程序前应停止 PST 和 Palworld 服务端，并备份 `config.yaml`、数据库与整个世界存档目录。
 - 不要将 JSON 重建后的存档直接覆盖正在运行的 `Level.sav`。
 
-[Unreleased]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/xutongxue233/palworld-server-tool/releases/tag/v1.0.0
