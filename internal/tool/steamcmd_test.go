@@ -153,7 +153,7 @@ func TestInspectSteamCMDRejectsSymbolicLinks(t *testing.T) {
 	if plan.CanExecute {
 		t.Fatalf("symbolic-link install path was accepted: %#v", plan)
 	}
-	assertSteamIssue(t, plan, "symbolic-link")
+	assertSteamIssue(t, plan, "must be a real directory")
 }
 
 func TestInspectSteamCMDRejectsSymbolicLinksInsideInstallation(t *testing.T) {
