@@ -2445,6 +2445,157 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/server/mods": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Read Mods/PalModSettings.ini, scan local Workshop Info.json packages, validate IsServer rules and dependencies, and report deployment state without downloading or executing mod content",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Server"
+                ],
+                "summary": "Inspect Palworld 1.0.0 official server mods",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/tool.OfficialModStatus"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/server/mods/apply": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Revalidate the fixed plan, stop the server, create a mandatory world restore point when saves exist, back up PalModSettings.ini, atomically replace it, optionally restart, and roll back settings if the managed restart fails",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Server"
+                ],
+                "summary": "Apply official Palworld mod settings safely",
+                "parameters": [
+                    {
+                        "description": "Confirmed official mod settings change",
+                        "name": "settings",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.OfficialModApplyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.OfficialModApplyResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.OfficialModApplyErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/api.OfficialModApplyErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/api.OfficialModApplyErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.OfficialModApplyErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/server/mods/preflight": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Validate the proposed Workshop root, active PackageName list, server InstallRules, dependencies, current settings digest, save recovery readiness, and server control state without changing files",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Server"
+                ],
+                "summary": "Preflight an official Palworld mod selection",
+                "parameters": [
+                    {
+                        "description": "Desired official mod settings",
+                        "name": "settings",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.OfficialModSettingsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.OfficialModPreflightResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/server/restart": {
             "post": {
                 "security": [
@@ -3468,6 +3619,123 @@ const docTemplate = `{
                 },
                 "sync_error": {
                     "type": "string"
+                }
+            }
+        },
+        "api.OfficialModApplyErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "result": {
+                    "$ref": "#/definitions/api.OfficialModApplyResponse"
+                }
+            }
+        },
+        "api.OfficialModApplyRequest": {
+            "type": "object",
+            "required": [
+                "expected_plan_digest"
+            ],
+            "properties": {
+                "active_mod_list": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "confirm_apply": {
+                    "type": "boolean"
+                },
+                "confirm_mod_risk": {
+                    "type": "boolean"
+                },
+                "confirm_server_stopped": {
+                    "type": "boolean"
+                },
+                "expected_plan_digest": {
+                    "type": "string"
+                },
+                "global_enabled": {
+                    "type": "boolean"
+                },
+                "restart_after": {
+                    "type": "boolean"
+                },
+                "shutdown_message": {
+                    "type": "string",
+                    "maxLength": 256
+                },
+                "shutdown_seconds": {
+                    "type": "integer",
+                    "maximum": 300,
+                    "minimum": 0
+                },
+                "workshop_root_dir": {
+                    "type": "string",
+                    "maxLength": 4096
+                }
+            }
+        },
+        "api.OfficialModApplyResponse": {
+            "type": "object",
+            "properties": {
+                "apply": {
+                    "$ref": "#/definitions/tool.OfficialModApplyResult"
+                },
+                "maintenance": {
+                    "$ref": "#/definitions/tool.MaintenanceStopResult"
+                },
+                "recovery_restart_error": {
+                    "type": "string"
+                },
+                "recovery_restarted": {
+                    "type": "boolean"
+                },
+                "restart_error": {
+                    "type": "string"
+                },
+                "restarted": {
+                    "type": "boolean"
+                },
+                "rollback_error": {
+                    "type": "string"
+                },
+                "safety_backup": {
+                    "$ref": "#/definitions/database.Backup"
+                }
+            }
+        },
+        "api.OfficialModPreflightResponse": {
+            "type": "object",
+            "properties": {
+                "plan": {
+                    "$ref": "#/definitions/tool.OfficialModChangePlan"
+                },
+                "server_control": {
+                    "$ref": "#/definitions/tool.ServerControlStatus"
+                }
+            }
+        },
+        "api.OfficialModSettingsRequest": {
+            "type": "object",
+            "properties": {
+                "active_mod_list": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "global_enabled": {
+                    "type": "boolean"
+                },
+                "workshop_root_dir": {
+                    "type": "string",
+                    "maxLength": 4096
                 }
             }
         },
@@ -5022,6 +5290,341 @@ const docTemplate = `{
                 },
                 "world_id": {
                     "type": "string"
+                }
+            }
+        },
+        "tool.OfficialModApplyResult": {
+            "type": "object",
+            "properties": {
+                "applied_at": {
+                    "type": "string"
+                },
+                "changed": {
+                    "type": "boolean"
+                },
+                "created": {
+                    "type": "boolean"
+                },
+                "plan": {
+                    "$ref": "#/definitions/tool.OfficialModChangePlan"
+                },
+                "previous_exists": {
+                    "type": "boolean"
+                },
+                "previous_sha256": {
+                    "type": "string"
+                },
+                "recovery_path": {
+                    "type": "string"
+                },
+                "restart_required": {
+                    "type": "boolean"
+                },
+                "rollback_at": {
+                    "type": "string"
+                },
+                "rolled_back": {
+                    "type": "boolean"
+                },
+                "settings_sha256": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/tool.OfficialModStatus"
+                }
+            }
+        },
+        "tool.OfficialModChangePlan": {
+            "type": "object",
+            "properties": {
+                "can_apply": {
+                    "type": "boolean"
+                },
+                "changed": {
+                    "type": "boolean"
+                },
+                "changes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "desired_settings": {
+                    "$ref": "#/definitions/tool.OfficialModSettings"
+                },
+                "issues": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/tool.OfficialModDiagnostic"
+                    }
+                },
+                "plan_digest": {
+                    "type": "string"
+                },
+                "safety_backup_ready": {
+                    "type": "boolean"
+                },
+                "safety_backup_required": {
+                    "type": "boolean"
+                },
+                "status": {
+                    "$ref": "#/definitions/tool.OfficialModStatus"
+                },
+                "target_inventory": {
+                    "$ref": "#/definitions/tool.OfficialModInventory"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/tool.OfficialModDiagnostic"
+                    }
+                }
+            }
+        },
+        "tool.OfficialModDiagnostic": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "dependency": {
+                    "type": "string"
+                },
+                "folder_name": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "package_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "tool.OfficialModInventory": {
+            "type": "object",
+            "properties": {
+                "issues": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/tool.OfficialModDiagnostic"
+                    }
+                },
+                "packages": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/tool.OfficialModPackage"
+                    }
+                },
+                "unknown_active_mods": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/tool.OfficialModDiagnostic"
+                    }
+                },
+                "workshop_available": {
+                    "type": "boolean"
+                },
+                "workshop_root": {
+                    "type": "string"
+                },
+                "workshop_source": {
+                    "type": "string"
+                }
+            }
+        },
+        "tool.OfficialModPackage": {
+            "type": "object",
+            "properties": {
+                "author": {
+                    "type": "string"
+                },
+                "debug_mode": {
+                    "type": "boolean"
+                },
+                "dependencies": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "deployed": {
+                    "type": "boolean"
+                },
+                "effective_enabled": {
+                    "type": "boolean"
+                },
+                "folder_name": {
+                    "type": "string"
+                },
+                "info_path": {
+                    "type": "string"
+                },
+                "info_sha256": {
+                    "type": "string"
+                },
+                "install_types": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "issues": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/tool.OfficialModDiagnostic"
+                    }
+                },
+                "listed": {
+                    "type": "boolean"
+                },
+                "min_revision": {
+                    "type": "integer"
+                },
+                "mod_name": {
+                    "type": "string"
+                },
+                "package_name": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "pending_removal": {
+                    "type": "boolean"
+                },
+                "pending_restart": {
+                    "type": "boolean"
+                },
+                "server_compatible": {
+                    "type": "boolean"
+                },
+                "server_install_types": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "thumbnail": {
+                    "type": "string"
+                },
+                "valid": {
+                    "type": "boolean"
+                },
+                "version": {
+                    "type": "string"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/tool.OfficialModDiagnostic"
+                    }
+                },
+                "workshop_item_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "tool.OfficialModSettings": {
+            "type": "object",
+            "properties": {
+                "active_mod_list": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "global_enabled": {
+                    "type": "boolean"
+                },
+                "workshop_root_dir": {
+                    "type": "string"
+                }
+            }
+        },
+        "tool.OfficialModStatus": {
+            "type": "object",
+            "properties": {
+                "configured": {
+                    "type": "boolean"
+                },
+                "existing_worlds": {
+                    "type": "integer"
+                },
+                "forced_disabled": {
+                    "type": "boolean"
+                },
+                "game_version": {
+                    "type": "string"
+                },
+                "install_dir": {
+                    "type": "string"
+                },
+                "install_dir_source": {
+                    "type": "string"
+                },
+                "inventory": {
+                    "$ref": "#/definitions/tool.OfficialModInventory"
+                },
+                "issues": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/tool.OfficialModDiagnostic"
+                    }
+                },
+                "launch_workshop_root": {
+                    "type": "string"
+                },
+                "launcher_path": {
+                    "type": "string"
+                },
+                "manageable": {
+                    "type": "boolean"
+                },
+                "platform": {
+                    "type": "string"
+                },
+                "safety_backup_ready": {
+                    "type": "boolean"
+                },
+                "save_path": {
+                    "type": "string"
+                },
+                "settings": {
+                    "$ref": "#/definitions/tool.OfficialModSettings"
+                },
+                "settings_exists": {
+                    "type": "boolean"
+                },
+                "settings_path": {
+                    "type": "string"
+                },
+                "settings_sha256": {
+                    "type": "string"
+                },
+                "status_digest": {
+                    "type": "string"
+                },
+                "supported": {
+                    "type": "boolean"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/tool.OfficialModDiagnostic"
+                    }
                 }
             }
         },

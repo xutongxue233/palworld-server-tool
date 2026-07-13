@@ -5,6 +5,7 @@ import {
   Download,
   FolderInput,
   LockKeyhole,
+  Puzzle,
   RadioTower,
   ShieldCheck,
 } from "lucide-react";
@@ -21,6 +22,7 @@ import { AutomationPanel } from "@/features/operations/automation-panel";
 import { ServerControls } from "@/features/operations/server-controls";
 import { SaveMigrationPanel } from "@/features/operations/save-migration-panel";
 import { SteamCMDPanel } from "@/features/operations/steamcmd-panel";
+import { OfficialModsPanel } from "@/features/operations/official-mods-panel";
 import { WhitelistPanel } from "@/features/operations/whitelist-panel";
 
 export default function OperationsView() {
@@ -75,6 +77,9 @@ export default function OperationsView() {
               <TabsTrigger value="deployment">
                 <Download /> {t("operations.deployment")}
               </TabsTrigger>
+              <TabsTrigger value="mods">
+                <Puzzle /> {t("operations.mods")}
+              </TabsTrigger>
               <TabsTrigger value="migration">
                 <FolderInput /> {t("operations.migration")}
               </TabsTrigger>
@@ -95,6 +100,9 @@ export default function OperationsView() {
             </TabsContent>
             <TabsContent value="deployment" className="m-0">
               <SteamCMDPanel />
+            </TabsContent>
+            <TabsContent value="mods" className="m-0">
+              <OfficialModsPanel />
             </TabsContent>
             <TabsContent value="migration" className="m-0">
               <SaveMigrationPanel />

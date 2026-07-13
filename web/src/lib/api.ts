@@ -16,6 +16,11 @@ import type {
   InventoryContainer,
   NativeBackupListResult,
   NativeBackupRestoreResult,
+  OfficialModApplyRequest,
+  OfficialModApplyResult,
+  OfficialModPreflightResult,
+  OfficialModSettings,
+  OfficialModStatus,
   Player,
   PlayerSummary,
   RenamePalResult,
@@ -175,6 +180,17 @@ export const api = {
     request<SteamCMDUpdateResult>("/api/server/steamcmd/update", {
       method: "POST",
       body: update,
+    }),
+  getOfficialMods: () => request<OfficialModStatus>("/api/server/mods"),
+  preflightOfficialMods: (settings: OfficialModSettings) =>
+    request<OfficialModPreflightResult>("/api/server/mods/preflight", {
+      method: "POST",
+      body: settings,
+    }),
+  applyOfficialMods: (settings: OfficialModApplyRequest) =>
+    request<OfficialModApplyResult>("/api/server/mods/apply", {
+      method: "POST",
+      body: settings,
     }),
   preflightSaveMigration: (source: SaveMigrationPreflightRequest) =>
     request<SaveMigrationPreflightResult>("/api/server/migration/preflight", {

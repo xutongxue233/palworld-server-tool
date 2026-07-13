@@ -56,6 +56,7 @@ Additional features provided by the tool:
 - [x] JWT-protected RCON terminal with all 13 Palworld 1.0.0 official command templates
 - [x] Typed scheduled tasks, an intentional-stop-aware watchdog, and generic/Discord webhook notifications
 - [x] SteamCMD install, update, file validation, and optional restart for fixed app ID 2394010
+- [x] Windows official 1.0.0 mod-loader inventory, dependency preflight, safe `PalModSettings.ini` editing, and rollback
 - [x] Same-platform dedicated-server save migration with read-only preflight, a mandatory restore point, atomic replacement, and rollback
 - [x] Automatic PST safety restore points before dangerous save operations
 
@@ -159,6 +160,23 @@ Before every run, PST revalidates the SteamCMD hash, install directory, `appmani
 
 See the [official Palworld 1.0.0 SteamCMD deployment guide](https://docs.palworldgame.com/getting-started/deploy-dedicated-server).
 
+## Official mod management (Windows)
+
+Palworld 1.0.0 currently supports official server-side mods only on the **Windows Dedicated Server**. In Web management mode, open **Operations → Mods**. PST scans `<PalServer>/Mods/Workshop/<any-folder>/Info.json`, displays package name, version, author, dependencies, install types, and server compatibility, and uses `<PalServer>/Mods/ManagedMods/<PackageName>/InstallManifest.json` to distinguish deployed, pending-restart, and pending-removal states.
+
+```yaml
+mods:
+  # Optional absolute Palworld Dedicated Server install directory.
+  # When empty, steamcmd.install_dir is used.
+  install_dir: "D:/PalworldServer"
+```
+
+PST follows the official 1.0.0 `WorkshopRootDir`, `bGlobalEnableMod`, and repeated `ActiveModList` format and detects `-NoMods` and `-workshopdir` launch overrides. A package can enter the server list only when it has an `IsServer: true` rule, at least one package-local target, and one of the five documented install types: UE4SS, Lua, PalSchema, LogicMods, or Paks. Missing, duplicate, or inactive dependencies block the change.
+
+PST **does not download, extract, or execute mod content**. Place trusted official-format packages in the Workshop directory yourself. On confirmation, the backend revalidates the plan digest and stops the server. Existing worlds require local `save.path` to resolve inside the same installation; PST first creates a full safety restore point, then backs up and atomically replaces `PalModSettings.ini`, verifies the installed file, and optionally restarts. If a managed restart fails, PST force-stops the failed runtime, restores the previous settings, and attempts to start the old configuration. Server mods can still crash the server or corrupt saves, so review every package and retain game-managed backups.
+
+See the [official Palworld 1.0.0 mod guide](https://docs.palworldgame.com/settings-and-operation/mod) and [PalworldModUploader format documentation](https://github.com/pocketpairjp/PalworldModUploader).
+
 ## Safe save migration
 
 In Web management mode, open **Operations → Save migration** and enter an absolute local path from the old server. The path may point to `Level.sav`, a specific world directory, `Saved`, or a PalServer install root. If more than one world is found, select a world directory explicitly. Preflight is read-only: it hashes the critical files and uses the bundled `sav_cli` to verify the Palworld 1.0.0 save class of `Level.sav`, `LevelMeta.sav`, every player save, and optional `WorldOption.sav`.
@@ -205,7 +223,7 @@ Download the latest executable files at:
 
 ```bash
 # Download pst_{version}_{platform}_{arch}.tar.gz and extract to the pst directory
-mkdir -p pst && tar -xzf pst_v1.6.0_linux_x86_64.tar.gz -C pst
+mkdir -p pst && tar -xzf pst_v1.7.0_linux_x86_64.tar.gz -C pst
 ```
 
 ##### Configuration
@@ -343,7 +361,7 @@ Access at http://{Server IP}:8080 after opening firewall and security group in c
 
 ##### Download and Extract
 
-Extract `pst_v1.6.0_windows_x86_64.zip` to any directory (recommend naming the folder `pst`).
+Extract `pst_v1.7.0_windows_x86_64.zip` to any directory (recommend naming the folder `pst`).
 
 ##### Configuration
 

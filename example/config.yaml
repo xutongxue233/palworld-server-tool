@@ -54,6 +54,10 @@ steamcmd:
   install_dir: ""
   # Maximum install/update duration in seconds (60-7200).
   timeout: 1800
+mods:
+  # Optional absolute Palworld Dedicated Server install directory for the
+  # official Palworld 1.0.0 mod loader. Defaults to steamcmd.install_dir.
+  install_dir: ""
 rcon:
   address: "127.0.0.1:25575"
   password: ""

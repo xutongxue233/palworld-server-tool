@@ -57,6 +57,9 @@ type Config struct {
 		InstallDir string `mapstructure:"install_dir"`
 		Timeout    int    `mapstructure:"timeout"`
 	} `mapstructure:"steamcmd"`
+	Mods struct {
+		InstallDir string `mapstructure:"install_dir"`
+	} `mapstructure:"mods"`
 	Rcon struct {
 		Address   string `mapstructure:"address"`
 		Password  string `mapstructure:"password"`
@@ -121,6 +124,7 @@ func Init(cfgFile string, conf *Config) {
 		"watchdog.recovery_failed",
 	})
 	viper.SetDefault("steamcmd.timeout", 1800)
+	viper.SetDefault("mods.install_dir", "")
 
 	viper.SetDefault("rcon.address", "127.0.0.1:25575")
 	viper.SetDefault("rcon.timeout", 5)

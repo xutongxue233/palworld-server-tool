@@ -60,6 +60,7 @@
 - [x] 受 Web 管理认证保护的 RCON 命令终端和全部 13 条 1.0.0 官方命令模板
 - [x] 类型化定时任务、不会干扰人工停服的服务器看门狗，以及通用/Discord Webhook 通知
 - [x] 固定 App ID 2394010 的 SteamCMD 安装、更新、文件校验和可选自动重启
+- [x] Windows 官方 1.0.0 MOD 加载器状态扫描、依赖预检、`PalModSettings.ini` 安全编辑与失败回滚
 - [x] 带只读预检、强制恢复点、原子替换和失败回滚的同平台专用服务器存档迁移
 - [x] 危险存档操作前自动创建 PST 安全恢复点
 
@@ -187,6 +188,23 @@ steamcmd:
 
 参考：[Palworld 1.0.0 官方 SteamCMD 部署说明](https://docs.palworldgame.com/getting-started/deploy-dedicated-server)。
 
+## 官方 MOD 管理（Windows）
+
+Palworld 1.0.0 的官方服务端 MOD 加载器目前只支持 **Windows Dedicated Server**。登录 Web 管理模式后，打开“运维 → MOD 管理”，PST 会扫描 `<PalServer>/Mods/Workshop/<任意目录>/Info.json`，展示包名、版本、作者、依赖、安装类型和服务器兼容性，并根据 `<PalServer>/Mods/ManagedMods/<PackageName>/InstallManifest.json` 区分已部署、等待重启和等待移除状态。
+
+```yaml
+mods:
+  # 可选的 Palworld Dedicated Server 绝对安装目录。
+  # 留空时复用 steamcmd.install_dir。
+  install_dir: "D:/PalworldServer"
+```
+
+PST 严格按 1.0.0 官方格式处理 `WorkshopRootDir`、`bGlobalEnableMod` 和重复的 `ActiveModList`，并检测启动参数中的 `-NoMods` 与 `-workshopdir` 覆盖。只有包含 `IsServer: true`、至少一个包内安装目标且使用官方五种安装类型（UE4SS、Lua、PalSchema、LogicMods、Paks）的包可以加入服务端列表；缺失、重复或未启用的依赖会阻止应用。
+
+PST **不会下载、解压或执行任何 MOD 内容**；请自行把可信的官方格式包放入 Workshop 目录。确认变更时，后端会重新核对计划摘要并停止服务器。已有世界必须让本机 `save.path` 指向同一安装目录内的世界，PST 会先创建完整安全恢复点，再备份并原子替换 `PalModSettings.ini`、回读校验并按需重启。托管重启失败时会强制停下失败运行实例、恢复旧设置并尝试用旧配置重新启动。服务端 MOD 仍可能导致崩溃或损坏存档，启用前请审核每个包并保留游戏自带备份。
+
+参考：[Palworld 1.0.0 官方 MOD 说明](https://docs.palworldgame.com/settings-and-operation/mod) 与 [PalworldModUploader 格式文档](https://github.com/pocketpairjp/PalworldModUploader)。
+
 ## 安全存档迁移
 
 登录 Web 管理模式后，打开“运维 → 存档迁移”，填写旧服务器的本机绝对路径。路径可以指向 `Level.sav`、具体世界目录、`Saved` 目录或 PalServer 安装目录；若找到多个世界，必须明确选择一个世界目录。预检完全只读，会计算关键文件摘要，并使用内置 `sav_cli` 验证 `Level.sav`、`LevelMeta.sav`、全部玩家档和可选 `WorldOption.sav` 的 Palworld 1.0.0 存档类别。
@@ -244,7 +262,7 @@ steamcmd:
 
 ```bash
 # 下载 pst_{version}_{platform}_{arch}.tar.gz 文件并解压到 pst 目录
-mkdir -p pst && tar -xzf pst_v1.6.0_linux_x86_64.tar.gz -C pst
+mkdir -p pst && tar -xzf pst_v1.7.0_linux_x86_64.tar.gz -C pst
 ```
 
 ##### 配置
@@ -383,7 +401,7 @@ kill $(ps aux | grep 'pst' | awk '{print $2}') | head -n 1
 
 ##### 下载解压
 
-解压 `pst_v1.6.0_windows_x86_64.zip` 到任意目录（推荐命名文件夹目录名称为 `pst`）
+解压 `pst_v1.7.0_windows_x86_64.zip` 到任意目录（推荐命名文件夹目录名称为 `pst`）
 
 ##### 配置
 

@@ -14,6 +14,7 @@ export const queryKeys = {
   snapshot: ["server", "snapshot"] as const,
   control: ["server", "control"] as const,
   steamcmd: ["server", "steamcmd"] as const,
+  officialMods: ["server", "mods"] as const,
   saveMigration: ["server", "migration"] as const,
   whitelist: ["whitelist"] as const,
   backups: (startTime?: number, endTime?: number) =>
