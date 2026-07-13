@@ -50,7 +50,11 @@ Additional features provided by the tool:
 
 - [x] Visual map management
 - [x] Whitelist management
-- [x] Automatic archive backup and management
+- [x] Discover, validate, and safely restore the game's `backup/world` snapshots
+- [x] Direct `PalWorldSettings.ini` editing plus WorldOption override detection and safe generation/synchronization
+- [x] Restricted process, Docker, systemd, and Windows service lifecycle control
+- [x] JWT-protected RCON terminal with all 13 Palworld 1.0.0 official command templates
+- [x] Automatic PST safety restore points before dangerous save operations
 
 This tool stores synchronized REST API and Level.sav data in a single bbolt database and exposes it through the management interface.
 
@@ -80,7 +84,7 @@ https://github.com/zaigie/palworld-server-tool/assets/17232619/49abcd34-0752-487
 
 The server's official REST API must be enabled to synchronize online players and perform server management actions.
 
-If your private service tutorial is better written, if not, please close the server first, then modify the `PalWorldSettings.ini` file or `WorldOption.sav` file at [Pal-Conf](https://pal-conf.bluefissure.com/) and place it in the appropriate location to enable the server.
+The configuration page can read, validate, and write `PalWorldSettings.ini` directly. When `WorldOption.sav` exists, PST explains the override and can synchronize the saved 1.0.0 configuration after stopping the server, creating a full restore point, and validating a lossless rebuild. It can also generate a missing file from a checksum-pinned 1.0.0 baseline.
 
 First set **Administrator password**
 
@@ -136,7 +140,7 @@ Download the latest executable files at:
 
 ```bash
 # Download pst_{version}_{platform}_{arch}.tar.gz and extract to the pst directory
-mkdir -p pst && tar -xzf pst_v1.2.0_linux_x86_64.tar.gz -C pst
+mkdir -p pst && tar -xzf pst_v1.3.0_linux_x86_64.tar.gz -C pst
 ```
 
 ##### Configuration
@@ -226,6 +230,10 @@ mkdir -p pst && tar -xzf pst_v1.2.0_linux_x86_64.tar.gz -C pst
 > Palworld 1.0.0 includes built-in world backups, so routine recovery should use the game backups and PST now defaults `save.backup_interval` to `0`. Mandatory safety backups made before player or Pal save edits remain enabled.
 >
 > `palworld.config_path` must be a local `PalWorldSettings.ini` visible to PST. Web writes use digest checking, a previous-file backup, and atomic replacement. `palworld.control` never runs arbitrary shell text; it supports only the restricted `process`, `docker`, `systemd`, and `windows_service` drivers.
+>
+> The backup page reads `backup/world/<timestamp>` from the active world directly. A restore re-hashes every file, stops the server, creates a PST restore point containing the current world, then swaps files on the same filesystem with rollback on failure. This requires a local `save.path`. A previously running server can be started again when a restricted control driver is configured.
+>
+> WorldOption generation/synchronization accepts only configuration already saved to the server INI and uses pinned Palworld 1.0.0 type metadata. It also requires a stopped server, a full restore point, lossless rebuilt-file validation, and atomic installation. Server-only fields unsupported by WorldOption remain in the INI and are reported explicitly.
 
 ##### Run
 
@@ -270,7 +278,7 @@ Access at http://{Server IP}:8080 after opening firewall and security group in c
 
 ##### Download and Extract
 
-Extract `pst_v1.2.0_windows_x86_64.zip` to any directory (recommend naming the folder `pst`).
+Extract `pst_v1.3.0_windows_x86_64.zip` to any directory (recommend naming the folder `pst`).
 
 ##### Configuration
 
@@ -449,7 +457,7 @@ Set various environment variables, similar to those in [`config.yaml`](#configur
 |         SAVE\_\_PATH          |           ""            |  Text  |           Game save path **be sure to fill in the path inside the container**           |
 |      SAVE\_\_DECODE_PATH      |     "/app/sav_cli"      |  Text  | ⚠️ Built into the container, do not modify, or it will cause save analysis tool errors  |
 |     SAVE\_\_SYNC_INTERVAL     |           600           | Number |                          Interval for syncing player save data                          |
-|    SAVE\_\_BACKUP_INTERVAL    |          14400          | Number |                        Interval for auto backup player save data                        |
+|    SAVE\_\_BACKUP_INTERVAL    |            0            | Number | Game backups are primary; use a value above 0 for an extra PST schedule                |
 |   SAVE\_\_BACKUP_KEEP_DAYS    |            7            | Number |                        Interval for auto backup player save data                        |
 | MANAGE\_\_KICK_NON_WHITELIST  |          false          |  Bool  | Automatically kicked out when it detects that a player is not whitelisted but is online |
 
@@ -532,7 +540,7 @@ Then add `-v ./pst.db:/app/pst.db` in `docker run -v`.
 |         SAVE\_\_PATH          |           ""            |  Text  |   pst-agent service address, format as<br> http://{Game server IP}:{Agent port}/sync    |
 |      SAVE\_\_DECODE_PATH      |     "/app/sav_cli"      |  Text  | ⚠️ Built into the container, do not modify, or it will cause save analysis tool errors  |
 |     SAVE\_\_SYNC_INTERVAL     |           600           | Number |                          Interval for syncing player save data                          |
-|    SAVE\_\_BACKUP_INTERVAL    |          14400          | Number |                        Interval for auto backup player save data                        |
+|    SAVE\_\_BACKUP_INTERVAL    |            0            | Number | Game backups are primary; use a value above 0 for an extra PST schedule                |
 |   SAVE\_\_BACKUP_KEEP_DAYS    |            7            | Number |                        Interval for auto backup player save data                        |
 | MANAGE\_\_KICK_NON_WHITELIST  |          false          |  Bool  | Automatically kicked out when it detects that a player is not whitelisted but is online |
 

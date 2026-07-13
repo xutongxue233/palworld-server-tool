@@ -64,6 +64,13 @@ from structurer import (
     structure_guild,
     structure_player,
 )
+from world_option_editor import (
+    WorldOptionEditError,
+    default_world_option_template,
+    load_world_option_metadata,
+    sync_world_option,
+    verify_world_option_sync,
+)
 
 
 PAL_CHARACTER_RAW_PATH = ".worldSaveData.CharacterSaveParameterMap.Value.RawData"
@@ -235,6 +242,88 @@ def roundtrip_save(file_path: Path, output: str) -> None:
         raise ValueError("Roundtrip validation failed after recompression")
 
     log(f"Roundtrip save written to {output_path}")
+
+
+def sync_world_option_save(
+    file_path: Path,
+    output: str,
+    settings_file: str,
+    metadata_path: str,
+) -> None:
+    if not output:
+        raise ValueError("--output is required for sync-world-option mode")
+    if not settings_file:
+        raise ValueError("--settings-file is required for sync-world-option mode")
+    settings_path = Path(settings_file)
+    if not settings_path.is_file():
+        raise ValueError(f"Settings file does not exist: {settings_path}")
+    output_path = Path(output)
+    if file_path.is_file() and output_path.resolve() == file_path.resolve():
+        raise ValueError("WorldOption output must not overwrite the input save")
+
+    bundle_dir = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+    resolved_metadata = metadata_path or str(
+        bundle_dir / "world_option_metadata.json"
+    )
+    metadata = load_world_option_metadata(resolved_metadata)
+    ini_content = settings_path.read_text(encoding="utf-8")
+
+    generated = not file_path.is_file()
+    template_path: Path | None = None
+    if generated:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        descriptor, temporary_name = tempfile.mkstemp(
+            prefix=".pst-world-option-template-",
+            suffix=".sav",
+            dir=output_path.parent,
+        )
+        template_path = Path(temporary_name)
+        with os.fdopen(descriptor, "wb") as template_file:
+            template_file.write(default_world_option_template())
+            template_file.flush()
+            os.fsync(template_file.fileno())
+        source_path = template_path
+    else:
+        source_path = file_path
+
+    try:
+        raw_gvas, save_type, gvas = load_gvas(source_path)
+        require_lossless_gvas_roundtrip(
+            raw_gvas,
+            gvas,
+            "WorldOption GVAS changed during the preflight validation pass",
+        )
+        result = sync_world_option(gvas, ini_content, metadata)
+        written = gvas.write(custom_properties=PALWORLD_CUSTOM_PROPERTIES)
+        rebuilt = compress_gvas_to_sav(written, save_type)
+        temporary_path = _write_temporary_save(output_path, rebuilt)
+        try:
+            rebuilt_raw, rebuilt_type, rebuilt_gvas = load_gvas(temporary_path)
+            if rebuilt_type != save_type:
+                raise ValueError(
+                    f"WorldOption save type changed from 0x{save_type:02X} "
+                    f"to 0x{rebuilt_type:02X}"
+                )
+            if rebuilt_raw != written:
+                raise ValueError("Rebuilt WorldOption.sav changed the generated GVAS bytes")
+            require_lossless_gvas_roundtrip(
+                rebuilt_raw,
+                rebuilt_gvas,
+                "WorldOption GVAS changed during the rebuilt validation pass",
+            )
+            verify_world_option_sync(rebuilt_gvas, result)
+            os.replace(temporary_path, output_path)
+        except Exception:
+            temporary_path.unlink(missing_ok=True)
+            raise
+    finally:
+        if template_path is not None:
+            template_path.unlink(missing_ok=True)
+
+    payload = result.to_dict()
+    payload["created"] = generated
+    log("WORLD_OPTION_RESULT " + json.dumps(payload, ensure_ascii=True))
+    log(f"Synchronized WorldOption.sav written to {output_path}")
 
 
 def export_json(file_path: Path, output: str) -> None:
@@ -805,6 +894,7 @@ def parse_args() -> argparse.Namespace:
             "edit-pal-nickname",
             "edit-pal-level",
             "restore-pal-health",
+            "sync-world-option",
         ),
         default="structure",
         help="Processing mode. The default keeps PST's existing sync behavior.",
@@ -924,6 +1014,16 @@ def parse_args() -> argparse.Namespace:
         default="",
         help="Optional path to generated Palworld 1.0 player map metadata",
     )
+    parser.add_argument(
+        "--settings-file",
+        default="",
+        help="PalWorldSettings.ini used to generate or synchronize WorldOption.sav",
+    )
+    parser.add_argument(
+        "--world-option-metadata",
+        default="",
+        help="Optional path to pinned Palworld 1.0.0 WorldOption metadata",
+    )
     parser.add_argument("--item-id", default="", help="Canonical Palworld item ID")
     parser.add_argument("--quantity", type=int, default=1, help="Item quantity")
     parser.add_argument("--slot-index", type=int, default=-1, help="Inventory slot")
@@ -969,7 +1069,7 @@ def main() -> int:
     args = parse_args()
     file_path = Path(args.file)
 
-    if not file_path.is_file():
+    if not file_path.is_file() and args.mode != "sync-world-option":
         log(f"Input file does not exist: {file_path}", "ERROR")
         return 1
 
@@ -984,6 +1084,13 @@ def main() -> int:
             validate_save(file_path)
         elif args.mode == "roundtrip":
             roundtrip_save(file_path, args.output)
+        elif args.mode == "sync-world-option":
+            sync_world_option_save(
+                file_path,
+                args.output,
+                args.settings_file,
+                args.world_option_metadata,
+            )
         elif args.mode == "give-item":
             give_item(
                 file_path,
@@ -1113,6 +1220,7 @@ def main() -> int:
         PalEditError,
         PlayerEditError,
         PlayerSaveEditError,
+        WorldOptionEditError,
     ) as exc:
         log(
             "SAVE_EDIT_ERROR "

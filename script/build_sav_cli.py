@@ -38,6 +38,11 @@ PLAYER_MAP_GAME_VERSION = "1.0.0"
 PLAYER_MAP_FAST_TRAVEL_COUNT = 174
 PLAYER_MAP_AREA_COUNT = 123
 PLAYER_MAP_WORLD_FLAGS = ("MainMap", "Tree")
+PAL_CONF_COMMIT = "a0f75513a99684922b0ad58692304f8ddfcc06d3"
+WORLD_OPTION_METADATA_SHA256 = (
+    "81bb88b68cc6427ed94ea9e29fafa51b443202db514e627eb7163d0674222f34"
+)
+WORLD_OPTION_METADATA_ENTRIES = 109
 
 
 def sha256(path: Path) -> str:
@@ -496,6 +501,27 @@ def copy_player_exp_table(source_root: Path, staging: Path) -> Path:
     return destination
 
 
+def copy_world_option_metadata(repo_root: Path, staging: Path) -> Path:
+    source = repo_root / "sav_cli" / "world_option_metadata.json"
+    if not source.is_file() or sha256(source) != WORLD_OPTION_METADATA_SHA256:
+        raise RuntimeError("Pinned Palworld 1.0.0 WorldOption metadata checksum mismatch")
+    try:
+        payload = json.loads(source.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError("Unable to read WorldOption metadata") from exc
+    if (
+        payload.get("schema") != 1
+        or payload.get("game_version") != "1.0.0"
+        or payload.get("source_commit") != PAL_CONF_COMMIT
+        or not isinstance(payload.get("settings"), dict)
+        or len(payload["settings"]) != WORLD_OPTION_METADATA_ENTRIES
+    ):
+        raise RuntimeError("Pinned WorldOption metadata is incomplete or stale")
+    destination = staging / source.name
+    shutil.copy2(source, destination)
+    return destination
+
+
 def build(
     repo_root: Path,
     output: Path,
@@ -533,11 +559,13 @@ def build(
         "sav_cli.py",
         "structurer.py",
         "world_types.py",
+        "world_option_editor.py",
     ):
         shutil.copy2(repo_root / "sav_cli" / name, staging / name)
     metadata = build_item_metadata(source_root, staging)
     pal_level_metadata = build_pal_level_metadata(source_root, staging)
     player_map_metadata = build_player_map_metadata(source_root, staging)
+    world_option_metadata = copy_world_option_metadata(repo_root, staging)
     build_web_item_catalog(source_root, web_item_catalog)
     exp_table = copy_player_exp_table(source_root, staging)
 
@@ -569,6 +597,8 @@ def build(
         f"{pal_level_metadata}{os.pathsep}.",
         "--add-data",
         f"{player_map_metadata}{os.pathsep}.",
+        "--add-data",
+        f"{world_option_metadata}{os.pathsep}.",
         "--distpath",
         str(dist),
         "--workpath",

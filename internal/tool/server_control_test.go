@@ -112,3 +112,42 @@ func TestForceStopFallsBackToConfiguredDriver(t *testing.T) {
 		t.Fatal("managed stop fallback was not used")
 	}
 }
+
+func TestStopServerForMaintenanceUsesGracefulShutdown(t *testing.T) {
+	driver := &fakeControlDriver{started: true}
+	configureControlTest(t, driver)
+	online := true
+	saved := false
+	serverOnlineProbe = func() bool { return online }
+	controlSaveWorld = func() error { saved = true; return nil }
+	controlShutdown = func(seconds int, message string) error {
+		if seconds != 20 || message != "maintenance" {
+			t.Fatalf("unexpected maintenance request: %d %q", seconds, message)
+		}
+		online = false
+		driver.stopped = true
+		return nil
+	}
+
+	result, err := StopServerForMaintenance(context.Background(), 20, "maintenance")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !saved || !result.WasRunning || !result.CanRestart || !driver.stopped {
+		t.Fatalf("unexpected maintenance result: %#v saved=%v driver=%#v", result, saved, driver)
+	}
+}
+
+func TestStopServerForMaintenanceStopsManagedProcessWhenRESTIsOffline(t *testing.T) {
+	driver := &fakeControlDriver{started: true}
+	configureControlTest(t, driver)
+	serverOnlineProbe = func() bool { return false }
+
+	result, err := StopServerForMaintenance(context.Background(), 10, "maintenance")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.WasRunning || !result.CanRestart || !driver.stopped {
+		t.Fatalf("managed server was not stopped: %#v driver=%#v", result, driver)
+	}
+}

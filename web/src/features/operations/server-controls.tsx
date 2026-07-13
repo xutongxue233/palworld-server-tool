@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   BellRing,
   CircleOff,
@@ -47,13 +47,112 @@ import { Textarea } from "@/components/ui/textarea";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { downloadBlob, formatCoordinate } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 import { queryKeys } from "@/hooks/use-server-data";
 
-const RCON_PRESETS = [
-  { command: "Info", labelKey: "operations.rconPresetInfo" },
-  { command: "ShowPlayers", labelKey: "operations.rconPresetPlayers" },
-  { command: "Save", labelKey: "operations.rconPresetSave" },
-] as const;
+type RconPresetRisk = "normal" | "warning" | "danger";
+
+interface RconPresetGroup {
+  labelKey: string;
+  commands: readonly {
+    command: string;
+    labelKey: string;
+    risk: RconPresetRisk;
+  }[];
+}
+
+const RCON_PRESET_GROUPS = [
+  {
+    labelKey: "operations.rconGroupQuery",
+    commands: [
+      {
+        command: "Info",
+        labelKey: "operations.rconPresetInfo",
+        risk: "normal",
+      },
+      {
+        command: "ShowPlayers",
+        labelKey: "operations.rconPresetPlayers",
+        risk: "normal",
+      },
+    ],
+  },
+  {
+    labelKey: "operations.rconGroupWorld",
+    commands: [
+      {
+        command: "Save",
+        labelKey: "operations.rconPresetSave",
+        risk: "normal",
+      },
+      {
+        command: "Broadcast <MessageText>",
+        labelKey: "operations.rconPresetBroadcast",
+        risk: "warning",
+      },
+    ],
+  },
+  {
+    labelKey: "operations.rconGroupPlayers",
+    commands: [
+      {
+        command: "KickPlayer <SteamID>",
+        labelKey: "operations.rconPresetKick",
+        risk: "warning",
+      },
+      {
+        command: "BanPlayer <SteamID>",
+        labelKey: "operations.rconPresetBan",
+        risk: "danger",
+      },
+      {
+        command: "UnBanPlayer <SteamID>",
+        labelKey: "operations.rconPresetUnban",
+        risk: "normal",
+      },
+      {
+        command: "TeleportToPlayer <SteamID>",
+        labelKey: "operations.rconPresetTeleportToPlayer",
+        risk: "normal",
+      },
+    ],
+  },
+  {
+    labelKey: "operations.rconGroupServer",
+    commands: [
+      {
+        command: "Shutdown 60 <MessageText>",
+        labelKey: "operations.rconPresetShutdown",
+        risk: "warning",
+      },
+      {
+        command: "DoExit",
+        labelKey: "operations.rconPresetDoExit",
+        risk: "danger",
+      },
+    ],
+  },
+  {
+    labelKey: "operations.rconGroupSession",
+    commands: [
+      {
+        command: "AdminPassword <AdminPassword>",
+        labelKey: "operations.rconPresetAdminPassword",
+        risk: "warning",
+      },
+      {
+        command: "TeleportToMe <SteamID>",
+        labelKey: "operations.rconPresetTeleportToMe",
+        risk: "warning",
+      },
+      {
+        command: "ToggleSpectate",
+        labelKey: "operations.rconPresetSpectate",
+        risk: "warning",
+      },
+    ],
+  },
+] as const satisfies readonly RconPresetGroup[];
 
 export function ServerControls() {
   const { t } = useI18n();
@@ -61,6 +160,7 @@ export function ServerControls() {
   const [broadcastMessage, setBroadcastMessage] = useState("");
   const [rconCommand, setRconCommand] = useState("Info");
   const [rconResponse, setRconResponse] = useState("");
+  const rconInputRef = useRef<HTMLTextAreaElement>(null);
   const [shutdownSeconds, setShutdownSeconds] = useState(60);
   const [shutdownMessage, setShutdownMessage] = useState("");
   const [confirmAction, setConfirmAction] = useState<
@@ -174,6 +274,22 @@ export function ServerControls() {
     );
   };
 
+  const selectRconPreset = (command: string) => {
+    setRconCommand(command);
+    requestAnimationFrame(() => {
+      const input = rconInputRef.current;
+      if (!input) return;
+      input.focus();
+      const placeholderStart = command.indexOf("<");
+      const placeholderEnd = command.indexOf(">", placeholderStart + 1);
+      if (placeholderStart >= 0 && placeholderEnd > placeholderStart) {
+        input.setSelectionRange(placeholderStart, placeholderEnd + 1);
+      } else {
+        input.setSelectionRange(command.length, command.length);
+      }
+    });
+  };
+
   return (
     <div className="space-y-4">
       <div className="grid gap-4 xl:grid-cols-2">
@@ -285,18 +401,76 @@ export function ServerControls() {
       >
         <div className="space-y-4">
           <div>
-            <p className="text-xs font-medium">{t("operations.rconQuick")}</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {RCON_PRESETS.map((preset) => (
-                <Button
-                  key={preset.command}
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setRconCommand(preset.command)}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs font-medium">
+                {t("operations.rconQuick")}
+              </p>
+              <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <span className="size-1.5 rounded-full bg-primary" />
+                  {t("operations.rconRiskNormal")}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="size-1.5 rounded-full bg-amber-500" />
+                  {t("operations.rconRiskWarning")}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="size-1.5 rounded-full bg-destructive" />
+                  {t("operations.rconRiskDanger")}
+                </span>
+              </div>
+            </div>
+            <div className="mt-3 grid gap-3 md:grid-cols-2 2xl:grid-cols-5">
+              {RCON_PRESET_GROUPS.map((group) => (
+                <section
+                  key={group.labelKey}
+                  className="overflow-hidden rounded-md border bg-muted/15"
                 >
-                  {t(preset.labelKey)}
-                </Button>
+                  <div className="flex items-center justify-between border-b bg-muted/35 px-3 py-2">
+                    <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      {t(group.labelKey)}
+                    </h3>
+                    <span className="font-data text-[10px] text-muted-foreground">
+                      {String(group.commands.length).padStart(2, "0")}
+                    </span>
+                  </div>
+                  <div className="space-y-1 p-1.5">
+                    {group.commands.map((preset) => (
+                      <button
+                        key={preset.command}
+                        type="button"
+                        className={cn(
+                          "group flex min-h-12 w-full items-center gap-2.5 rounded-sm px-2.5 py-2 text-left transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                          preset.risk === "danger" &&
+                            "hover:bg-destructive/8",
+                        )}
+                        onClick={() => selectRconPreset(preset.command)}
+                      >
+                        <span
+                          className={cn(
+                            "h-7 w-0.5 shrink-0 rounded-full bg-primary",
+                            preset.risk === "warning" && "bg-amber-500",
+                            preset.risk === "danger" && "bg-destructive",
+                          )}
+                        />
+                        <span className="min-w-0">
+                          <span
+                            className={cn(
+                              "block text-xs font-medium",
+                              preset.risk === "danger" &&
+                                "text-destructive",
+                            )}
+                          >
+                            {t(preset.labelKey)}
+                          </span>
+                          <code className="font-data mt-0.5 block truncate text-[10px] text-muted-foreground group-hover:text-foreground">
+                            {preset.command}
+                          </code>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
               ))}
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
@@ -313,6 +487,7 @@ export function ServerControls() {
           >
             <div className="space-y-3">
               <Textarea
+                ref={rconInputRef}
                 value={rconCommand}
                 onChange={(event) => setRconCommand(event.target.value)}
                 placeholder={t("operations.rconPlaceholder")}

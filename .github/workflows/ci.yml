@@ -30,7 +30,8 @@ jobs:
               pal_editor_test.py \
               inventory_editor_test.py \
               player_editor_test.py \
-              player_save_editor_test.py
+              player_save_editor_test.py \
+              world_option_editor_test.py
           )
           python3 -m unittest script/build_sav_cli_test.py
       - name: Test backend packages
@@ -56,6 +57,8 @@ jobs:
           cache: pnpm
           cache-dependency-path: web/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      - name: Verify official RCON templates
+        run: node ../script/check_rcon_templates.mjs
       - name: Audit frontend dependencies
         run: pnpm audit --audit-level low --registry=https://registry.npmjs.org/
       - name: Lint frontend

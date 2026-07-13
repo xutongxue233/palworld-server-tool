@@ -86,6 +86,7 @@ jobs:
           go build -ldflags "-s -w" -o "release/pst-agent_${tag}_windows_x86_64.exe" ./cmd/pst-agent
           Copy-Item example/config.yaml "$packageDir/config.yaml"
           Copy-Item script/start.bat "$packageDir/start.bat"
+          Copy-Item THIRD_PARTY_NOTICES.md "$packageDir/THIRD_PARTY_NOTICES.md"
           Compress-Archive -Path "$packageDir/*" -DestinationPath "release/pst_${tag}_windows_x86_64.zip" -CompressionLevel Optimal
       - uses: actions/upload-artifact@v4
         with:
@@ -146,6 +147,7 @@ jobs:
           CGO_ENABLED=0 GOOS=linux GOARCH="${GOARCH}" go build -ldflags="-s -w" -o "release/pst-agent_${RELEASE_TAG}_linux_${RELEASE_ARCH}" ./cmd/pst-agent
           cp example/config.yaml "${package_dir}/config.yaml"
           cp script/start.sh "${package_dir}/start.sh"
+          cp THIRD_PARTY_NOTICES.md "${package_dir}/THIRD_PARTY_NOTICES.md"
           chmod +x "${package_dir}/pst" "${package_dir}/sav_cli" "${package_dir}/start.sh" "release/pst-agent_${RELEASE_TAG}_linux_${RELEASE_ARCH}"
           tar -C "${package_dir}" -czf "release/pst_${RELEASE_TAG}_linux_${RELEASE_ARCH}.tar.gz" .
       - uses: actions/upload-artifact@v4

@@ -49,6 +49,7 @@ build: $(if $(filter windows,$(HOST_OS)),windows-resources)
 	cd web && pnpm i --frozen-lockfile && pnpm build && cd ..
 	cp example/config.yaml dist/config.yaml
 	cp script/start.bat dist/start.bat
+	cp THIRD_PARTY_NOTICES.md dist/THIRD_PARTY_NOTICES.md
 	$(MAKE) sav-cli
 	go build -tags assets -ldflags="-s -w -X 'main.version=${GIT_TAG}'" -o ./dist/pst${EXT} .
 
@@ -91,6 +92,9 @@ build-pub: windows-resources
 	cp script/start.bat dist/windows_x86_64/start.bat
 	cp script/start.sh dist/linux_x86_64/start.sh
 	cp script/start.sh dist/linux_aarch64/start.sh
+	cp THIRD_PARTY_NOTICES.md dist/windows_x86_64/THIRD_PARTY_NOTICES.md
+	cp THIRD_PARTY_NOTICES.md dist/linux_x86_64/THIRD_PARTY_NOTICES.md
+	cp THIRD_PARTY_NOTICES.md dist/linux_aarch64/THIRD_PARTY_NOTICES.md
 	chmod +x dist/linux_x86_64/start.sh dist/linux_aarch64/start.sh
 
 	cd dist && zip -p -r ${PREFIX}_windows_x86_64.zip windows_x86_64/* && tar -czf ${PREFIX}_linux_x86_64.tar.gz linux_x86_64/* && tar -czf ${PREFIX}_linux_aarch64.tar.gz linux_aarch64/* && cd ..

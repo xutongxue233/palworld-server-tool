@@ -1542,6 +1542,113 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/server/backups/native": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Discover and validate backups created by Palworld under backup/world without copying them into PST storage",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "backup"
+                ],
+                "summary": "List Palworld native world backups",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.NativeBackupListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/server/backups/native/{backup_id}/restore": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Stop the managed server when possible, create a PST safety backup, validate a selected native backup, atomically restore it, synchronize decoded data, and optionally restart the server",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "backup"
+                ],
+                "summary": "Safely restore a Palworld native world backup",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Native backup directory ID",
+                        "name": "backup_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Restore confirmation and selected snapshot digest",
+                        "name": "restore",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.NativeBackupRestoreRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.NativeBackupRestoreResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/server/broadcast": {
             "post": {
                 "security": [
@@ -2057,6 +2164,69 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/server/world-option": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Convert validated Palworld 1.0.0 INI settings into a WorldOption.sav, stop the server, create a safety backup, atomically install the validated file, and restart a previously running managed server",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Server"
+                ],
+                "summary": "Generate or synchronize WorldOption.sav",
+                "parameters": [
+                    {
+                        "description": "WorldOption settings",
+                        "name": "settings",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.WorldOptionSyncRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.WorldOptionSyncResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/sync": {
             "post": {
                 "security": [
@@ -2562,6 +2732,66 @@ const docTemplate = `{
                 }
             }
         },
+        "api.NativeBackupListResponse": {
+            "type": "object",
+            "properties": {
+                "native_backups": {
+                    "$ref": "#/definitions/tool.NativeBackupCatalog"
+                },
+                "server_control": {
+                    "$ref": "#/definitions/tool.ServerControlStatus"
+                }
+            }
+        },
+        "api.NativeBackupRestoreRequest": {
+            "type": "object",
+            "required": [
+                "expected_digest"
+            ],
+            "properties": {
+                "confirm_restore": {
+                    "type": "boolean"
+                },
+                "expected_digest": {
+                    "type": "string"
+                },
+                "restart_after": {
+                    "type": "boolean"
+                },
+                "shutdown_message": {
+                    "type": "string",
+                    "maxLength": 256
+                },
+                "shutdown_seconds": {
+                    "type": "integer",
+                    "maximum": 300,
+                    "minimum": 0
+                }
+            }
+        },
+        "api.NativeBackupRestoreResponse": {
+            "type": "object",
+            "properties": {
+                "maintenance": {
+                    "$ref": "#/definitions/tool.MaintenanceStopResult"
+                },
+                "restart_error": {
+                    "type": "string"
+                },
+                "restarted": {
+                    "type": "boolean"
+                },
+                "restored_backup": {
+                    "$ref": "#/definitions/tool.NativeBackup"
+                },
+                "safety_backup": {
+                    "$ref": "#/definitions/database.Backup"
+                },
+                "sync_error": {
+                    "type": "string"
+                }
+            }
+        },
         "api.PlayerActionRequest": {
             "type": "object",
             "properties": {
@@ -2817,6 +3047,52 @@ const docTemplate = `{
                 },
                 "sync_error": {
                     "type": "string"
+                }
+            }
+        },
+        "api.WorldOptionSyncRequest": {
+            "type": "object",
+            "required": [
+                "content"
+            ],
+            "properties": {
+                "confirm_sync": {
+                    "type": "boolean"
+                },
+                "content": {
+                    "type": "string"
+                },
+                "expected_sha256": {
+                    "type": "string"
+                },
+                "shutdown_message": {
+                    "type": "string",
+                    "maxLength": 256
+                },
+                "shutdown_seconds": {
+                    "type": "integer",
+                    "maximum": 300,
+                    "minimum": 0
+                }
+            }
+        },
+        "api.WorldOptionSyncResponse": {
+            "type": "object",
+            "properties": {
+                "maintenance": {
+                    "$ref": "#/definitions/tool.MaintenanceStopResult"
+                },
+                "restart_error": {
+                    "type": "string"
+                },
+                "restarted": {
+                    "type": "boolean"
+                },
+                "safety_backup": {
+                    "$ref": "#/definitions/database.Backup"
+                },
+                "world_option": {
+                    "$ref": "#/definitions/tool.WorldOptionMutation"
                 }
             }
         },
@@ -3293,6 +3569,9 @@ const docTemplate = `{
                 },
                 "sha256": {
                     "type": "string"
+                },
+                "world_option": {
+                    "$ref": "#/definitions/tool.WorldOptionOverrideStatus"
                 }
             }
         },
@@ -3380,6 +3659,75 @@ const docTemplate = `{
                 },
                 "requested": {
                     "type": "integer"
+                }
+            }
+        },
+        "tool.MaintenanceStopResult": {
+            "type": "object",
+            "properties": {
+                "can_restart": {
+                    "type": "boolean"
+                },
+                "was_running": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "tool.NativeBackup": {
+            "type": "object",
+            "properties": {
+                "backup_id": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "digest": {
+                    "type": "string"
+                },
+                "file_count": {
+                    "type": "integer"
+                },
+                "has_world_option": {
+                    "type": "boolean"
+                },
+                "issues": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "modified_at": {
+                    "type": "string"
+                },
+                "player_files": {
+                    "type": "integer"
+                },
+                "size_bytes": {
+                    "type": "integer"
+                },
+                "valid": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "tool.NativeBackupCatalog": {
+            "type": "object",
+            "properties": {
+                "available": {
+                    "type": "boolean"
+                },
+                "backups": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/tool.NativeBackup"
+                    }
+                },
+                "configured": {
+                    "type": "boolean"
+                },
+                "world_id": {
+                    "type": "string"
                 }
             }
         },
@@ -3642,6 +3990,64 @@ const docTemplate = `{
                 },
                 "target": {
                     "type": "string"
+                }
+            }
+        },
+        "tool.WorldOptionMutation": {
+            "type": "object",
+            "properties": {
+                "created": {
+                    "type": "boolean"
+                },
+                "game_version": {
+                    "type": "string"
+                },
+                "modified_at": {
+                    "type": "string"
+                },
+                "settings_digest": {
+                    "type": "string"
+                },
+                "sha256": {
+                    "type": "string"
+                },
+                "skipped_keys": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "updated_keys": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "tool.WorldOptionOverrideStatus": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "modified_at": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "present": {
+                    "type": "boolean"
+                },
+                "sha256": {
+                    "type": "string"
+                },
+                "size_bytes": {
+                    "type": "integer"
+                },
+                "supported": {
+                    "type": "boolean"
                 }
             }
         }

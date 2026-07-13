@@ -62,7 +62,10 @@ func TestOfficialServerManagementRoutes(t *testing.T) {
 	}{
 		{http.MethodGet, "/api/server/config-file"},
 		{http.MethodPut, "/api/server/config-file"},
+		{http.MethodPut, "/api/server/world-option"},
 		{http.MethodGet, "/api/server/control/status"},
+		{http.MethodGet, "/api/server/backups/native"},
+		{http.MethodPost, "/api/server/backups/native/2026.07.13-10.00.00/restore"},
 		{http.MethodPost, "/api/server/start"},
 		{http.MethodPost, "/api/server/restart"},
 	} {
