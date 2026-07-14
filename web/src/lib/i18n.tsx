@@ -21,6 +21,33 @@ const zh: Messages = {
   "nav.operations": "运维",
   "nav.open": "打开导航",
   "nav.close": "关闭导航",
+  "setup.bannerTitle": "尚未完成 PalServer 本机配置",
+  "setup.bannerDescription": "可以自动扫描服务端并写入启动器、配置和存档路径。",
+  "setup.loginDescription": "登录管理模式后即可自动扫描和配置服务端。",
+  "setup.open": "扫描服务端",
+  "setup.title": "发现 Palworld 服务端",
+  "setup.description":
+    "优先检查正在运行的服务端、Steam 库和常用安装目录；只有没有找到时才需要手动填写安装目录。",
+  "setup.scanSummary": "检测到 {count} 个可用安装",
+  "setup.rescan": "重新扫描",
+  "setup.worlds": "{count} 个世界",
+  "setup.configFound": "已找到服务器 INI",
+  "setup.configPending": "服务器 INI 尚未生成",
+  "setup.notFound": "没有从运行进程、Steam 库或常用目录中找到 PalServer。",
+  "setup.source.runningProcess": "正在运行",
+  "setup.source.steamLibrary": "Steam 库",
+  "setup.source.commonPath": "常用目录",
+  "setup.source.database": "数据库记录",
+  "setup.manualTitle": "手动指定",
+  "setup.manualDescription": "只需选择包含 PalServer 启动器的安装目录。",
+  "setup.manual": "手动路径",
+  "setup.installDir": "PalServer 安装目录",
+  "setup.installPlaceholder": "例如 C:\\steamcmd\\steamapps\\common\\PalServer",
+  "setup.apply": "应用此服务端",
+  "setup.applied": "服务端路径已配置并保存",
+  "setup.savedRestart": "配置已保存，重启 PST 后生效",
+  "setup.restartDescription":
+    "新配置已写入 pst.db，请重启 PST 以加载服务端路径。",
   "status.online": "在线",
   "status.offline": "离线",
   "status.authenticated": "管理模式",
@@ -335,7 +362,7 @@ const zh: Messages = {
     "Pocketpair 的 Palworld 1.0.0 文档当前仅支持 Windows dedicated server；当前平台为 {platform}，PST 不会尝试第三方兼容注入。",
   "mods.notConfigured": "尚未配置 PalServer 安装目录",
   "mods.configHint":
-    "在 config.yaml 设置 mods.install_dir；留空时会使用 steamcmd.install_dir。目录必须包含 PalServer.exe。",
+    "请从管理菜单重新扫描服务端并保存安装目录。目录必须包含 PalServer.exe。",
   "mods.noModsTitle": "启动参数正在强制禁用全部 MOD",
   "mods.noModsHint":
     "检测到 -NoMods。可以整理选择清单，但移除此参数前任何 MOD 都不会生效。",
@@ -516,7 +543,7 @@ const zh: Messages = {
   "steamcmd.manualState": "未配置控制驱动，需要确认已在系统中手动停服",
   "steamcmd.blockers": "必须先处理这些问题",
   "steamcmd.configHint":
-    "请在 config.yaml 的 steamcmd 与 save 区域填写绝对路径后刷新。",
+    "请从管理菜单扫描服务端；扫描失败时手动填写 PalServer 安装目录。",
   "steamcmd.warnings": "注意事项",
   "steamcmd.pipeline": "受限维护流水线",
   "steamcmd.pipelineHint":
@@ -647,7 +674,7 @@ const zh: Messages = {
   "migration.notice.coop_source_unsupported":
     "合作主机存档需要玩家 GUID 转换，当前版本明确禁止自动迁移。",
   "migration.notice.destination_not_configured":
-    "请先在 config.yaml 中配置本机 save.path。",
+    "请先从管理菜单扫描服务端并保存本机存档路径。",
   "migration.notice.coop_host_detected":
     "检测到 00000000000000000000000000000001.sav，这是合作主机玩家档，已阻止实验性转换。",
   "migration.notice.source_is_destination":
@@ -854,7 +881,7 @@ const zh: Messages = {
   "operations.stop": "强制停止",
   "operations.managedControl": "游戏服务控制",
   "operations.controlNotConfigured":
-    "在 config.yaml 中配置 palworld.control 后可使用启动与重启",
+    "从管理菜单扫描并保存本机服务端后可使用启动与重启",
   "operations.start": "启动服务器",
   "operations.startHint": "通过受限控制驱动启动并等待 REST 就绪",
   "operations.restart": "保存并重启",
@@ -1026,6 +1053,37 @@ const en: Messages = {
   "nav.operations": "Operations",
   "nav.open": "Open navigation",
   "nav.close": "Close navigation",
+  "setup.bannerTitle": "Local PalServer setup is incomplete",
+  "setup.bannerDescription":
+    "Scan for the server and configure its launcher, settings, and save paths automatically.",
+  "setup.loginDescription": "Sign in to scan and configure the local server.",
+  "setup.open": "Scan server",
+  "setup.title": "Discover Palworld Dedicated Server",
+  "setup.description":
+    "Running server processes, Steam libraries, and common install locations are checked first. Enter a path only when no installation is found.",
+  "setup.scanSummary": "Found {count} usable installation(s)",
+  "setup.rescan": "Scan again",
+  "setup.worlds": "{count} world(s)",
+  "setup.configFound": "Server INI found",
+  "setup.configPending": "Server INI not created yet",
+  "setup.notFound":
+    "PalServer was not found from running processes, Steam libraries, or common locations.",
+  "setup.source.runningProcess": "Running",
+  "setup.source.steamLibrary": "Steam library",
+  "setup.source.commonPath": "Common path",
+  "setup.source.database": "Database",
+  "setup.manualTitle": "Manual location",
+  "setup.manualDescription":
+    "Select only the directory containing the PalServer launcher.",
+  "setup.manual": "Enter path",
+  "setup.installDir": "PalServer installation directory",
+  "setup.installPlaceholder":
+    "For example C:\\steamcmd\\steamapps\\common\\PalServer",
+  "setup.apply": "Use this server",
+  "setup.applied": "Server paths were configured and saved",
+  "setup.savedRestart": "Configuration saved; restart PST to activate it",
+  "setup.restartDescription":
+    "The new configuration is in pst.db. Restart PST to load the server paths.",
   "status.online": "Online",
   "status.offline": "Offline",
   "status.authenticated": "Admin mode",
@@ -1364,7 +1422,7 @@ const en: Messages = {
     "Pocketpair documents server-side mods only for Windows Dedicated Server in Palworld 1.0.0. This host is {platform}; PST will not inject an unofficial compatibility layer.",
   "mods.notConfigured": "PalServer install directory is not configured",
   "mods.configHint":
-    "Set mods.install_dir in config.yaml. When empty, steamcmd.install_dir is used. The directory must contain PalServer.exe.",
+    "Rescan the server from the management menu and save its install directory. The directory must contain PalServer.exe.",
   "mods.noModsTitle": "A launch argument is forcing every mod off",
   "mods.noModsHint":
     "-NoMods is configured. You can prepare the selection, but no mod becomes effective until that argument is removed.",
@@ -1578,7 +1636,7 @@ const en: Messages = {
     "No control driver is configured; confirm the server was stopped in the host system",
   "steamcmd.blockers": "Resolve these blockers first",
   "steamcmd.configHint":
-    "Set absolute paths under steamcmd and save in config.yaml, then refresh.",
+    "Scan the server from the management menu, or enter the PalServer install directory if discovery finds nothing.",
   "steamcmd.warnings": "Warnings",
   "steamcmd.pipeline": "Restricted maintenance pipeline",
   "steamcmd.pipelineHint":
@@ -1725,7 +1783,7 @@ const en: Messages = {
   "migration.notice.coop_source_unsupported":
     "Co-op saves require player GUID conversion and are intentionally blocked.",
   "migration.notice.destination_not_configured":
-    "Configure a local save.path in config.yaml first.",
+    "Scan the server from the management menu and save its local world path first.",
   "migration.notice.coop_host_detected":
     "Detected 00000000000000000000000000000001.sav, the co-op host player save; experimental conversion is blocked.",
   "migration.notice.source_is_destination":
@@ -1941,7 +1999,7 @@ const en: Messages = {
   "operations.stop": "Force stop",
   "operations.managedControl": "Game service control",
   "operations.controlNotConfigured":
-    "Configure palworld.control in config.yaml to enable start and restart",
+    "Scan and save the local server from the management menu to enable start and restart",
   "operations.start": "Start server",
   "operations.startHint":
     "Start through a restricted driver and wait for REST readiness",
@@ -2128,6 +2186,27 @@ const ja: Messages = {
   "nav.guilds": "ギルド",
   "nav.map": "マップ",
   "nav.operations": "運用",
+  "setup.bannerTitle": "ローカル PalServer の設定が未完了です",
+  "setup.bannerDescription":
+    "サーバーを自動検出し、起動ファイル・設定・セーブパスを構成できます。",
+  "setup.loginDescription":
+    "管理モードにログインしてサーバーを検出してください。",
+  "setup.open": "サーバーを検出",
+  "setup.title": "Palworld 専用サーバーを検出",
+  "setup.description":
+    "実行中のサーバー、Steam ライブラリ、一般的な場所を先に検索し、見つからない場合のみ手動パスを使用します。",
+  "setup.source.runningProcess": "実行中",
+  "setup.source.steamLibrary": "Steam ライブラリ",
+  "setup.source.commonPath": "一般的な場所",
+  "setup.source.database": "データベース",
+  "setup.rescan": "再スキャン",
+  "setup.manualTitle": "手動指定",
+  "setup.manual": "パスを入力",
+  "setup.apply": "このサーバーを使用",
+  "setup.applied": "サーバーパスを保存しました",
+  "setup.savedRestart": "設定を保存しました。PST の再起動後に有効になります",
+  "setup.restartDescription":
+    "新しい設定を pst.db に保存しました。PST を再起動して読み込んでください。",
   "status.online": "オンライン",
   "status.offline": "オフライン",
   "status.authenticated": "管理モード",
@@ -2196,7 +2275,7 @@ const ja: Messages = {
     "Palworld 1.0.0 の Pocketpair 文書では Windows 専用サーバーのみ対応しています。現在は {platform} のため、PST は非公式な互換注入を行いません。",
   "mods.notConfigured": "PalServer の導入先が未設定です",
   "mods.configHint":
-    "config.yaml の mods.install_dir を設定してください。空の場合は steamcmd.install_dir を使用します。PalServer.exe が必要です。",
+    "管理メニューからサーバーを再検出し、インストール先を保存してください。PalServer.exe が必要です。",
   "mods.noModsTitle": "起動引数で全 MOD が強制無効です",
   "mods.noModsHint":
     "-NoMods を検出しました。選択は整理できますが、この引数を外すまで MOD は有効になりません。",
@@ -2404,7 +2483,7 @@ const ja: Messages = {
     "制御ドライバー未設定。ホスト側で停止済みであることを確認してください",
   "steamcmd.blockers": "先に解決が必要です",
   "steamcmd.configHint":
-    "config.yaml の steamcmd と save に絶対パスを設定して更新してください。",
+    "管理メニューからサーバーを検出し、見つからない場合だけ PalServer の導入先を手動入力してください。",
   "steamcmd.warnings": "注意事項",
   "steamcmd.pipeline": "制限付きメンテナンス手順",
   "steamcmd.pipelineHint":
@@ -2549,7 +2628,7 @@ const ja: Messages = {
   "migration.notice.coop_source_unsupported":
     "協力ホストはプレイヤー GUID 変換が必要なため、自動移行を禁止しています。",
   "migration.notice.destination_not_configured":
-    "先に config.yaml でローカル save.path を設定してください。",
+    "先に管理メニューからサーバーを検出し、ローカルのセーブ先を保存してください。",
   "migration.notice.coop_host_detected":
     "協力ホストの 00000000000000000000000000000001.sav を検出したため、実験的変換を停止しました。",
   "migration.notice.source_is_destination":
@@ -2758,7 +2837,7 @@ const ja: Messages = {
   "operations.rconPresetSpectate": "観戦モード切替",
   "operations.managedControl": "ゲームサービス操作",
   "operations.controlNotConfigured":
-    "config.yaml の palworld.control を設定すると起動と再起動を使用できます",
+    "管理メニューからローカルサーバーを検出して保存すると、起動と再起動を使用できます",
   "operations.start": "サーバー起動",
   "operations.restart": "保存して再起動",
   "message.startCompleted": "ゲームサーバーが起動しました",

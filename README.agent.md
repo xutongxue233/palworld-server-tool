@@ -6,7 +6,7 @@
 
 ### Linux
 
-这里指的是，你的游戏服务器是 Linux 版本的，而你想在其它任何地方部署的 pst 本体依然参考前面的 [安装部署](./README.md#安装部署)，pst-agent 对其的影响只是配置文件的修改。
+这里指的是，你的游戏服务器是 Linux 版本，而 pst 本体部署在其它位置。pst 本体仍参考前面的 [安装部署](./README.md#安装部署)，pst-agent 只需要把远程同步地址写入 PST 数据库配置。
 
 #### 下载
 
@@ -41,19 +41,17 @@ tail -f agent.log
 
 #### 配置
 
-找到 **pst 本体（注意，不是 pst-agent！！！）** 的 `config.yaml` 文件并修改。
+登录 **pst 本体（注意，不是 pst-agent！！！）** 的 Web 管理模式，在 Swagger 中调用 `PUT /api/setup/config`，只更新 `save.path`：
 
-**只需要修改其中的 `save: path`**
-
-```yaml
-...
-save: # 存档文件解析相关配置
-  path: "http://游戏服务器公网IP:端口/sync" # pst-agent 服务接口
-  ...
-...
+```json
+{
+  "values": {
+    "save.path": "http://游戏服务器公网IP:端口/sync"
+  }
+}
 ```
 
-重启 pst 本体即可
+配置会写入 `pst.db`；请重启 PST 本体以加载新地址。
 
 #### 关闭后台运行
 
@@ -63,7 +61,7 @@ kill $(ps aux | grep 'pst-agent' | awk '{print $2}') | head -n 1
 
 ### Windows
 
-这里指的是，你的游戏服务器是 Windows 版本的，而你想在其它任何地方部署的 pst 本体依然参考前面的 [安装部署](./README.md#安装部署)，pst-agent 对其的影响只是配置文件的修改。
+这里指的是，你的游戏服务器是 Windows 版本，而 pst 本体部署在其它位置。pst 本体仍参考前面的 [安装部署](./README.md#安装部署)，pst-agent 只需要把远程同步地址写入 PST 数据库配置。
 
 #### 下载
 
@@ -82,16 +80,14 @@ kill $(ps aux | grep 'pst-agent' | awk '{print $2}') | head -n 1
 
 #### 配置
 
-找到 **pst 本体（注意，不是 pst-agent！！！）** 的 `config.yaml` 文件并修改。
+登录 **pst 本体（注意，不是 pst-agent！！！）** 的 Web 管理模式，在 Swagger 中调用 `PUT /api/setup/config`，只更新 `save.path`：
 
-**只需要修改其中的 `save: path`**
-
-```yaml
-...
-save: # 存档文件解析相关配置
-  path: "http://游戏服务器公网IP:端口/sync" # pst-agent 服务接口
-  ...
-...
+```json
+{
+  "values": {
+    "save.path": "http://游戏服务器公网IP:端口/sync"
+  }
+}
 ```
 
-重启 pst 本体即可
+配置会写入 `pst.db`；请重启 PST 本体以加载新地址。

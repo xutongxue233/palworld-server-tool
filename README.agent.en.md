@@ -6,7 +6,7 @@
 
 ### Linux
 
-This refers to the scenario where your game server is a Linux version, and you want to deploy the pst main body elsewhere. For the deployment of the pst main body, refer to the previous [Installation and Deployment](./README.md#installation-and-deployment). The impact of pst-agent is only on the modification of the configuration file.
+This describes a Linux game server with the PST main service deployed elsewhere. Follow the normal [Installation and Deployment](./README.md#installation-and-deployment); pst-agent only requires its remote synchronization URL to be stored in the PST database configuration.
 
 #### Download
 
@@ -41,19 +41,17 @@ If pst-agent and pst main body are not in the same network group, you need to op
 
 #### Configuration
 
-Find the `config.yaml` file of **the pst main body (note, not the pst-agent!!!)** and modify it.
+Sign in to **the PST main service (not pst-agent)**, open Swagger, and call `PUT /api/setup/config` with only `save.path`:
 
-**You only need to modify `save: path`**
-
-```yaml
-...
-save: # Configuration related to save file parsing
-  path: "http://{Public IP of the game server}:{port}/sync" # pst-agent service interface
-  ...
-...
+```json
+{
+  "values": {
+    "save.path": "http://{Public IP of the game server}:{port}/sync"
+  }
+}
 ```
 
-Restart the pst main body to apply changes
+The value is written to `pst.db`; restart the PST main service to load the new address.
 
 #### Close Background Operation
 
@@ -63,7 +61,7 @@ kill $(ps aux | grep 'pst-agent' | awk '{print $2}') | head -n 1
 
 ### Windows
 
-This refers to the scenario where your game server is a Windows version, and you want to deploy the pst main body elsewhere. For the deployment of the pst main body, refer to the previous [Installation and Deployment](./README.md#installation-and-deployment). The impact of pst-agent is only on the modification of the configuration file.
+This describes a Windows game server with the PST main service deployed elsewhere. Follow the normal [Installation and Deployment](./README.md#installation-and-deployment); pst-agent only requires its remote synchronization URL to be stored in the PST database configuration.
 
 #### Download
 
@@ -82,16 +80,14 @@ After successful operation, please keep the window open
 
 #### Configuration
 
-Find the `config.yaml` file of **the pst main body (note, not the pst-agent!!!)** and modify it.
+Sign in to **the PST main service (not pst-agent)**, open Swagger, and call `PUT /api/setup/config` with only `save.path`:
 
-**You only need to modify `save: path`**
-
-```yaml
-...
-save: # Configuration related to save file parsing
-  path: "{http://Public IP of the game server}:{port}/sync" # pst-agent service interface
-  ...
-...
+```json
+{
+  "values": {
+    "save.path": "http://{Public IP of the game server}:{port}/sync"
+  }
+}
 ```
 
-Restart the pst main body to apply changes
+The value is written to `pst.db`; restart the PST main service to load the new address.

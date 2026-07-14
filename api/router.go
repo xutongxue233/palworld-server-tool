@@ -65,6 +65,7 @@ func RegisterRouter(r *gin.Engine) {
 
 	anonymousGroup := apiGroup.Group("")
 	{
+		anonymousGroup.GET("/setup/status", getDiscoverySetupStatus)
 		anonymousGroup.GET("/server", getServer)
 		anonymousGroup.GET("/server/tool", getServerTool)
 		anonymousGroup.GET("/server/metrics", getServerMetrics)
@@ -83,6 +84,11 @@ func RegisterRouter(r *gin.Engine) {
 	authGroup := apiGroup.Group("")
 	authGroup.Use(auth.JWTAuthMiddleware())
 	{
+		authGroup.GET("/setup/discovery", getServerDiscovery)
+		authGroup.POST("/setup/discovery/scan", scanServerDiscovery)
+		authGroup.POST("/setup/discovery/apply", applyServerDiscovery)
+		authGroup.GET("/setup/config", getRuntimeConfig)
+		authGroup.PUT("/setup/config", putRuntimeConfig)
 		authGroup.GET("/fleet/nodes", listFleetNodes)
 		authGroup.Any("/fleet/nodes/:node_id/proxy/*path", proxyFleetNode)
 		authGroup.GET("/server/settings", getServerSettings)

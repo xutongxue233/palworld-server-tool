@@ -1,11 +1,23 @@
 package config
 
 import (
+	"crypto/rand"
+	"encoding/base64"
+	"fmt"
 	"strings"
 
 	"github.com/spf13/viper"
+	"github.com/zaigie/palworld-server-tool/internal/database"
 	"github.com/zaigie/palworld-server-tool/internal/logger"
+	"go.etcd.io/bbolt"
 )
+
+var activeDB *bbolt.DB
+
+type InitResult struct {
+	MigratedFrom         string
+	InitialAdminPassword string
+}
 
 type Config struct {
 	Palworld struct {
@@ -98,25 +110,53 @@ type Config struct {
 	}
 }
 
-func Init(cfgFile string, conf *Config) {
-	if cfgFile != "" {
-		viper.SetConfigFile(cfgFile)
-		viper.SetConfigType("yaml")
-	} else {
-		viper.AddConfigPath(".")
-		viper.SetConfigName("config")
-		viper.SetConfigType("yaml")
-	}
-
-	err := viper.ReadInConfig()
+func Init(db *bbolt.DB, conf *Config) InitResult {
+	activeDB = db
+	result := InitResult{}
+	values, err := database.ListConfigValues(db)
 	if err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			logger.Warn("config file not found, try to read from env\n")
-		} else {
-			logger.Panic("config file was found but another error was produced\n")
+		logger.Panicf("Unable to read configuration database: %s", err)
+	}
+	if len(values) == 0 {
+		if migrated, source, migrateErr := importLegacyConfig(db); migrateErr != nil {
+			logger.Panicf("Unable to import legacy config.yaml: %v", migrateErr)
+		} else if migrated {
+			result.MigratedFrom = source
+			values, err = database.ListConfigValues(db)
+			if err != nil {
+				logger.Panicf("Unable to read imported configuration: %s", err)
+			}
+		}
+	}
+	if len(values) > 0 {
+		if err := viper.MergeConfigMap(expandValues(values)); err != nil {
+			logger.Panicf("Unable to load database configuration: %s", err)
 		}
 	}
 
+	setDefaults()
+	viper.SetEnvPrefix("")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "__"))
+	viper.AutomaticEnv()
+
+	if strings.TrimSpace(viper.GetString("web.password")) == "" {
+		password, generateErr := generateInitialPassword()
+		if generateErr != nil {
+			logger.Panicf("Unable to generate the initial administrator password: %s", generateErr)
+		}
+		if err := ApplyValues(map[string]any{"web.password": password}); err != nil {
+			logger.Panicf("Unable to store the initial administrator password: %s", err)
+		}
+		result.InitialAdminPassword = password
+	}
+
+	if err := viper.Unmarshal(conf); err != nil {
+		logger.Panicf("Unable to decode database configuration, %s", err)
+	}
+	return result
+}
+
+func setDefaults() {
 	viper.SetDefault("web.port", 8080)
 
 	viper.SetDefault("task.sync_interval", 60)
@@ -158,13 +198,33 @@ func Init(cfgFile string, conf *Config) {
 
 	viper.SetDefault("palworld.control.mode", "disabled")
 	viper.SetDefault("palworld.control.timeout", 120)
+}
 
-	viper.SetEnvPrefix("")
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "__"))
-	viper.AutomaticEnv()
-
-	err = viper.Unmarshal(conf)
-	if err != nil {
-		logger.Panicf("Unable to decode config into struct, %s", err)
+func expandValues(values map[string]any) map[string]any {
+	root := make(map[string]any)
+	for key, value := range values {
+		parts := strings.Split(key, ".")
+		current := root
+		for index, part := range parts {
+			if index == len(parts)-1 {
+				current[part] = value
+				break
+			}
+			next, ok := current[part].(map[string]any)
+			if !ok {
+				next = make(map[string]any)
+				current[part] = next
+			}
+			current = next
+		}
 	}
+	return root
+}
+
+func generateInitialPassword() (string, error) {
+	random := make([]byte, 24)
+	if _, err := rand.Read(random); err != nil {
+		return "", fmt.Errorf("read secure random data: %w", err)
+	}
+	return base64.RawURLEncoding.EncodeToString(random), nil
 }

@@ -16,36 +16,23 @@ func InitDB() *bbolt.DB {
 	if err != nil {
 		logger.Panic(err)
 	}
-	// players
-	err = db_.Update(func(tx *bbolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists([]byte("players"))
-		return err
-	})
+	err = EnsureBuckets(db_)
 	if err != nil {
 		logger.Panic(err)
 	}
-	// guilds
-	err = db_.Update(func(tx *bbolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists([]byte("guilds"))
-		return err
-	})
-	if err != nil {
-		logger.Panic(err)
-	}
-	// backups
-	err = db_.Update(func(tx *bbolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists([]byte("backups"))
-		return err
-	})
-	if err != nil {
-		logger.Panic(err)
-	}
-	// automation
-	err = db_.Update(func(tx *bbolt.Tx) error {
+	return db_
+}
+
+func EnsureBuckets(db *bbolt.DB) error {
+	return db.Update(func(tx *bbolt.Tx) error {
 		for _, name := range []string{
+			"players",
+			"guilds",
+			"backups",
 			"automation_tasks",
 			"automation_runs",
 			"automation_settings",
+			"config",
 		} {
 			if _, err := tx.CreateBucketIfNotExists([]byte(name)); err != nil {
 				return err
@@ -53,10 +40,6 @@ func InitDB() *bbolt.DB {
 		}
 		return nil
 	})
-	if err != nil {
-		logger.Panic(err)
-	}
-	return db_
 }
 
 func GetDB() *bbolt.DB {

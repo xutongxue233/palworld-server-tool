@@ -99,15 +99,7 @@ Then enable the **REST API**
 
 ## Optional: enable RCON
 
-Palworld 1.0.0 can still use RCON, but the official documentation marks it as deprecated; prefer REST API actions for routine administration. For legacy servers or plugin commands, set `RCONEnabled=True`, confirm `RCONPort`, and configure a non-empty `AdminPassword` in `PalWorldSettings.ini`. Then add the same password to PST's `config.yaml`:
-
-```yaml
-rcon:
-  address: "127.0.0.1:25575"
-  password: "your AdminPassword"
-  use_base64: false
-  timeout: 5
-```
+Palworld 1.0.0 can still use RCON, but the official documentation marks it as deprecated; prefer REST API actions for routine administration. For legacy servers or plugin commands, set `RCONEnabled=True`, confirm `RCONPort`, and configure a non-empty `AdminPassword` in `PalWorldSettings.ini`. Discovery reads these values into `pst.db`; rescan from the management menu after changing them. Non-standard addresses can be updated through the authenticated `PUT /api/setup/config` endpoint.
 
 Expose the RCON port only to the PST host or another trusted network. Keep `use_base64` disabled when connecting directly to the official server.
 
@@ -121,62 +113,51 @@ Offline save edits, configuration writes, RCON, legacy periodic sync/backups, an
 
 Notifications support generic JSON and Discord webhooks with selectable task, lifecycle, unhealthy, and recovery events. Generic endpoints can verify `X-PST-Signature: sha256=<HMAC>`. Public HTTPS destinations are required by default; redirects, localhost, and private-network addresses are rejected. Webhook tokens and signing secrets are never returned by read APIs.
 
-`automation.watchdog` and `automation.notification` in `config.yaml` seed first-run defaults and can then be managed in the Web UI. The watchdog requires `palworld.control`. The design was informed by [palworld-server-docker's scheduled backup and Discord notification flows](https://github.com/thijsvanloef/palworld-server-docker) and [TRRabbit Palworld Server Manager's Scheduler/Guardian UX](https://github.com/TRRabbit/palworld-server-manager), while PST keeps its own allowlisted actions, operation lock, and outbound-only notification boundary.
+Automation, watchdog, and notification settings are saved directly to `pst.db` from the Web UI. The watchdog requires `palworld.control`, normally populated by discovery or the database configuration API. The design was informed by [palworld-server-docker's scheduled backup and Discord notification flows](https://github.com/thijsvanloef/palworld-server-docker) and [TRRabbit Palworld Server Manager's Scheduler/Guardian UX](https://github.com/TRRabbit/palworld-server-manager), while PST keeps its own allowlisted actions, operation lock, and outbound-only notification boundary.
 
-```yaml
-automation:
-  watchdog:
-    enabled: false
-    desired_running: true
-    check_interval_seconds: 30
-    failure_threshold: 3
-    restart_cooldown_seconds: 120
-    max_recovery_attempts: 3
-    startup_grace_seconds: 90
-  notification:
-    enabled: false
-    provider: "generic" # generic or discord
-    webhook_url: ""
-    secret: "" # optional HMAC-SHA256 secret for generic webhooks
-    events: ["task.failed", "watchdog.unhealthy", "watchdog.recovered"]
-    timeout_seconds: 10
-    allow_private_network: false
-```
+The watchdog is disabled by default, with a failure threshold of 3, a 90-second startup grace period, and a 120-second recovery cooldown. All of these values are editable under **Operations → Automation**.
 
 ## Multi-server nodes
 
-PST 1.8.0 manages multiple Palworld 1.0.0 servers as **one isolated PST node per server plus a central controller**. Each PalServer keeps its own PST process, `config.yaml`, `pst.db`, save directory, backups, scheduler, watchdog, and maintenance lock. The controller only aggregates node health and forwards existing APIs through a fixed allowlist. Different worlds can therefore run maintenance concurrently while dangerous operations remain protected by the target node's own lock and recovery transaction; global configuration is never swapped inside one process.
+PST 1.8.0 manages multiple Palworld 1.0.0 servers as **one isolated PST node per server plus a central controller**. Each PalServer keeps its own PST process, `pst.db`, save directory, backups, scheduler, watchdog, and maintenance lock. The controller only aggregates node health and forwards existing APIs through a fixed allowlist. Different worlds can therefore run maintenance concurrently while dangerous operations remain protected by the target node's own lock and recovery transaction; global configuration is never swapped inside one process.
 
 When several nodes run on the same host, give every node a **different PST working directory** and `web.port`. For example, use `pst-primary/` and `pst-second/`, each containing its own executable, configuration, and database, with REST, save, control, SteamCMD, and mod paths pointing only to that PalServer instance. Never share `pst.db`, the backup directory, or one world save between two PST processes.
 
-Configure the managed node with an identity and an inbound token containing at least 32 random characters:
+Configure the managed node through `PUT /api/setup/config` with an identity and an inbound token containing at least 32 random characters:
 
-```yaml
-web:
-  port: 8081
-
-fleet:
-  node_id: "second"
-  node_name: "Second World"
-  node_token: "replace-with-at-least-32-random-characters"
-  nodes: []
+```json
+{
+  "values": {
+    "web.port": 8081,
+    "fleet.node_id": "second",
+    "fleet.node_name": "Second World",
+    "fleet.node_token": "replace-with-at-least-32-random-characters",
+    "fleet.nodes": []
+  }
+}
 ```
 
-Add that node to the controller's `fleet` section. `id` must equal the remote `node_id`, and `token` must equal the remote `node_token`:
+Add that node to the controller's database configuration. `id` must equal the remote `node_id`, and `token` must equal the remote `node_token`:
 
-```yaml
-fleet:
-  node_id: "primary"
-  node_name: "Primary World"
-  node_token: "optional-token-if-this-node-is-also-controlled-remotely"
-  timeout_seconds: 15
-  nodes:
-    - id: "second"
-      name: "Second World"
-      base_url: "https://palworld-second.example.com:8081"
-      token: "replace-with-at-least-32-random-characters"
-      allow_private_network: false
-      timeout_seconds: 15
+```json
+{
+  "values": {
+    "fleet.node_id": "primary",
+    "fleet.node_name": "Primary World",
+    "fleet.node_token": "optional-token-if-this-node-is-also-controlled-remotely",
+    "fleet.timeout_seconds": 15,
+    "fleet.nodes": [
+      {
+        "id": "second",
+        "name": "Second World",
+        "base_url": "https://palworld-second.example.com:8081",
+        "token": "replace-with-at-least-32-random-characters",
+        "allow_private_network": false,
+        "timeout_seconds": 15
+      }
+    ]
+  }
+}
 ```
 
 After signing in to the controller, the header selector and overview rail show up to 32 remote PST nodes with reachability, players, FPS, latency, control state, and configuration issues. Selecting a node scopes the overview, players, guilds, map, configuration, RCON, backups, automation, deployment, mods, and migration pages to that server with separate query caches. Switching is disabled while a write mutation is active so completion handlers cannot land on another world.
@@ -187,14 +168,14 @@ Public nodes require valid HTTPS. Set `allow_private_network: true` only for a t
 
 The Palworld 1.0.0 dedicated-server app ID is `2394010`. In Web management mode, open **Operations → Deployment** to run the official `app_update 2394010` install/update workflow with file validation enabled by default. PST does not use a third-party “latest version” API and does not accept shell text, a custom app ID, or arbitrary SteamCMD arguments.
 
-```yaml
-steamcmd:
-  # steamcmd.exe on Windows; steamcmd.sh or steamcmd on Linux. Must be absolute.
-  executable: "C:/steamcmd/steamcmd.exe"
-  # Palworld Dedicated Server install directory; a filesystem root is rejected.
-  install_dir: "D:/PalworldServer"
-  # Maximum duration for one install/update, from 60 to 7200 seconds.
-  timeout: 1800
+```json
+{
+  "values": {
+    "steamcmd.executable": "C:/steamcmd/steamcmd.exe",
+    "steamcmd.install_dir": "D:/PalworldServer",
+    "steamcmd.timeout": 1800
+  }
+}
 ```
 
 Before every run, PST revalidates the SteamCMD hash, install directory, `appmanifest_2394010.acf`, platform launcher, and plan digest. If world data already exists in the install directory, local `save.path` must resolve to a world inside that installation. PST stops the server and creates a mandatory full restore point; SteamCMD is not started if the backup fails. With `palworld.control`, PST can stop and optionally restart the server. Without it, fully stop PalServer in the host system and explicitly confirm that state in the UI.
@@ -205,11 +186,12 @@ See the [official Palworld 1.0.0 SteamCMD deployment guide](https://docs.palworl
 
 Palworld 1.0.0 currently supports official server-side mods only on the **Windows Dedicated Server**. In Web management mode, open **Operations → Mods**. PST scans `<PalServer>/Mods/Workshop/<any-folder>/Info.json`, displays package name, version, author, dependencies, install types, and server compatibility, and uses `<PalServer>/Mods/ManagedMods/<PackageName>/InstallManifest.json` to distinguish deployed, pending-restart, and pending-removal states.
 
-```yaml
-mods:
-  # Optional absolute Palworld Dedicated Server install directory.
-  # When empty, steamcmd.install_dir is used.
-  install_dir: "D:/PalworldServer"
+```json
+{
+  "values": {
+    "mods.install_dir": "D:/PalworldServer"
+  }
+}
 ```
 
 PST follows the official 1.0.0 `WorkshopRootDir`, `bGlobalEnableMod`, and repeated `ActiveModList` format and detects `-NoMods` and `-workshopdir` launch overrides. A package can enter the server list only when it has an `IsServer: true` rule, at least one package-local target, and one of the five documented install types: UE4SS, Lua, PalSchema, LogicMods, or Paks. Missing, duplicate, or inactive dependencies block the change.
@@ -264,7 +246,7 @@ Download the latest executable files at:
 
 ```bash
 # Download pst_{version}_{platform}_{arch}.tar.gz and extract to the pst directory
-mkdir -p pst && tar -xzf pst_v1.8.0_linux_x86_64.tar.gz -C pst
+mkdir -p pst && tar -xzf pst_v1.9.0_linux_x86_64.tar.gz -C pst
 ```
 
 ##### Configuration
@@ -276,78 +258,20 @@ mkdir -p pst && tar -xzf pst_v1.8.0_linux_x86_64.tar.gz -C pst
    chmod +x pst sav_cli
    ```
 
-2. Find the `config.yaml` file and modify it as per the instructions.
+2. Run `./pst`, copy the generated administrator password from the log, and open the Web interface. PST scans running PalServer processes, Steam libraries, and common install locations first; enter a directory only if discovery finds nothing.
 
-   For `decode_path`, it's usually the pst directory plus `sav_cli`. Can be empty, the current directory will be obtained by default
+   `save.decode_path` may be left empty; PST then uses the bundled `sav_cli` next to the main executable.
 
-   ```yaml
-   # Palworld game files and lifecycle control (game version 1.0.0)
-   palworld:
-     # Local PalWorldSettings.ini path used by direct Web UI editing
-     config_path: "/path/to/PalServer/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini"
-     control:
-       # disabled / process / docker / systemd / windows_service
-       mode: "systemd"
-       target: "palworld.service"
-       arguments: []
-       working_directory: ""
-       timeout: 120
+   For non-standard systemd, Docker, TLS, or Fleet settings, sign in and call `PUT /api/setup/config` from Swagger. The endpoint accepts dotted keys and stores them in `pst.db`:
 
-   # WebUI Config
-   web:
-     # WebUI Admin Password
-     password: ""
-     # WebUI Port
-     port: 8080
-     # Enable TLS
-     tls: false
-     # TLS Cert File Path if Enable TLS
-     cert_path: ""
-     # TLS Key File Path if Enable TLS
-     key_path: ""
-     # TLS url for sav_cli to communicate eg. https://yourdomain.com
-     public_url: ""
-
-   # Task Config
-   task:
-     # Regular intervals to get information from the game service about the player's online presence
-     sync_interval: 60
-     # Player entry/exit server notification
-     player_logging: true
-     # Player enters server message
-     player_login_message: "Player {username} has joined the server! Current online player count: {online_num}."
-     # Player leaving server message
-     player_logout_message: "Player {username} has left the server! Current online player count: {online_num}."
-
-
-   # REST API Config
-   rest:
-     # REST API address
-     address: "http://127.0.0.1:8212"
-     # User name of Base Auth, which is fixed to admin
-     username: "admin"
-     # Server AdminPassword
-     password: ""
-     # Request Timeout Sec
-     timeout: 5
-
-   # sav_cli Config
-   save:
-     # Sav File Path
-     path: "/path/to/your/Pal/Saved"
-     # Sav_cli Path, Could be empty
-     decode_path: ""
-     # Sav Decode Interval Sec
-     sync_interval: 120
-     # Save Backup Interval Sec
-     backup_interval: 0
-     # Save Backup Keep Days
-     backup_keep_days: 7
-
-   # Manage Config
-   manage:
-     # Auto Kick non-whitelisted
-     kick_non_whitelist: false
+   ```json
+   {
+     "values": {
+       "palworld.control.mode": "systemd",
+       "palworld.control.target": "palworld.service",
+       "save.path": "/srv/palworld/Pal/Saved"
+     }
+   }
    ```
 
 > [!NOTE]
@@ -402,87 +326,28 @@ Access at http://{Server IP}:8080 after opening firewall and security group in c
 
 ##### Download and Extract
 
-Extract `pst_v1.8.0_windows_x86_64.zip` to any directory (recommend naming the folder `pst`).
+Extract `pst_v1.9.0_windows_x86_64.zip` to any directory (recommend naming the folder `pst`).
+
+The Windows `pst.exe` uses the same Web-service architecture as Linux. Keep its console window open and visit the address printed in the log with a browser.
+
+On first launch, PST scans the Steam registry, every `libraryfolders.vdf`, common SteamCMD/SteamLibrary locations, and paths that can be inferred from an existing configuration. A clear best match is configured automatically; ties are shown for selection, and an installation directory is requested only when no PalServer installation can be found.
 
 ##### Configuration
 
-Find the `config.yaml` file in the extracted directory and modify it according to the instructions.
+Paths normally require no manual editing. Discovery stores them directly in `pst.db`. Enter the PalServer directory only when no candidate is found; use the authenticated `GET/PUT /api/setup/config` endpoint for advanced settings such as custom arguments, TLS, or Fleet nodes. Values written while PST is running are loaded after a PST restart.
 
-For `decode_path`, it's typically the pst directory plus `sav_cli.exe`. Can be empty, the current directory will be obtained by default
+`save.decode_path` may be left empty; PST then uses the bundled `sav_cli.exe` next to the main executable.
 
-You can also right-click - "Properties", view the path and file name, and then concatenate them. (Same for archive file path and tool path)
+Advanced settings are written to `pst.db` through the authenticated `PUT /api/setup/config` endpoint:
 
-> [!WARNING]
-> Instead of pasting the copied path directly into `config.yaml`, add another '\\' in front of all '\\', as shown below
->
-> It is also important to make sure that the `config.yaml` file is **ANSI encoded**, other encoding formats will cause problems such as path errors!!
-
-```yaml
-# Palworld game files and lifecycle control (game version 1.0.0)
-palworld:
-  config_path: "C:\\path\\to\\PalServer\\Pal\\Saved\\Config\\WindowsServer\\PalWorldSettings.ini"
-  control:
-    mode: "process"
-    target: "C:\\path\\to\\PalServer.exe"
-    arguments: []
-    working_directory: "C:\\path\\to"
-    timeout: 120
-
-# WebUI Config
-web:
-  # WebUI Admin Password
-  password: ""
-  # WebUI Port
-  port: 8080
-  # Enable TLS
-  tls: false
-  # TLS Cert File Path if Enable TLS
-  cert_path: ""
-  # TLS Key File Path if Enable TLS
-  key_path: ""
-  # TLS url for sav_cli to communicate eg. https://yourdomain.com
-  public_url: ""
-
-# Task Config
-task:
-  # Regular intervals to get information from the game service about the player's online presence
-  sync_interval: 60
-  # Player entry/exit server notification
-  player_logging: true
-  # Player enters server message
-  player_login_message: "Player {username} has joined the server! Current online player count: {online_num}."
-  # Player leaving server message
-  player_logout_message: "Player {username} has left the server! Current online player count: {online_num}."
-
-
-# REST API Config
-rest:
-  # REST API address
-  address: "http://127.0.0.1:8212"
-  # User name of Base Auth, which is fixed to admin
-  username: "admin"
-  # Server AdminPassword
-  password: ""
-  # Request Timeout Sec
-  timeout: 5
-
-# sav_cli Config
-save:
-  # Sav File Path
-  path: "C:\\path\\to\\your\\Pal\\Saved"
-  # Sav_cli Path, Could be empty
-  decode_path: ""
-  # Sav Decode Interval Sec
-  sync_interval: 120
-  # Save Backup Interval Sec
-  backup_interval: 0
-  # Save Backup Keep Days
-  backup_keep_days: 7
-
-# Manage Config
-manage:
-  # Auto Kick non-whitelisted
-  kick_non_whitelist: false
+```json
+{
+  "values": {
+    "palworld.control.mode": "process",
+    "palworld.control.target": "C:\\PalServer\\PalServer.exe",
+    "palworld.control.working_directory": "C:\\PalServer"
+  }
+}
 ```
 
 ##### Running
@@ -553,7 +418,7 @@ Then add `-v ./pst.db:/app/pst.db` in `docker run -v`.
 
 ##### Environment Variables
 
-Set various environment variables, similar to those in [`config.yaml`](#configuration). The table below lists them:
+Environment variables can override runtime values loaded from the database. The table below lists them:
 
 > [!WARNING]
 > Pay attention to the distinction between single and multiple underscores. It's best to copy the variable names from the table below for modifications!
@@ -702,7 +567,7 @@ Starting from v0.5.3, it is supported to synchronize game server archives inside
 
 #### File Deployment Usage
 
-When your pst application is deployed through running a binary file, you just need to modify the `save.path` in `config.yaml`:
+For binary deployments, use automatic discovery first. If it fails, enter the PalServer directory in the Web setup flow or update `save.path` through `PUT /api/setup/config`:
 
 ```yaml
 save:

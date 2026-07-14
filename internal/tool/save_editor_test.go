@@ -20,11 +20,14 @@ func configureSaveEditorRESTTest(t *testing.T, address string) {
 	t.Helper()
 	previousAddress := viper.GetString("rest.address")
 	previousTimeout := viper.GetInt("rest.timeout")
+	previousControlMode := viper.GetString("palworld.control.mode")
 	viper.Set("rest.address", address)
 	viper.Set("rest.timeout", 1)
+	viper.Set("palworld.control.mode", "disabled")
 	t.Cleanup(func() {
 		viper.Set("rest.address", previousAddress)
 		viper.Set("rest.timeout", previousTimeout)
+		viper.Set("palworld.control.mode", previousControlMode)
 	})
 }
 
@@ -51,71 +54,52 @@ func writeEditedSave(levelPath, outputPath string) error {
 	return os.WriteFile(outputPath, append(content, []byte("-edited")...), 0600)
 }
 
-func TestGameServerStatusWithoutRESTAddressIsExplicitOffline(t *testing.T) {
+func TestSaveEditRequiresManualConfirmationWithoutManagedControl(t *testing.T) {
 	configureSaveEditorRESTTest(t, "")
 
-	status, err := probeGameServerStatus()
-	if err != nil {
-		t.Fatal(err)
+	if err := ensureGameServerStopped(false); !errors.Is(err, ErrSaveEditConfirmation) {
+		t.Fatalf("expected manual confirmation error, got %v", err)
 	}
-	if status != gameServerStatusExplicitOffline {
-		t.Fatalf("unexpected server status: %d", status)
-	}
-	if err := ensureGameServerStopped(); err != nil {
-		t.Fatalf("unconfigured REST address should allow an explicitly offline edit: %v", err)
+	if err := ensureGameServerStopped(true); err != nil {
+		t.Fatalf("confirmed manual stop was rejected: %v", err)
 	}
 }
 
-func TestGameServerRESTErrorMeansOnline(t *testing.T) {
+func TestSaveEditRejectsReachableRESTServer(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 	}))
 	defer server.Close()
 	configureSaveEditorRESTTest(t, server.URL)
 
-	status, err := probeGameServerStatus()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if status != gameServerStatusOnline {
-		t.Fatalf("unexpected server status: %d", status)
-	}
-	if err := ensureGameServerStopped(); !errors.Is(err, ErrGameServerRunning) {
+	if err := ensureGameServerStopped(true); !errors.Is(err, ErrGameServerRunning) {
 		t.Fatalf("expected running server error, got %v", err)
 	}
 }
 
-func TestGameServerConnectionFailureFailsClosed(t *testing.T) {
+func TestSaveEditAllowsConfirmedStopWhenRESTIsUnavailable(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 	address := server.URL
 	server.Close()
 	configureSaveEditorRESTTest(t, address)
 
-	status, err := probeGameServerStatus()
-	if status != gameServerStatusUnknown {
-		t.Fatalf("unexpected server status: %d", status)
+	if err := ensureGameServerStopped(false); !errors.Is(err, ErrSaveEditConfirmation) {
+		t.Fatalf("expected manual confirmation error, got %v", err)
 	}
-	if !errors.Is(err, ErrGameServerStatusUnknown) {
-		t.Fatalf("expected unknown server status error, got %v", err)
-	}
-	if err := ensureGameServerStopped(); !errors.Is(err, ErrGameServerStatusUnknown) {
-		t.Fatalf("connection failure must fail closed, got %v", err)
+	if err := ensureGameServerStopped(true); err != nil {
+		t.Fatalf("confirmed stopped server was rejected after REST shutdown: %v", err)
 	}
 }
 
-func TestGameServerMetricsParseFailureFailsClosed(t *testing.T) {
+func TestSaveEditTreatsInvalidRESTResponseAsRunning(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("not-json"))
 	}))
 	defer server.Close()
 	configureSaveEditorRESTTest(t, server.URL)
 
-	status, err := probeGameServerStatus()
-	if status != gameServerStatusUnknown {
-		t.Fatalf("unexpected server status: %d", status)
-	}
-	if !errors.Is(err, ErrGameServerStatusUnknown) {
-		t.Fatalf("parse failure must fail closed, got %v", err)
+	if err := ensureGameServerStopped(true); !errors.Is(err, ErrGameServerRunning) {
+		t.Fatalf("reachable REST endpoint must be treated as running, got %v", err)
 	}
 }
 
@@ -806,6 +790,7 @@ func TestPlayerSaveTransactionGuardsBothFilesAndSkipsBackupOnFailure(t *testing.
 	_, err := runLocalPlayerSaveTransactionWithBackup(
 		nil,
 		"2119263560",
+		true,
 		func(_, _ string) error { return runnerErr },
 		func(*bbolt.DB) (database.Backup, error) {
 			backupCalls++
@@ -820,6 +805,7 @@ func TestPlayerSaveTransactionGuardsBothFilesAndSkipsBackupOnFailure(t *testing.
 	_, err = runLocalPlayerSaveTransactionWithBackup(
 		nil,
 		"2119263560",
+		true,
 		func(playerInput, outputPath string) error {
 			if err := writeEditedSave(playerInput, outputPath); err != nil {
 				return err
@@ -858,6 +844,7 @@ func TestRunLocalSaveTransactionRunnerFailuresDoNotCreateBackup(t *testing.T) {
 			backupCalls := 0
 			_, err := runLocalSaveTransactionWithBackup(
 				nil,
+				true,
 				func(_, _ string) error { return runnerErr },
 				func(*bbolt.DB) (database.Backup, error) {
 					backupCalls++
@@ -885,6 +872,7 @@ func TestRunLocalSaveTransactionRechecksTargetBeforeBackup(t *testing.T) {
 	backupCalls := 0
 	_, err := runLocalSaveTransactionWithBackup(
 		nil,
+		true,
 		func(levelPath, outputPath string) error {
 			if err := writeEditedSave(levelPath, outputPath); err != nil {
 				return err
@@ -915,6 +903,7 @@ func TestRunLocalSaveTransactionClassifiesBackupFailureAsInternal(t *testing.T) 
 	backupCalls := 0
 	_, err := runLocalSaveTransactionWithBackup(
 		nil,
+		true,
 		writeEditedSave,
 		func(*bbolt.DB) (database.Backup, error) {
 			backupCalls++
@@ -945,6 +934,7 @@ func TestRunLocalSaveTransactionClassifiesReplacementFailureAsInternal(t *testin
 
 	_, err := runLocalSaveTransactionWithBackup(
 		nil,
+		true,
 		func(_, _ string) error { return nil },
 		func(*bbolt.DB) (database.Backup, error) {
 			return database.Backup{Path: "pre-edit.zip"}, nil
@@ -962,6 +952,7 @@ func TestRunLocalSaveTransactionClassifiesFilesystemFailureAsInternal(t *testing
 	backupCalls := 0
 	_, err := runLocalSaveTransactionWithBackup(
 		nil,
+		true,
 		writeEditedSave,
 		func(*bbolt.DB) (database.Backup, error) {
 			backupCalls++

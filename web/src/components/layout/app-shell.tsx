@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   ExternalLink,
+  FolderSearch,
   Gauge,
   Languages,
   LogIn,
@@ -21,6 +22,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { LoginDialog } from "@/components/auth/login-dialog";
 import { ServerSelector } from "@/components/fleet/server-selector";
 import { TelemetryStrip } from "@/components/layout/telemetry-strip";
+import { ServerDiscoverySetup } from "@/features/setup/server-discovery-setup";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -107,7 +109,13 @@ function Brand() {
   );
 }
 
-function HeaderActions({ onLogin }: { onLogin: () => void }) {
+function HeaderActions({
+  onLogin,
+  onConfigureServer,
+}: {
+  onLogin: () => void;
+  onConfigureServer: () => void;
+}) {
   const queryClient = useQueryClient();
   const { setTheme, resolvedTheme } = useTheme();
   const { locale, setLocale, t } = useI18n();
@@ -188,6 +196,11 @@ function HeaderActions({ onLogin }: { onLogin: () => void }) {
           <DropdownMenuContent align="end" className="w-52">
             <DropdownMenuLabel>{t("status.authenticated")}</DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={onConfigureServer}>
+              <FolderSearch />
+              {t("setup.open")}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={logout} variant="destructive">
               <LogOut />
               {t("auth.logout")}
@@ -206,7 +219,9 @@ function HeaderActions({ onLogin }: { onLogin: () => void }) {
 
 export function AppShell() {
   const { t } = useI18n();
+  const { isAuthenticated } = useAuth();
   const [loginOpen, setLoginOpen] = useState(false);
+  const [discoveryOpen, setDiscoveryOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const serverQuery = useServerInfo();
   const metricsQuery = useServerMetrics();
@@ -282,8 +297,18 @@ export function AppShell() {
               ? t("status.refreshing")
               : t("status.updated")}
           </div>
-          <HeaderActions onLogin={() => setLoginOpen(true)} />
+          <HeaderActions
+            onLogin={() => setLoginOpen(true)}
+            onConfigureServer={() => setDiscoveryOpen(true)}
+          />
         </div>
+
+        <ServerDiscoverySetup
+          isAuthenticated={isAuthenticated}
+          onLogin={() => setLoginOpen(true)}
+          open={discoveryOpen}
+          onOpenChange={setDiscoveryOpen}
+        />
 
         <main
           id="main-content"

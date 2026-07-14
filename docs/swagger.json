@@ -3491,6 +3491,230 @@
                 }
             }
         },
+        "/api/setup/config": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Return stored non-sensitive dotted keys and the names of configured secrets without returning secret values",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Setup"
+                ],
+                "summary": "Read database-backed PST runtime configuration",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.RuntimeConfigResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Validate allowlisted dotted keys, persist them in pst.db, and report the values that require a PST restart",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Setup"
+                ],
+                "summary": "Update database-backed PST runtime configuration",
+                "parameters": [
+                    {
+                        "description": "Dotted configuration values",
+                        "name": "update",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.RuntimeConfigUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.RuntimeConfigResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/setup/discovery": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Scan results include running processes, Steam libraries, common paths, existing database paths, server INI settings, and worlds",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Setup"
+                ],
+                "summary": "List discovered local PalServer installations",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/discovery.Status"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/setup/discovery/apply": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Persist derived launcher, INI, save, SteamCMD, REST, RCON, and process-control values in pst.db",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Setup"
+                ],
+                "summary": "Apply a discovered or manually selected PalServer installation",
+                "parameters": [
+                    {
+                        "description": "Candidate ID or local path",
+                        "name": "selection",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/discovery.ApplyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/discovery.Status"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/setup/discovery/scan": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Setup"
+                ],
+                "summary": "Rescan local PalServer installations",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/discovery.Status"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/setup/status": {
+            "get": {
+                "description": "Return a non-sensitive setup summary used before administrator sign-in",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Setup"
+                ],
+                "summary": "Inspect whether local PalServer setup is required",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.DiscoverySetupStatus"
+                        }
+                    }
+                }
+            }
+        },
         "/api/sync": {
             "post": {
                 "security": [
@@ -3723,6 +3947,26 @@
             "properties": {
                 "message": {
                     "type": "string"
+                }
+            }
+        },
+        "api.DiscoverySetupStatus": {
+            "type": "object",
+            "properties": {
+                "configured": {
+                    "type": "boolean"
+                },
+                "manual_required": {
+                    "type": "boolean"
+                },
+                "needs_setup": {
+                    "type": "boolean"
+                },
+                "platform": {
+                    "type": "string"
+                },
+                "restart_required": {
+                    "type": "boolean"
                 }
             }
         },
@@ -4404,6 +4648,42 @@
                 },
                 "sync_error": {
                     "type": "string"
+                }
+            }
+        },
+        "api.RuntimeConfigResponse": {
+            "type": "object",
+            "properties": {
+                "configured_secrets": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "restart_required": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "storage": {
+                    "type": "string"
+                },
+                "values": {
+                    "type": "object",
+                    "additionalProperties": {}
+                }
+            }
+        },
+        "api.RuntimeConfigUpdateRequest": {
+            "type": "object",
+            "required": [
+                "values"
+            ],
+            "properties": {
+                "values": {
+                    "type": "object",
+                    "additionalProperties": {}
                 }
             }
         },
@@ -5254,6 +5534,169 @@
                     "type": "integer"
                 },
                 "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "discovery.ApplyRequest": {
+            "type": "object",
+            "properties": {
+                "candidate_id": {
+                    "type": "string"
+                },
+                "install_dir": {
+                    "type": "string"
+                }
+            }
+        },
+        "discovery.Candidate": {
+            "type": "object",
+            "properties": {
+                "config_exists": {
+                    "type": "boolean"
+                },
+                "config_path": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "install_dir": {
+                    "type": "string"
+                },
+                "launcher_path": {
+                    "type": "string"
+                },
+                "manifest_path": {
+                    "type": "string"
+                },
+                "platform": {
+                    "type": "string"
+                },
+                "rcon_enabled": {
+                    "type": "boolean"
+                },
+                "rcon_port": {
+                    "type": "integer"
+                },
+                "rest_enabled": {
+                    "type": "boolean"
+                },
+                "rest_port": {
+                    "type": "integer"
+                },
+                "save_path": {
+                    "type": "string"
+                },
+                "saved_dir": {
+                    "type": "string"
+                },
+                "score": {
+                    "type": "integer"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "steamcmd_path": {
+                    "type": "string"
+                },
+                "worlds": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/discovery.World"
+                    }
+                }
+            }
+        },
+        "discovery.EffectiveConfiguration": {
+            "type": "object",
+            "properties": {
+                "config_store": {
+                    "type": "string"
+                },
+                "control_mode": {
+                    "type": "string"
+                },
+                "game_config_path": {
+                    "type": "string"
+                },
+                "install_dir": {
+                    "type": "string"
+                },
+                "launcher_path": {
+                    "type": "string"
+                },
+                "rcon_address": {
+                    "type": "string"
+                },
+                "rest_address": {
+                    "type": "string"
+                },
+                "save_path": {
+                    "type": "string"
+                },
+                "steamcmd_path": {
+                    "type": "string"
+                }
+            }
+        },
+        "discovery.Status": {
+            "type": "object",
+            "properties": {
+                "auto_configured": {
+                    "type": "boolean"
+                },
+                "candidates": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/discovery.Candidate"
+                    }
+                },
+                "configured": {
+                    "type": "boolean"
+                },
+                "effective": {
+                    "$ref": "#/definitions/discovery.EffectiveConfiguration"
+                },
+                "manual_required": {
+                    "type": "boolean"
+                },
+                "needs_selection": {
+                    "type": "boolean"
+                },
+                "needs_setup": {
+                    "type": "boolean"
+                },
+                "platform": {
+                    "type": "string"
+                },
+                "restart_required": {
+                    "type": "boolean"
+                },
+                "scanned_at": {
+                    "type": "string"
+                },
+                "selected_candidate_id": {
+                    "type": "string"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "discovery.World": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "modified_at": {
+                    "type": "string"
+                },
+                "path": {
                     "type": "string"
                 }
             }

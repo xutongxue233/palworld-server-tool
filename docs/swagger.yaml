@@ -4,6 +4,19 @@ definitions:
       message:
         type: string
     type: object
+  api.DiscoverySetupStatus:
+    properties:
+      configured:
+        type: boolean
+      manual_required:
+        type: boolean
+      needs_setup:
+        type: boolean
+      platform:
+        type: string
+      restart_required:
+        type: boolean
+    type: object
   api.EditPalLevelRequest:
     properties:
       confirm_server_stopped:
@@ -470,6 +483,30 @@ definitions:
         $ref: '#/definitions/tool.PalHealthMutation'
       sync_error:
         type: string
+    type: object
+  api.RuntimeConfigResponse:
+    properties:
+      configured_secrets:
+        items:
+          type: string
+        type: array
+      restart_required:
+        items:
+          type: string
+        type: array
+      storage:
+        type: string
+      values:
+        additionalProperties: {}
+        type: object
+    type: object
+  api.RuntimeConfigUpdateRequest:
+    properties:
+      values:
+        additionalProperties: {}
+        type: object
+    required:
+    - values
     type: object
   api.SaveMigrationApplyRequest:
     properties:
@@ -1036,6 +1073,113 @@ definitions:
       unused_status_points:
         type: integer
       user_id:
+        type: string
+    type: object
+  discovery.ApplyRequest:
+    properties:
+      candidate_id:
+        type: string
+      install_dir:
+        type: string
+    type: object
+  discovery.Candidate:
+    properties:
+      config_exists:
+        type: boolean
+      config_path:
+        type: string
+      id:
+        type: string
+      install_dir:
+        type: string
+      launcher_path:
+        type: string
+      manifest_path:
+        type: string
+      platform:
+        type: string
+      rcon_enabled:
+        type: boolean
+      rcon_port:
+        type: integer
+      rest_enabled:
+        type: boolean
+      rest_port:
+        type: integer
+      save_path:
+        type: string
+      saved_dir:
+        type: string
+      score:
+        type: integer
+      source:
+        type: string
+      steamcmd_path:
+        type: string
+      worlds:
+        items:
+          $ref: '#/definitions/discovery.World'
+        type: array
+    type: object
+  discovery.EffectiveConfiguration:
+    properties:
+      config_store:
+        type: string
+      control_mode:
+        type: string
+      game_config_path:
+        type: string
+      install_dir:
+        type: string
+      launcher_path:
+        type: string
+      rcon_address:
+        type: string
+      rest_address:
+        type: string
+      save_path:
+        type: string
+      steamcmd_path:
+        type: string
+    type: object
+  discovery.Status:
+    properties:
+      auto_configured:
+        type: boolean
+      candidates:
+        items:
+          $ref: '#/definitions/discovery.Candidate'
+        type: array
+      configured:
+        type: boolean
+      effective:
+        $ref: '#/definitions/discovery.EffectiveConfiguration'
+      manual_required:
+        type: boolean
+      needs_selection:
+        type: boolean
+      needs_setup:
+        type: boolean
+      platform:
+        type: string
+      restart_required:
+        type: boolean
+      scanned_at:
+        type: string
+      selected_candidate_id:
+        type: string
+      warnings:
+        items:
+          type: string
+        type: array
+    type: object
+  discovery.World:
+    properties:
+      id:
+        type: string
+      modified_at:
+        type: string
+      path:
         type: string
     type: object
   fleet.ConfigIssue:
@@ -4323,6 +4467,151 @@ paths:
       summary: Generate or synchronize WorldOption.sav
       tags:
       - Server
+  /api/setup/config:
+    get:
+      description: Return stored non-sensitive dotted keys and the names of configured
+        secrets without returning secret values
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.RuntimeConfigResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Read database-backed PST runtime configuration
+      tags:
+      - Setup
+    put:
+      consumes:
+      - application/json
+      description: Validate allowlisted dotted keys, persist them in pst.db, and report
+        the values that require a PST restart
+      parameters:
+      - description: Dotted configuration values
+        in: body
+        name: update
+        required: true
+        schema:
+          $ref: '#/definitions/api.RuntimeConfigUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.RuntimeConfigResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Update database-backed PST runtime configuration
+      tags:
+      - Setup
+  /api/setup/discovery:
+    get:
+      description: Scan results include running processes, Steam libraries, common
+        paths, existing database paths, server INI settings, and worlds
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/discovery.Status'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: List discovered local PalServer installations
+      tags:
+      - Setup
+  /api/setup/discovery/apply:
+    post:
+      consumes:
+      - application/json
+      description: Persist derived launcher, INI, save, SteamCMD, REST, RCON, and
+        process-control values in pst.db
+      parameters:
+      - description: Candidate ID or local path
+        in: body
+        name: selection
+        required: true
+        schema:
+          $ref: '#/definitions/discovery.ApplyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/discovery.Status'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Apply a discovered or manually selected PalServer installation
+      tags:
+      - Setup
+  /api/setup/discovery/scan:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/discovery.Status'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Rescan local PalServer installations
+      tags:
+      - Setup
+  /api/setup/status:
+    get:
+      description: Return a non-sensitive setup summary used before administrator
+        sign-in
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.DiscoverySetupStatus'
+      summary: Inspect whether local PalServer setup is required
+      tags:
+      - Setup
   /api/sync:
     post:
       consumes:

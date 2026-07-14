@@ -47,7 +47,6 @@ build: $(if $(filter windows,$(HOST_OS)),windows-resources)
 	python3 map_down.py
 	rm -rf assets && rm -rf index.html
 	cd web && pnpm i --frozen-lockfile && pnpm build && cd ..
-	cp example/config.yaml dist/config.yaml
 	cp script/start.bat dist/start.bat
 	cp THIRD_PARTY_NOTICES.md dist/THIRD_PARTY_NOTICES.md
 	$(MAKE) sav-cli
@@ -86,9 +85,6 @@ build-pub: windows-resources
 	GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o ./dist/pst-agent_${GIT_TAG}_linux_x86_64 ./cmd/pst-agent/main.go
 	GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o ./dist/pst-agent_${GIT_TAG}_linux_aarch64 ./cmd/pst-agent/main.go
 
-	cp example/config.yaml dist/windows_x86_64/config.yaml
-	cp example/config.yaml dist/linux_x86_64/config.yaml
-	cp example/config.yaml dist/linux_aarch64/config.yaml
 	cp script/start.bat dist/windows_x86_64/start.bat
 	cp script/start.sh dist/linux_x86_64/start.sh
 	cp script/start.sh dist/linux_aarch64/start.sh

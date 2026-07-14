@@ -2,4 +2,4 @@
 set -eu
 
 cd "$(dirname "$0")"
-exec ./pst -config ./config.yaml
+exec ./pst
