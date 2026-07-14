@@ -65,6 +65,11 @@ func TestOfficialServerManagementRoutes(t *testing.T) {
 		method string
 		path   string
 	}{
+		{http.MethodGet, "/api/setup/discovery"},
+		{http.MethodPost, "/api/setup/discovery/scan"},
+		{http.MethodPost, "/api/setup/discovery/apply"},
+		{http.MethodGet, "/api/setup/config"},
+		{http.MethodPut, "/api/setup/config"},
 		{http.MethodGet, "/api/fleet/nodes"},
 		{http.MethodGet, "/api/fleet/nodes/second/proxy/server"},
 		{http.MethodGet, "/api/server/config-file"},

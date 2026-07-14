@@ -43,14 +43,6 @@ const (
 	playerMapWorldMapsTotal  = 2
 )
 
-type gameServerStatus uint8
-
-const (
-	gameServerStatusExplicitOffline gameServerStatus = iota
-	gameServerStatusOnline
-	gameServerStatusUnknown
-)
-
 type saveFileFingerprint struct {
 	Size    int64
 	ModTime time.Time
@@ -650,39 +642,8 @@ func localLevelSavePath(configuredPath string) (string, error) {
 	return filepath.Abs(levelPath)
 }
 
-func probeGameServerStatus() (gameServerStatus, error) {
-	if strings.TrimSpace(viper.GetString("rest.address")) == "" {
-		return gameServerStatusExplicitOffline, nil
-	}
-
-	_, err := Metrics()
-	if err == nil {
-		return gameServerStatusOnline, nil
-	}
-	var restErr *RESTError
-	if errors.As(err, &restErr) {
-		return gameServerStatusOnline, nil
-	}
-	return gameServerStatusUnknown, fmt.Errorf(
-		"%w: REST metrics probe failed: %v",
-		ErrGameServerStatusUnknown,
-		err,
-	)
-}
-
-func ensureGameServerStopped() error {
-	status, err := probeGameServerStatus()
-	if err != nil {
-		return err
-	}
-	switch status {
-	case gameServerStatusExplicitOffline:
-		return nil
-	case gameServerStatusOnline:
-		return ErrGameServerRunning
-	default:
-		return ErrGameServerStatusUnknown
-	}
+func ensureGameServerStopped(confirmManualStop bool) error {
+	return ConfirmGameServerStopped(context.Background(), confirmManualStop)
 }
 
 func internalSaveEditError(operation string, err error) error {
@@ -1550,13 +1511,15 @@ func stageAndReplaceSaveGuarded(
 
 func runLocalSaveTransaction(
 	db *bbolt.DB,
+	confirmServerStopped bool,
 	runner func(levelPath, outputPath string) error,
 ) (database.Backup, error) {
-	return runLocalSaveTransactionWithBackup(db, runner, BackupAndRecord)
+	return runLocalSaveTransactionWithBackup(db, confirmServerStopped, runner, BackupAndRecord)
 }
 
 func runLocalSaveTransactionWithBackup(
 	db *bbolt.DB,
+	confirmServerStopped bool,
 	runner func(levelPath, outputPath string) error,
 	backupAndRecord func(db *bbolt.DB) (database.Backup, error),
 ) (database.Backup, error) {
@@ -1569,7 +1532,7 @@ func runLocalSaveTransactionWithBackup(
 		)
 	}
 
-	if err := ensureGameServerStopped(); err != nil {
+	if err := ensureGameServerStopped(confirmServerStopped); err != nil {
 		return database.Backup{}, err
 	}
 	configuredPath := viper.GetString("save.path")
@@ -1602,7 +1565,7 @@ func runLocalSaveTransactionWithBackup(
 	if err := verifySaveFileVersion(targetPath, sourceFingerprint); err != nil {
 		return database.Backup{}, saveTransactionError("verify Level.sav after edit", err)
 	}
-	if err := ensureGameServerStopped(); err != nil {
+	if err := ensureGameServerStopped(confirmServerStopped); err != nil {
 		return database.Backup{}, err
 	}
 
@@ -1617,7 +1580,7 @@ func runLocalSaveTransactionWithBackup(
 		editedPath,
 		targetPath,
 		&sourceFingerprint,
-		ensureGameServerStopped,
+		func() error { return ensureGameServerStopped(confirmServerStopped) },
 	); err != nil {
 		return database.Backup{}, saveTransactionError("replace Level.sav", err)
 	}
@@ -1627,14 +1590,22 @@ func runLocalSaveTransactionWithBackup(
 func runLocalPlayerSaveTransaction(
 	db *bbolt.DB,
 	playerUID string,
+	confirmServerStopped bool,
 	runner func(playerPath, outputPath string) error,
 ) (database.Backup, error) {
-	return runLocalPlayerSaveTransactionWithBackup(db, playerUID, runner, BackupAndRecord)
+	return runLocalPlayerSaveTransactionWithBackup(
+		db,
+		playerUID,
+		confirmServerStopped,
+		runner,
+		BackupAndRecord,
+	)
 }
 
 func runLocalPlayerSaveTransactionWithBackup(
 	db *bbolt.DB,
 	playerUID string,
+	confirmServerStopped bool,
 	runner func(playerPath, outputPath string) error,
 	backupAndRecord func(db *bbolt.DB) (database.Backup, error),
 ) (database.Backup, error) {
@@ -1646,7 +1617,7 @@ func runLocalPlayerSaveTransactionWithBackup(
 			errors.New("backup function is nil"),
 		)
 	}
-	if err := ensureGameServerStopped(); err != nil {
+	if err := ensureGameServerStopped(confirmServerStopped); err != nil {
 		return database.Backup{}, err
 	}
 	configuredPath := viper.GetString("save.path")
@@ -1699,7 +1670,7 @@ func runLocalPlayerSaveTransactionWithBackup(
 	if err := verifySaveFileVersion(playerPath, playerFingerprint); err != nil {
 		return database.Backup{}, saveTransactionError("verify player save after edit", err)
 	}
-	if err := ensureGameServerStopped(); err != nil {
+	if err := ensureGameServerStopped(confirmServerStopped); err != nil {
 		return database.Backup{}, err
 	}
 
@@ -1718,7 +1689,7 @@ func runLocalPlayerSaveTransactionWithBackup(
 		playerPath,
 		&playerFingerprint,
 		func() error {
-			if err := ensureGameServerStopped(); err != nil {
+			if err := ensureGameServerStopped(confirmServerStopped); err != nil {
 				return err
 			}
 			return verifySaveFileVersion(levelPath, levelFingerprint)
@@ -1737,6 +1708,7 @@ func GivePlayerItem(db *bbolt.DB, options GiveItemOptions) (GiveItemResult, erro
 	var delivery ItemDelivery
 	backup, err := runLocalSaveTransaction(
 		db,
+		options.ConfirmServerStopped,
 		func(levelPath, outputPath string) error {
 			var runErr error
 			delivery, runErr = runGiveItemEditor(levelPath, outputPath, options)
@@ -1758,6 +1730,7 @@ func SetPlayerItemQuantity(db *bbolt.DB, options SetItemQuantityOptions) (SetIte
 	var mutation InventoryMutation
 	backup, err := runLocalSaveTransaction(
 		db,
+		options.ConfirmServerStopped,
 		func(levelPath, outputPath string) error {
 			var runErr error
 			mutation, runErr = runSetItemQuantityEditor(levelPath, outputPath, options)
@@ -1778,6 +1751,7 @@ func EditPlayerProfile(db *bbolt.DB, options EditPlayerProfileOptions) (EditPlay
 	var profile PlayerProfileMutation
 	backup, err := runLocalSaveTransaction(
 		db,
+		options.ConfirmServerStopped,
 		func(levelPath, outputPath string) error {
 			var runErr error
 			profile, runErr = runEditPlayerProfileEditor(levelPath, outputPath, options)
@@ -1798,6 +1772,7 @@ func EditPlayerStatPoints(db *bbolt.DB, options EditPlayerStatPointsOptions) (Ed
 	var mutation PlayerStatPointsMutation
 	backup, err := runLocalSaveTransaction(
 		db,
+		options.ConfirmServerStopped,
 		func(levelPath, outputPath string) error {
 			var runErr error
 			mutation, runErr = runEditPlayerStatPointsEditor(levelPath, outputPath, options)
@@ -1819,6 +1794,7 @@ func EditPlayerTechnologyPoints(db *bbolt.DB, options EditPlayerTechnologyPoints
 	backup, err := runLocalPlayerSaveTransaction(
 		db,
 		options.PlayerUID,
+		options.ConfirmServerStopped,
 		func(playerPath, outputPath string) error {
 			var runErr error
 			mutation, runErr = runEditPlayerTechnologyPointsEditor(playerPath, outputPath, options)
@@ -1843,6 +1819,7 @@ func UnlockPlayerMap(db *bbolt.DB, options UnlockPlayerMapOptions) (UnlockPlayer
 	backup, err := runLocalPlayerSaveTransaction(
 		db,
 		options.PlayerUID,
+		options.ConfirmServerStopped,
 		func(playerPath, outputPath string) error {
 			var runErr error
 			mutation, runErr = runUnlockPlayerMapEditor(playerPath, outputPath, options)
@@ -1866,6 +1843,7 @@ func RenamePal(db *bbolt.DB, options RenamePalOptions) (RenamePalResult, error) 
 	var mutation PalNicknameMutation
 	backup, err := runLocalSaveTransaction(
 		db,
+		options.ConfirmServerStopped,
 		func(levelPath, outputPath string) error {
 			var runErr error
 			mutation, runErr = runRenamePalEditor(levelPath, outputPath, options)
@@ -1886,6 +1864,7 @@ func EditPalLevel(db *bbolt.DB, options EditPalLevelOptions) (EditPalLevelResult
 	var mutation PalLevelMutation
 	backup, err := runLocalSaveTransaction(
 		db,
+		options.ConfirmServerStopped,
 		func(levelPath, outputPath string) error {
 			var runErr error
 			mutation, runErr = runEditPalLevelEditor(levelPath, outputPath, options)
@@ -1906,6 +1885,7 @@ func RestorePalHealth(db *bbolt.DB, options RestorePalHealthOptions) (RestorePal
 	var mutation PalHealthMutation
 	backup, err := runLocalSaveTransaction(
 		db,
+		options.ConfirmServerStopped,
 		func(levelPath, outputPath string) error {
 			var runErr error
 			mutation, runErr = runRestorePalHealthEditor(levelPath, outputPath, options)

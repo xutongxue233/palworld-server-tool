@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -71,6 +72,18 @@ func callAPI(method, endpoint string, body []byte) ([]byte, error) {
 		return nil, &RESTError{StatusCode: resp.StatusCode, Body: strings.TrimSpace(string(responseBody))}
 	}
 	return responseBody, nil
+}
+
+func restServerReachable() bool {
+	if strings.TrimSpace(viper.GetString("rest.address")) == "" {
+		return false
+	}
+	_, err := callAPI(http.MethodGet, "/v1/api/info", nil)
+	if err == nil {
+		return true
+	}
+	var restErr *RESTError
+	return errors.As(err, &restErr)
 }
 
 type ResponseInfo struct {

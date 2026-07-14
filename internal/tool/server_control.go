@@ -28,11 +28,8 @@ var (
 	controlSaveWorld              = SaveWorld
 	controlShutdown               = Shutdown
 	controlRESTStop               = StopServer
-	serverOnlineProbe             = func() bool {
-		_, err := Info()
-		return err == nil
-	}
-	serverControlDriverFactory = newServerControlDriver
+	serverOnlineProbe             = restServerReachable
+	serverControlDriverFactory    = newServerControlDriver
 )
 
 type ServerControlStatus struct {

@@ -4,6 +4,20 @@
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-07-14
+
+### 新增
+
+- Windows 与 Linux 继续使用同一套 Web 服务方案，发布包均运行嵌入式 React 管理界面，不再引入桌面 WebView 运行时。
+- 新增 PalServer 自动发现：优先从正在运行的服务端进程反推安装目录，并扫描 Steam 注册表、`libraryfolders.vdf`、SteamCMD/SteamLibrary 常用目录、环境路径和数据库中的已有路径，自动推导启动器、服务器 INI、活动世界、REST/RCON 与进程控制配置。
+- 首次设置界面会列出多个候选；没有候选时只需手动填写 PalServer 安装目录。登录后可随时从管理菜单重新扫描或切换本机服务端。
+
+### 变更
+
+- PST 运行配置改为存储在 `pst.db` 的独立 bbolt bucket 中，发布包不再包含或依赖 `config.yaml`；升级时仅在数据库为空时导入一次旧 YAML，之后只读取数据库。
+- 首次启动会生成 Web 管理密码并持久化到数据库；启动阶段的自动发现会立即生效，服务运行后的手动变更安全写入数据库并提示重启加载。
+- 离线存档编辑统一使用托管进程状态和用户停服确认；REST 随服务器停止而不可达时不再陷入无法编辑的状态。
+
 ## [1.8.0] - 2026-07-13
 
 ### 新增
@@ -259,7 +273,8 @@
 - 替换程序前应停止 PST 和 Palworld 服务端，并备份 `config.yaml`、数据库与整个世界存档目录。
 - 不要将 JSON 重建后的存档直接覆盖正在运行的 `Level.sav`。
 
-[Unreleased]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.8.0...HEAD
+[Unreleased]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.9.0...HEAD
+[1.9.0]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.5.0...v1.6.0

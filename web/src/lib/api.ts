@@ -25,12 +25,15 @@ import type {
   Player,
   PlayerSummary,
   RenamePalResult,
+  DiscoverySetupStatus,
   SaveMigrationApplyRequest,
   SaveMigrationApplyResult,
   SaveMigrationPreflightRequest,
   SaveMigrationPreflightResult,
   SetItemQuantityResult,
   ServerInfo,
+  ServerDiscoveryApplyRequest,
+  ServerDiscoveryStatus,
   ServerMetrics,
   ServerToolInfo,
   ServerControlStatus,
@@ -193,6 +196,26 @@ export const api = {
     }),
   getFleetNodes: () =>
     request<FleetStatus>("/api/fleet/nodes", { scope: "local" }),
+  getDiscoverySetupStatus: () =>
+    request<DiscoverySetupStatus>("/api/setup/status", {
+      auth: false,
+      scope: "local",
+    }),
+  getServerDiscovery: () =>
+    request<ServerDiscoveryStatus>("/api/setup/discovery", {
+      scope: "local",
+    }),
+  scanServerDiscovery: () =>
+    request<ServerDiscoveryStatus>("/api/setup/discovery/scan", {
+      method: "POST",
+      scope: "local",
+    }),
+  applyServerDiscovery: (update: ServerDiscoveryApplyRequest) =>
+    request<ServerDiscoveryStatus>("/api/setup/discovery/apply", {
+      method: "POST",
+      body: update,
+      scope: "local",
+    }),
   getServer: (serverScope?: string) =>
     request<ServerInfo>("/api/server", { auth: false, serverScope }),
   getServerTool: (serverScope?: string) =>

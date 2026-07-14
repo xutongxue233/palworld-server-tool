@@ -22,6 +22,67 @@ export interface ServerToolInfo {
   latest: string;
 }
 
+export interface DiscoverySetupStatus {
+  platform: string;
+  configured: boolean;
+  needs_setup: boolean;
+  manual_required: boolean;
+  restart_required: boolean;
+}
+
+export interface DiscoveredWorld {
+  id: string;
+  path: string;
+  modified_at: string;
+}
+
+export interface ServerDiscoveryCandidate {
+  id: string;
+  platform: string;
+  source: string;
+  install_dir: string;
+  launcher_path: string;
+  config_path: string;
+  config_exists: boolean;
+  save_path?: string;
+  saved_dir: string;
+  steamcmd_path?: string;
+  manifest_path?: string;
+  worlds?: DiscoveredWorld[];
+  score: number;
+  rest_port: number;
+  rcon_port: number;
+  rest_enabled: boolean;
+  rcon_enabled: boolean;
+}
+
+export interface EffectiveServerConfiguration {
+  config_store: string;
+  install_dir?: string;
+  launcher_path?: string;
+  game_config_path?: string;
+  save_path?: string;
+  control_mode?: string;
+  steamcmd_path?: string;
+  rest_address?: string;
+  rcon_address?: string;
+}
+
+export interface ServerDiscoveryStatus extends DiscoverySetupStatus {
+  auto_configured: boolean;
+  needs_selection: boolean;
+  selected_candidate_id?: string;
+  candidates: ServerDiscoveryCandidate[];
+  effective: EffectiveServerConfiguration;
+  warnings?: string[];
+  scanned_at: string;
+}
+
+export interface ServerDiscoveryApplyRequest {
+  candidate_id?: string;
+  install_dir?: string;
+}
+
 export interface GameConfigFile {
   configured: boolean;
   path?: string;
