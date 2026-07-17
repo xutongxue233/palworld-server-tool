@@ -4,6 +4,17 @@
 
 ## [Unreleased]
 
+## [1.9.1] - 2026-07-17
+
+### 变更
+
+- 新安装不再自动生成或在日志中打印 Web 管理密码；首次打开 Web 界面时必须由用户设置并确认密码，设置成功后直接进入管理模式。
+- 已登录用户可从管理菜单修改 Web 管理密码。新密码立即写入 `pst.db` 并生效，同时轮换当前 JWT、使其他管理会话失效；由 `WEB__PASSWORD` 管理的部署仍需通过环境变量修改。
+
+### 安全
+
+- 未设置 Web 管理密码时拒绝登录和 JWT 签发；匿名密码初始化接口只允许成功一次，密码修改仅接受浏览器用户 JWT，不接受 Fleet 节点令牌。
+
 ## [1.9.0] - 2026-07-14
 
 ### 新增
@@ -273,7 +284,8 @@
 - 替换程序前应停止 PST 和 Palworld 服务端，并备份 `config.yaml`、数据库与整个世界存档目录。
 - 不要将 JSON 重建后的存档直接覆盖正在运行的 `Level.sav`。
 
-[Unreleased]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.9.0...HEAD
+[Unreleased]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.9.1...HEAD
+[1.9.1]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.9.0...v1.9.1
 [1.9.0]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/xutongxue233/palworld-server-tool/compare/v1.6.0...v1.7.0

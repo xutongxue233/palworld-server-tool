@@ -1,5 +1,7 @@
 import type {
   ApiSuccess,
+  AuthStatus,
+  AuthToken,
   AutomationSettings,
   AutomationSettingsUpdate,
   AutomationStatus,
@@ -187,8 +189,32 @@ function fleetProxyPath(scope: string, path: string) {
 }
 
 export const api = {
+  getAuthStatus: () =>
+    request<AuthStatus>("/api/auth/status", {
+      auth: false,
+      scope: "local",
+    }),
+  initializePassword: (password: string, passwordConfirmation: string) =>
+    request<AuthToken>("/api/auth/password", {
+      method: "POST",
+      body: {
+        password,
+        password_confirmation: passwordConfirmation,
+      },
+      auth: false,
+      scope: "local",
+    }),
+  changePassword: (password: string, passwordConfirmation: string) =>
+    request<AuthToken>("/api/auth/password", {
+      method: "PUT",
+      body: {
+        password,
+        password_confirmation: passwordConfirmation,
+      },
+      scope: "local",
+    }),
   login: (password: string) =>
-    request<{ token: string }>("/api/login", {
+    request<AuthToken>("/api/login", {
       method: "POST",
       body: { password },
       auth: false,

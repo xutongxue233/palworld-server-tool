@@ -1,9 +1,6 @@
 package config
 
 import (
-	"crypto/rand"
-	"encoding/base64"
-	"fmt"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -15,8 +12,7 @@ import (
 var activeDB *bbolt.DB
 
 type InitResult struct {
-	MigratedFrom         string
-	InitialAdminPassword string
+	MigratedFrom string
 }
 
 type Config struct {
@@ -139,17 +135,6 @@ func Init(db *bbolt.DB, conf *Config) InitResult {
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "__"))
 	viper.AutomaticEnv()
 
-	if strings.TrimSpace(viper.GetString("web.password")) == "" {
-		password, generateErr := generateInitialPassword()
-		if generateErr != nil {
-			logger.Panicf("Unable to generate the initial administrator password: %s", generateErr)
-		}
-		if err := ApplyValues(map[string]any{"web.password": password}); err != nil {
-			logger.Panicf("Unable to store the initial administrator password: %s", err)
-		}
-		result.InitialAdminPassword = password
-	}
-
 	if err := viper.Unmarshal(conf); err != nil {
 		logger.Panicf("Unable to decode database configuration, %s", err)
 	}
@@ -219,12 +204,4 @@ func expandValues(values map[string]any) map[string]any {
 		}
 	}
 	return root
-}
-
-func generateInitialPassword() (string, error) {
-	random := make([]byte, 24)
-	if _, err := rand.Read(random); err != nil {
-		return "", fmt.Errorf("read secure random data: %w", err)
-	}
-	return base64.RawURLEncoding.EncodeToString(random), nil
 }

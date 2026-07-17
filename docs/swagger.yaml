@@ -1,4 +1,11 @@
 definitions:
+  api.AuthStatusResponse:
+    properties:
+      password_changeable:
+        type: boolean
+      password_configured:
+        type: boolean
+    type: object
   api.BroadcastRequest:
     properties:
       message:
@@ -406,6 +413,16 @@ definitions:
         maxLength: 4096
         type: string
     type: object
+  api.PasswordUpdateRequest:
+    properties:
+      password:
+        type: string
+      password_confirmation:
+        type: string
+    required:
+    - password
+    - password_confirmation
+    type: object
   api.PlayerActionRequest:
     properties:
       message:
@@ -725,6 +742,11 @@ definitions:
     properties:
       success:
         type: boolean
+    type: object
+  api.TokenResponse:
+    properties:
+      token:
+        type: string
     type: object
   api.UnlockPlayerMapRequest:
     properties:
@@ -2181,6 +2203,99 @@ info:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
 paths:
+  /api/auth/password:
+    post:
+      consumes:
+      - application/json
+      description: Configure the Web administrator password once when no password
+        exists and return an authenticated token
+      parameters:
+      - description: Initial password
+        in: body
+        name: password
+        required: true
+        schema:
+          $ref: '#/definitions/api.PasswordUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.TokenResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Set the initial Web administrator password
+      tags:
+      - Auth
+    put:
+      consumes:
+      - application/json
+      description: Replace the database-backed Web administrator password immediately
+        and return a token signed with the new password
+      parameters:
+      - description: New password
+        in: body
+        name: password
+        required: true
+        schema:
+          $ref: '#/definitions/api.PasswordUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.TokenResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Change the Web administrator password
+      tags:
+      - Auth
+  /api/auth/status:
+    get:
+      description: Report whether the one-time Web administrator password setup is
+        complete
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.AuthStatusResponse'
+      summary: Get Web administrator password status
+      tags:
+      - Auth
   /api/automation/notifications/test:
     post:
       produces:
@@ -2948,13 +3063,17 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/api.SuccessResponse'
+            $ref: '#/definitions/api.TokenResponse'
         "400":
           description: Bad Request
           schema:
             $ref: '#/definitions/api.ErrorResponse'
         "401":
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       summary: Login

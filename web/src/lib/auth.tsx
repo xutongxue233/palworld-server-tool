@@ -13,7 +13,17 @@ import { api, TOKEN_KEY } from "@/lib/api";
 interface AuthContextValue {
   token: string | null;
   isAuthenticated: boolean;
+  passwordConfigured: boolean | null;
+  passwordChangeable: boolean;
   login: (password: string) => Promise<void>;
+  initializePassword: (
+    password: string,
+    passwordConfirmation: string,
+  ) => Promise<void>;
+  changePassword: (
+    password: string,
+    passwordConfirmation: string,
+  ) => Promise<void>;
   logout: () => void;
 }
 
@@ -40,6 +50,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(TOKEN_KEY);
     return null;
   });
+  const [passwordConfigured, setPasswordConfigured] = useState<boolean | null>(
+    null,
+  );
+  const [passwordChangeable, setPasswordChangeable] = useState(true);
+
+  const storeToken = useCallback((nextToken: string) => {
+    localStorage.setItem(TOKEN_KEY, nextToken);
+    setToken(nextToken);
+  }, []);
+
+  const refreshAuthStatus = useCallback(async () => {
+    const status = await api.getAuthStatus();
+    setPasswordConfigured(status.password_configured);
+    setPasswordChangeable(status.password_changeable);
+  }, []);
 
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
@@ -47,10 +72,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.dispatchEvent(new CustomEvent("palworld:fleet-reset"));
   }, []);
 
-  const login = useCallback(async (password: string) => {
-    const result = await api.login(password);
-    localStorage.setItem(TOKEN_KEY, result.token);
-    setToken(result.token);
+  const login = useCallback(
+    async (password: string) => {
+      const result = await api.login(password);
+      storeToken(result.token);
+    },
+    [storeToken],
+  );
+
+  const initializePassword = useCallback(
+    async (password: string, passwordConfirmation: string) => {
+      try {
+        const result = await api.initializePassword(
+          password,
+          passwordConfirmation,
+        );
+        storeToken(result.token);
+        setPasswordConfigured(true);
+        setPasswordChangeable(true);
+      } catch (error) {
+        await refreshAuthStatus().catch(() => undefined);
+        throw error;
+      }
+    },
+    [refreshAuthStatus, storeToken],
+  );
+
+  const changePassword = useCallback(
+    async (password: string, passwordConfirmation: string) => {
+      const result = await api.changePassword(password, passwordConfirmation);
+      storeToken(result.token);
+      setPasswordConfigured(true);
+    },
+    [storeToken],
+  );
+
+  useEffect(() => {
+    let active = true;
+    void api
+      .getAuthStatus()
+      .then((status) => {
+        if (!active) return;
+        setPasswordConfigured(status.password_configured);
+        setPasswordChangeable(status.password_changeable);
+      })
+      .catch(() => {
+        if (active) setPasswordConfigured(null);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -59,8 +130,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [logout]);
 
   const value = useMemo(
-    () => ({ token, isAuthenticated: Boolean(token), login, logout }),
-    [login, logout, token],
+    () => ({
+      token,
+      isAuthenticated: Boolean(token),
+      passwordConfigured,
+      passwordChangeable,
+      login,
+      initializePassword,
+      changePassword,
+      logout,
+    }),
+    [
+      changePassword,
+      initializePassword,
+      login,
+      logout,
+      passwordChangeable,
+      passwordConfigured,
+      token,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

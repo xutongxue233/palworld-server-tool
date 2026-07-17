@@ -40,11 +40,13 @@ const candidateSourceKeys: Record<string, string> = {
 
 export function ServerDiscoverySetup({
   isAuthenticated,
+  passwordConfigured,
   onLogin,
   open,
   onOpenChange,
 }: {
   isAuthenticated: boolean;
+  passwordConfigured: boolean | null;
   onLogin: () => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -136,13 +138,19 @@ export function ServerDiscoverySetup({
                   ? restartRequired
                     ? t("setup.restartDescription")
                     : t("setup.bannerDescription")
-                  : t("setup.loginDescription")}
+                  : t(
+                      passwordConfigured === false
+                        ? "setup.passwordDescription"
+                        : "setup.loginDescription",
+                    )}
               </p>
             </div>
           </div>
           <Button size="sm" variant="outline" onClick={openSetup}>
             <FolderSearch />
-            {isAuthenticated ? t("setup.open") : t("auth.login")}
+            {isAuthenticated
+              ? t("setup.open")
+              : t(passwordConfigured === false ? "auth.setup" : "auth.login")}
           </Button>
         </div>
       ) : null}

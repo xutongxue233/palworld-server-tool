@@ -4,6 +4,7 @@ import {
   FolderSearch,
   Gauge,
   Languages,
+  KeyRound,
   LogIn,
   LogOut,
   Map,
@@ -20,6 +21,7 @@ import { useTheme } from "next-themes";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { LoginDialog } from "@/components/auth/login-dialog";
+import { ChangePasswordDialog } from "@/components/auth/change-password-dialog";
 import { ServerSelector } from "@/components/fleet/server-selector";
 import { TelemetryStrip } from "@/components/layout/telemetry-strip";
 import { ServerDiscoverySetup } from "@/features/setup/server-discovery-setup";
@@ -111,15 +113,18 @@ function Brand() {
 
 function HeaderActions({
   onLogin,
+  onChangePassword,
   onConfigureServer,
 }: {
   onLogin: () => void;
+  onChangePassword: () => void;
   onConfigureServer: () => void;
 }) {
   const queryClient = useQueryClient();
   const { setTheme, resolvedTheme } = useTheme();
   const { locale, setLocale, t } = useI18n();
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, logout, passwordChangeable, passwordConfigured } =
+    useAuth();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const refresh = async () => {
@@ -200,6 +205,15 @@ function HeaderActions({
               <FolderSearch />
               {t("setup.open")}
             </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={onChangePassword}
+              disabled={!passwordChangeable}
+            >
+              <KeyRound />
+              {passwordChangeable
+                ? t("auth.changePassword")
+                : t("auth.passwordManaged")}
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={logout} variant="destructive">
               <LogOut />
@@ -209,8 +223,10 @@ function HeaderActions({
         </DropdownMenu>
       ) : (
         <Button size="sm" onClick={onLogin}>
-          <LogIn />
-          <span className="hidden sm:inline">{t("auth.login")}</span>
+          {passwordConfigured === false ? <KeyRound /> : <LogIn />}
+          <span className="hidden sm:inline">
+            {t(passwordConfigured === false ? "auth.setup" : "auth.login")}
+          </span>
         </Button>
       )}
     </div>
@@ -219,8 +235,9 @@ function HeaderActions({
 
 export function AppShell() {
   const { t } = useI18n();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, passwordConfigured } = useAuth();
   const [loginOpen, setLoginOpen] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
   const [discoveryOpen, setDiscoveryOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const serverQuery = useServerInfo();
@@ -299,12 +316,14 @@ export function AppShell() {
           </div>
           <HeaderActions
             onLogin={() => setLoginOpen(true)}
+            onChangePassword={() => setPasswordOpen(true)}
             onConfigureServer={() => setDiscoveryOpen(true)}
           />
         </div>
 
         <ServerDiscoverySetup
           isAuthenticated={isAuthenticated}
+          passwordConfigured={passwordConfigured}
           onLogin={() => setLoginOpen(true)}
           open={discoveryOpen}
           onOpenChange={setDiscoveryOpen}
@@ -338,6 +357,10 @@ export function AppShell() {
       </nav>
 
       <LoginDialog open={loginOpen} onOpenChange={setLoginOpen} />
+      <ChangePasswordDialog
+        open={passwordOpen}
+        onOpenChange={setPasswordOpen}
+      />
     </div>
   );
 }

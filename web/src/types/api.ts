@@ -1,5 +1,14 @@
 export type Locale = "zh" | "en" | "ja";
 
+export interface AuthStatus {
+  password_configured: boolean;
+  password_changeable: boolean;
+}
+
+export interface AuthToken {
+  token: string;
+}
+
 export interface ServerInfo {
   version: string;
   name: string;

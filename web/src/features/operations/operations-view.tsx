@@ -27,7 +27,7 @@ import { WhitelistPanel } from "@/features/operations/whitelist-panel";
 
 export default function OperationsView() {
   const { t } = useI18n();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, passwordConfigured } = useAuth();
   const { openLogin } = useOutletContext<{ openLogin: () => void }>();
   const [activeTab, setActiveTab] = useState("controls");
 
@@ -45,12 +45,19 @@ export default function OperationsView() {
             <div className="telemetry-grid mx-auto flex size-14 items-center justify-center rounded-md border bg-muted text-primary">
               <LockKeyhole className="size-6" />
             </div>
-            <h2 className="mt-5 text-xl font-semibold">{t("auth.login")}</h2>
+            <h2 className="mt-5 text-xl font-semibold">
+              {t(passwordConfigured === false ? "auth.setup" : "auth.login")}
+            </h2>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              {t("auth.description")}
+              {t(
+                passwordConfigured === false
+                  ? "auth.setupDescription"
+                  : "auth.description",
+              )}
             </p>
             <Button className="mt-5" onClick={openLogin}>
-              <LockKeyhole /> {t("auth.login")}
+              <LockKeyhole />
+              {t(passwordConfigured === false ? "auth.setup" : "auth.login")}
             </Button>
           </div>
         </div>
