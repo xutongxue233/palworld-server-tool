@@ -23,8 +23,9 @@ USER_AGENT = (
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131 Safari/537.36"
 )
 
-# PalDB stores fixed locations in its in-game map coordinate system. These are
-# the inverse of the transform used by the current PalDB map client.
+# Older PalDB data stored fixed locations in its compact in-game map coordinate
+# system. Current data exposes world coordinates directly through `pos`, while
+# `ipos` remains supported for compatibility with cached or mirrored payloads.
 PALDB_WORLD_UNITS_PER_IPOS = 459
 PALDB_WORLD_X_OFFSET = -123_888
 PALDB_WORLD_Y_OFFSET = 158_000
@@ -143,6 +144,17 @@ def ipos_to_world(ipos):
     return [round(x, 3), round(y, 3)]
 
 
+def location_to_world(location):
+    pos = location.get("pos")
+    if isinstance(pos, dict) and "X" in pos and "Y" in pos:
+        return [round(float(pos["X"]), 3), round(float(pos["Y"]), 3)]
+
+    ipos = location.get("ipos")
+    if isinstance(ipos, dict) and "X" in ipos and "Y" in ipos:
+        return ipos_to_world(ipos)
+    return None
+
+
 def build_points(fixed_locations):
     points = {"boss_tower": [], "fast_travel": []}
     seen = {"boss_tower": set(), "fast_travel": set()}
@@ -150,13 +162,12 @@ def build_points(fixed_locations):
 
     for location in fixed_locations:
         key = type_to_key.get(location.get("type"))
-        ipos = location.get("ipos")
-        if key is None or not isinstance(ipos, dict):
-            continue
-        if "X" not in ipos or "Y" not in ipos:
+        if key is None:
             continue
 
-        position = ipos_to_world(ipos)
+        position = location_to_world(location)
+        if position is None:
+            continue
         identity = tuple(position)
         if identity in seen[key]:
             continue
