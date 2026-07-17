@@ -17,7 +17,6 @@ var runtimeStringKeys = map[string]int{
 	"palworld.control.mode":              32,
 	"palworld.control.target":            4096,
 	"palworld.control.working_directory": 4096,
-	"web.password":                       512,
 	"web.cert_path":                      4096,
 	"web.key_path":                       4096,
 	"web.public_url":                     4096,
@@ -124,9 +123,6 @@ func validateRuntimeValue(key string, value any) (any, error) {
 		}
 		if len(text) > limit {
 			return nil, fmt.Errorf("configuration key %s is too long", key)
-		}
-		if key == "web.password" && strings.TrimSpace(text) == "" {
-			return nil, errors.New("web.password cannot be empty")
 		}
 		if key == "palworld.control.mode" {
 			mode := strings.ToLower(strings.TrimSpace(text))

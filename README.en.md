@@ -246,7 +246,7 @@ Download the latest executable files at:
 
 ```bash
 # Download pst_{version}_{platform}_{arch}.tar.gz and extract to the pst directory
-mkdir -p pst && tar -xzf pst_v1.9.0_linux_x86_64.tar.gz -C pst
+mkdir -p pst && tar -xzf pst_v1.9.1_linux_x86_64.tar.gz -C pst
 ```
 
 ##### Configuration
@@ -258,7 +258,7 @@ mkdir -p pst && tar -xzf pst_v1.9.0_linux_x86_64.tar.gz -C pst
    chmod +x pst sav_cli
    ```
 
-2. Run `./pst`, copy the generated administrator password from the log, and open the Web interface. PST scans running PalServer processes, Steam libraries, and common install locations first; enter a directory only if discovery finds nothing.
+2. Run `./pst` and open the Web interface. On first access, the page requires you to set and confirm the Web administrator password, then enters admin mode automatically. PST scans running PalServer processes, Steam libraries, and common install locations first; enter a directory only if discovery finds nothing.
 
    `save.decode_path` may be left empty; PST then uses the bundled `sav_cli` next to the main executable.
 
@@ -326,7 +326,7 @@ Access at http://{Server IP}:8080 after opening firewall and security group in c
 
 ##### Download and Extract
 
-Extract `pst_v1.9.0_windows_x86_64.zip` to any directory (recommend naming the folder `pst`).
+Extract `pst_v1.9.1_windows_x86_64.zip` to any directory (recommend naming the folder `pst`).
 
 The Windows `pst.exe` uses the same Web-service architecture as Linux. Keep its console window open and visit the address printed in the log with a browser.
 

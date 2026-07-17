@@ -1,8 +1,10 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -24,21 +26,21 @@ func openConfigTestDB(t *testing.T) *bbolt.DB {
 	return db
 }
 
-func TestInitGeneratesAndStoresInitialPassword(t *testing.T) {
+func TestInitLeavesWebPasswordForBrowserSetup(t *testing.T) {
 	viper.Reset()
 	t.Cleanup(viper.Reset)
 	db := openConfigTestDB(t)
 	var current Config
-	result := Init(db, &current)
-	if result.InitialAdminPassword == "" {
-		t.Fatal("initial administrator password was not generated")
-	}
+	Init(db, &current)
 	values, err := database.ListConfigValues(db)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if values["web.password"] != result.InitialAdminPassword {
-		t.Fatalf("stored password does not match generated password")
+	if _, exists := values["web.password"]; exists {
+		t.Fatal("web administrator password was generated before browser setup")
+	}
+	if WebPasswordConfigured() {
+		t.Fatal("web administrator password unexpectedly configured")
 	}
 	if viper.GetInt("web.port") != 8080 {
 		t.Fatalf("default web port = %d", viper.GetInt("web.port"))
@@ -122,7 +124,7 @@ func TestInitImportsLegacyConfigOnce(t *testing.T) {
 
 	var current Config
 	result := Init(db, &current)
-	if result.MigratedFrom == "" || result.InitialAdminPassword != "" {
+	if result.MigratedFrom == "" {
 		t.Fatalf("unexpected migration result: %#v", result)
 	}
 	if viper.GetInt("web.port") != 9191 || viper.GetString("web.password") != "migrated-secret" {
@@ -136,5 +138,65 @@ func TestInitImportsLegacyConfigOnce(t *testing.T) {
 	secondResult := Init(db, &second)
 	if secondResult.MigratedFrom != "" || viper.GetInt("web.port") != 9191 {
 		t.Fatalf("legacy config was imported more than once: %#v", secondResult)
+	}
+}
+
+func TestWebPasswordInitializationAndChangeAreImmediate(t *testing.T) {
+	viper.Reset()
+	t.Cleanup(viper.Reset)
+	db := openConfigTestDB(t)
+	var current Config
+	Init(db, &current)
+
+	if err := InitializeWebPassword("first-secret"); err != nil {
+		t.Fatal(err)
+	}
+	if !WebPasswordConfigured() || viper.GetString("web.password") != "first-secret" {
+		t.Fatal("initial password was not applied to the running process")
+	}
+	if err := InitializeWebPassword("second-secret"); !errors.Is(err, ErrWebPasswordAlreadyConfigured) {
+		t.Fatalf("second initialization error = %v", err)
+	}
+
+	runtimeFrozen.Store(true)
+	t.Cleanup(func() { runtimeFrozen.Store(false) })
+	if err := ChangeWebPassword("changed-secret"); err != nil {
+		t.Fatal(err)
+	}
+	if viper.GetString("web.password") != "changed-secret" {
+		t.Fatal("changed password was not applied immediately")
+	}
+	values, err := database.ListConfigValues(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if values["web.password"] != "changed-secret" {
+		t.Fatalf("stored password = %#v", values["web.password"])
+	}
+}
+
+func TestWebPasswordValidationAndEnvironmentManagement(t *testing.T) {
+	viper.Reset()
+	t.Cleanup(viper.Reset)
+	db := openConfigTestDB(t)
+	var current Config
+	Init(db, &current)
+
+	if err := InitializeWebPassword("short"); !errors.Is(err, ErrWebPasswordTooShort) {
+		t.Fatalf("short password error = %v", err)
+	}
+	if err := InitializeWebPassword(strings.Repeat("x", MaximumWebPasswordLength+1)); !errors.Is(err, ErrWebPasswordTooLong) {
+		t.Fatalf("long password error = %v", err)
+	}
+
+	viper.Reset()
+	t.Setenv("WEB__PASSWORD", "environment-secret")
+	var environmentConfig Config
+	Init(db, &environmentConfig)
+	if !WebPasswordConfigured() || !WebPasswordManagedByEnvironment() {
+		t.Fatal("environment password was not detected")
+	}
+	if err := ChangeWebPassword("database-secret"); !errors.Is(err, ErrWebPasswordManagedByEnv) {
+		t.Fatalf("environment-managed change error = %v", err)
 	}
 }

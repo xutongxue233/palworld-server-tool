@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -10,6 +11,14 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/spf13/viper"
 )
+
+func TestGenerateTokenRejectsMissingPassword(t *testing.T) {
+	viper.Reset()
+	t.Cleanup(viper.Reset)
+	if _, err := GenerateToken(); !errors.Is(err, ErrPasswordNotConfigured) {
+		t.Fatalf("missing-password error = %v", err)
+	}
+}
 
 func TestJWTUsesRuntimeConfigurationAndHS256Only(t *testing.T) {
 	gin.SetMode(gin.TestMode)

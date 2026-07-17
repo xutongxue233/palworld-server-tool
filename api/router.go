@@ -58,6 +58,8 @@ func Logger() gin.HandlerFunc {
 func RegisterRouter(r *gin.Engine) {
 	r.Use(Logger(), gin.Recovery())
 
+	r.GET("/api/auth/status", authStatusHandler)
+	r.POST("/api/auth/password", initializePasswordHandler)
 	r.POST("/api/login", loginHandler)
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
@@ -84,6 +86,7 @@ func RegisterRouter(r *gin.Engine) {
 	authGroup := apiGroup.Group("")
 	authGroup.Use(auth.JWTAuthMiddleware())
 	{
+		authGroup.PUT("/auth/password", changePasswordHandler)
 		authGroup.GET("/setup/discovery", getServerDiscovery)
 		authGroup.POST("/setup/discovery/scan", scanServerDiscovery)
 		authGroup.POST("/setup/discovery/apply", applyServerDiscovery)

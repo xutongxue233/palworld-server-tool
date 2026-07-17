@@ -46,10 +46,6 @@ func main() {
 	if configResult.MigratedFrom != "" {
 		logger.Infof("Imported legacy configuration from %s into pst.db; the YAML file is no longer read.\n", configResult.MigratedFrom)
 	}
-	if configResult.InitialAdminPassword != "" {
-		logger.Warnf("Initial Web administrator password: %s\n", configResult.InitialAdminPassword)
-		logger.Warn("This password is stored in pst.db. Sign in before changing it through the runtime configuration API.\n")
-	}
 	discoveryStatus := discovery.Initialize()
 	if discoveryStatus.AutoConfigured {
 		logger.Infof("Automatically configured PalServer from candidate %s\n", discoveryStatus.SelectedCandidateID)

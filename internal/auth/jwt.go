@@ -2,6 +2,7 @@ package auth
 
 import (
 	"crypto/subtle"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -18,10 +19,16 @@ const (
 	prefixJWT    = "JWT "
 )
 
-func signingKey() []byte {
+var ErrPasswordNotConfigured = errors.New("web administrator password is not configured")
+
+func signingKey() ([]byte, error) {
 	// Configuration is loaded after package initialization, so the key must be
 	// resolved when a token is signed or verified instead of at package load.
-	return []byte(viper.GetString("web.password"))
+	password := viper.GetString("web.password")
+	if strings.TrimSpace(password) == "" {
+		return nil, ErrPasswordNotConfigured
+	}
+	return []byte(password), nil
 }
 
 func tokenFromHeader(authHeader string) (string, bool) {
@@ -40,7 +47,7 @@ func parseToken(tokenString string) (*jwt.Token, error) {
 		if token.Method != jwt.SigningMethodHS256 {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return signingKey(), nil
+		return signingKey()
 	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
 }
 
@@ -131,10 +138,14 @@ func fleetTokenMatches(provided string) bool {
 }
 
 func GenerateToken() (string, error) {
+	key, err := signingKey()
+	if err != nil {
+		return "", err
+	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"exp": time.Now().Add(time.Hour * 24).Unix(),
 	})
-	tokenString, err := token.SignedString(signingKey())
+	tokenString, err := token.SignedString(key)
 	if err != nil {
 		return "", err
 	}
